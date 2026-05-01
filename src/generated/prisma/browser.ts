@@ -33,6 +33,11 @@ export type PortfolioAccount = Prisma.PortfolioAccountModel
  */
 export type PortfolioPosition = Prisma.PortfolioPositionModel
 /**
+ * Model PortfolioTransactionLine
+ * 
+ */
+export type PortfolioTransactionLine = Prisma.PortfolioTransactionLineModel
+/**
  * Model ChatSession
  * 
  */

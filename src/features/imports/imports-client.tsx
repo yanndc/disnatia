@@ -25,8 +25,9 @@ export function ImportsClient({
     importedAt: string;
     rawRowCount: number;
     status: string;
+    importType: string;
     notes: string | null;
-    _count: { positions: number; accounts: number };
+    _count: { positions: number; accounts: number; transactions: number };
   }[];
 }) {
   const [file, setFile] = useState<File | null>(null);
@@ -40,7 +41,11 @@ export function ImportsClient({
   });
 
   const snapshot = useMemo(() => buildPortfolioSnapshot(rows), [rows]);
-  const canSave = file && (snapshot.positions.length > 0 || snapshot.accounts.length > 0);
+  const canSave =
+    file &&
+    (snapshot.positions.length > 0 ||
+      snapshot.accounts.length > 0 ||
+      snapshot.transactions.length > 0);
 
   async function handleFile(selectedFile: File | null) {
     setFile(selectedFile);
@@ -140,8 +145,10 @@ export function ImportsClient({
           <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-600">
             <span>{headers.length} colonnes détectées</span>
             <span>{rows.length} lignes lues</span>
+            <span>type: {snapshot.importKind.toLowerCase()}</span>
             <span>{snapshot.positions.length} positions normalisées</span>
             <span>{snapshot.accounts.length} comptes détectés</span>
+            <span>{snapshot.transactions.length} transactions détectées</span>
           </div>
 
           {messages.length > 0 ? (
@@ -209,7 +216,9 @@ export function ImportsClient({
                   </p>
                   <p className="text-xs text-slate-500">
                     {new Date(item.importedAt).toLocaleString("fr-CA")} ·{" "}
-                    {item.rawRowCount} lignes · {item._count.positions} positions
+                    {item.importType.toLowerCase()} · {item.rawRowCount} lignes ·{" "}
+                    {item._count.positions} positions ·{" "}
+                    {item._count.transactions} transactions
                   </p>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">

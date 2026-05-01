@@ -79,7 +79,7 @@ export function ChatPanel() {
                   </p>
                   <p className="mt-2 max-w-md text-sm text-slate-500">
                     Le chat utilise les fonctions serveur pour lire le dernier import,
-                    calculer l'exposition, la concentration et simuler un rééquilibrage.
+                    calculer l&apos;exposition, la concentration et simuler un rééquilibrage.
                   </p>
                 </div>
               </div>

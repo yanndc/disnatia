@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseDisnatCsv, buildPortfolioSnapshot } from "@/lib/csv/disnat";
 import { prisma } from "@/lib/db/prisma";
 import { getImportHistory } from "@/features/portfolio/queries";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function GET() {
   try {
@@ -27,7 +28,11 @@ export async function POST(request: Request) {
   const parsed = parseDisnatCsv(fileText);
   const snapshot = buildPortfolioSnapshot(parsed.rows);
 
-  if (snapshot.positions.length === 0 && snapshot.accounts.length === 0) {
+  if (
+    snapshot.positions.length === 0 &&
+    snapshot.accounts.length === 0 &&
+    snapshot.transactions.length === 0
+  ) {
     return NextResponse.json(
       {
         error:
@@ -43,6 +48,7 @@ export async function POST(request: Request) {
       data: {
         sourceFileName: file.name,
         status: "COMPLETED",
+        importType: snapshot.importKind,
         rawHeaderJson: parsed.headers,
         rawRowCount: parsed.rows.length,
         notes: snapshot.warnings.length > 0 ? snapshot.warnings.join("\n") : null,
@@ -87,6 +93,27 @@ export async function POST(request: Request) {
       });
     }
 
+    if (snapshot.transactions.length > 0) {
+      await tx.portfolioTransactionLine.createMany({
+        data: snapshot.transactions.map((transaction) => ({
+          importId: portfolioImport.id,
+          accountName: transaction.accountName,
+          accountNumber: transaction.accountNumber,
+          tradeDate: transaction.tradeDate,
+          settlementDate: transaction.settlementDate,
+          transactionType: transaction.transactionType,
+          ticker: transaction.ticker,
+          securityName: transaction.securityName,
+          currency: transaction.currency,
+          quantity: transaction.quantity,
+          price: transaction.price,
+          amount: transaction.amount,
+          fees: transaction.fees,
+          rawJson: transaction.rawJson as Prisma.InputJsonValue,
+        })),
+      });
+    }
+
     return portfolioImport;
   });
 
@@ -94,6 +121,7 @@ export async function POST(request: Request) {
     import: savedImport,
     parsed: {
       headers: parsed.headers,
+      importKind: snapshot.importKind,
       rowCount: parsed.rows.length,
       previewRows: parsed.rows.slice(0, 20),
       warnings: snapshot.warnings,

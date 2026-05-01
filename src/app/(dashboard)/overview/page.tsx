@@ -4,6 +4,8 @@ import { PortfolioCharts } from "@/features/portfolio/portfolio-charts";
 import { getPortfolioSummary } from "@/features/portfolio/queries";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export default async function OverviewPage() {
   const summary = await getPortfolioSummary().catch(() => null);
 
@@ -21,7 +23,7 @@ export default async function OverviewPage() {
       <section>
         <p className="text-sm text-slate-500">Dernier import</p>
         <h2 className="text-2xl font-semibold text-slate-950">
-          Vue d'ensemble du portefeuille
+          Vue d&apos;ensemble du portefeuille
         </h2>
         <p className="mt-1 text-sm text-slate-500">
           Données importées le {summary.importedAt?.toLocaleString("fr-CA")}

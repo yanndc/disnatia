@@ -92,6 +92,8 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
     [],
   );
 
+  // TanStack Table intentionally returns callable table helpers.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: positions,
     columns,

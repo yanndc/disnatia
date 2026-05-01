@@ -17,6 +17,17 @@ export const ImportStatus = {
 export type ImportStatus = (typeof ImportStatus)[keyof typeof ImportStatus]
 
 
+export const ImportType = {
+  PORTFOLIO: 'PORTFOLIO',
+  POSITIONS: 'POSITIONS',
+  TRANSACTIONS: 'TRANSACTIONS',
+  MIXED: 'MIXED',
+  UNKNOWN: 'UNKNOWN'
+} as const
+
+export type ImportType = (typeof ImportType)[keyof typeof ImportType]
+
+
 export const MessageRole = {
   user: 'user',
   assistant: 'assistant',

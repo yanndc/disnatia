@@ -11,6 +11,7 @@
 export type * from './models/PortfolioImport'
 export type * from './models/PortfolioAccount'
 export type * from './models/PortfolioPosition'
+export type * from './models/PortfolioTransactionLine'
 export type * from './models/ChatSession'
 export type * from './models/ChatMessage'
 export type * from './commonInputTypes'

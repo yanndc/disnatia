@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PositionsTable } from "@/features/portfolio/positions-table";
 import { getAllPositions } from "@/features/portfolio/queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function PositionsPage() {
   const positions = await getAllPositions().catch(() => []);
 

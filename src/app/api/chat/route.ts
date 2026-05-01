@@ -10,6 +10,7 @@ import {
   simulateRebalance,
 } from "@/features/portfolio/queries";
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function POST(request: Request) {
   if (!process.env.OPENAI_API_KEY) {
@@ -122,7 +123,7 @@ async function persistMessage(
       sessionId,
       role,
       content,
-      metadataJson,
+      metadataJson: metadataJson as Prisma.InputJsonValue | undefined,
     },
   });
 }

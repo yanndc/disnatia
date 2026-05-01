@@ -39,6 +39,7 @@ export type PortfolioImportMinAggregateOutputType = {
   sourceFileName: string | null
   importedAt: Date | null
   status: $Enums.ImportStatus | null
+  importType: $Enums.ImportType | null
   rawRowCount: number | null
   notes: string | null
 }
@@ -48,6 +49,7 @@ export type PortfolioImportMaxAggregateOutputType = {
   sourceFileName: string | null
   importedAt: Date | null
   status: $Enums.ImportStatus | null
+  importType: $Enums.ImportType | null
   rawRowCount: number | null
   notes: string | null
 }
@@ -57,6 +59,7 @@ export type PortfolioImportCountAggregateOutputType = {
   sourceFileName: number
   importedAt: number
   status: number
+  importType: number
   rawHeaderJson: number
   rawRowCount: number
   notes: number
@@ -77,6 +80,7 @@ export type PortfolioImportMinAggregateInputType = {
   sourceFileName?: true
   importedAt?: true
   status?: true
+  importType?: true
   rawRowCount?: true
   notes?: true
 }
@@ -86,6 +90,7 @@ export type PortfolioImportMaxAggregateInputType = {
   sourceFileName?: true
   importedAt?: true
   status?: true
+  importType?: true
   rawRowCount?: true
   notes?: true
 }
@@ -95,6 +100,7 @@ export type PortfolioImportCountAggregateInputType = {
   sourceFileName?: true
   importedAt?: true
   status?: true
+  importType?: true
   rawHeaderJson?: true
   rawRowCount?: true
   notes?: true
@@ -192,6 +198,7 @@ export type PortfolioImportGroupByOutputType = {
   sourceFileName: string
   importedAt: Date
   status: $Enums.ImportStatus
+  importType: $Enums.ImportType
   rawHeaderJson: runtime.JsonValue
   rawRowCount: number
   notes: string | null
@@ -225,11 +232,13 @@ export type PortfolioImportWhereInput = {
   sourceFileName?: Prisma.StringFilter<"PortfolioImport"> | string
   importedAt?: Prisma.DateTimeFilter<"PortfolioImport"> | Date | string
   status?: Prisma.EnumImportStatusFilter<"PortfolioImport"> | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFilter<"PortfolioImport"> | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonFilter<"PortfolioImport">
   rawRowCount?: Prisma.IntFilter<"PortfolioImport"> | number
   notes?: Prisma.StringNullableFilter<"PortfolioImport"> | string | null
   accounts?: Prisma.PortfolioAccountListRelationFilter
   positions?: Prisma.PortfolioPositionListRelationFilter
+  transactions?: Prisma.PortfolioTransactionLineListRelationFilter
 }
 
 export type PortfolioImportOrderByWithRelationInput = {
@@ -237,11 +246,13 @@ export type PortfolioImportOrderByWithRelationInput = {
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  importType?: Prisma.SortOrder
   rawHeaderJson?: Prisma.SortOrder
   rawRowCount?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   accounts?: Prisma.PortfolioAccountOrderByRelationAggregateInput
   positions?: Prisma.PortfolioPositionOrderByRelationAggregateInput
+  transactions?: Prisma.PortfolioTransactionLineOrderByRelationAggregateInput
 }
 
 export type PortfolioImportWhereUniqueInput = Prisma.AtLeast<{
@@ -252,11 +263,13 @@ export type PortfolioImportWhereUniqueInput = Prisma.AtLeast<{
   sourceFileName?: Prisma.StringFilter<"PortfolioImport"> | string
   importedAt?: Prisma.DateTimeFilter<"PortfolioImport"> | Date | string
   status?: Prisma.EnumImportStatusFilter<"PortfolioImport"> | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFilter<"PortfolioImport"> | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonFilter<"PortfolioImport">
   rawRowCount?: Prisma.IntFilter<"PortfolioImport"> | number
   notes?: Prisma.StringNullableFilter<"PortfolioImport"> | string | null
   accounts?: Prisma.PortfolioAccountListRelationFilter
   positions?: Prisma.PortfolioPositionListRelationFilter
+  transactions?: Prisma.PortfolioTransactionLineListRelationFilter
 }, "id">
 
 export type PortfolioImportOrderByWithAggregationInput = {
@@ -264,6 +277,7 @@ export type PortfolioImportOrderByWithAggregationInput = {
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  importType?: Prisma.SortOrder
   rawHeaderJson?: Prisma.SortOrder
   rawRowCount?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -282,6 +296,7 @@ export type PortfolioImportScalarWhereWithAggregatesInput = {
   sourceFileName?: Prisma.StringWithAggregatesFilter<"PortfolioImport"> | string
   importedAt?: Prisma.DateTimeWithAggregatesFilter<"PortfolioImport"> | Date | string
   status?: Prisma.EnumImportStatusWithAggregatesFilter<"PortfolioImport"> | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeWithAggregatesFilter<"PortfolioImport"> | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonWithAggregatesFilter<"PortfolioImport">
   rawRowCount?: Prisma.IntWithAggregatesFilter<"PortfolioImport"> | number
   notes?: Prisma.StringNullableWithAggregatesFilter<"PortfolioImport"> | string | null
@@ -292,11 +307,13 @@ export type PortfolioImportCreateInput = {
   sourceFileName: string
   importedAt?: Date | string
   status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount: number
   notes?: string | null
   accounts?: Prisma.PortfolioAccountCreateNestedManyWithoutImportInput
   positions?: Prisma.PortfolioPositionCreateNestedManyWithoutImportInput
+  transactions?: Prisma.PortfolioTransactionLineCreateNestedManyWithoutImportInput
 }
 
 export type PortfolioImportUncheckedCreateInput = {
@@ -304,11 +321,13 @@ export type PortfolioImportUncheckedCreateInput = {
   sourceFileName: string
   importedAt?: Date | string
   status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount: number
   notes?: string | null
   accounts?: Prisma.PortfolioAccountUncheckedCreateNestedManyWithoutImportInput
   positions?: Prisma.PortfolioPositionUncheckedCreateNestedManyWithoutImportInput
+  transactions?: Prisma.PortfolioTransactionLineUncheckedCreateNestedManyWithoutImportInput
 }
 
 export type PortfolioImportUpdateInput = {
@@ -316,11 +335,13 @@ export type PortfolioImportUpdateInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.PortfolioAccountUpdateManyWithoutImportNestedInput
   positions?: Prisma.PortfolioPositionUpdateManyWithoutImportNestedInput
+  transactions?: Prisma.PortfolioTransactionLineUpdateManyWithoutImportNestedInput
 }
 
 export type PortfolioImportUncheckedUpdateInput = {
@@ -328,11 +349,13 @@ export type PortfolioImportUncheckedUpdateInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.PortfolioAccountUncheckedUpdateManyWithoutImportNestedInput
   positions?: Prisma.PortfolioPositionUncheckedUpdateManyWithoutImportNestedInput
+  transactions?: Prisma.PortfolioTransactionLineUncheckedUpdateManyWithoutImportNestedInput
 }
 
 export type PortfolioImportCreateManyInput = {
@@ -340,6 +363,7 @@ export type PortfolioImportCreateManyInput = {
   sourceFileName: string
   importedAt?: Date | string
   status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount: number
   notes?: string | null
@@ -350,6 +374,7 @@ export type PortfolioImportUpdateManyMutationInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -360,6 +385,7 @@ export type PortfolioImportUncheckedUpdateManyInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -370,6 +396,7 @@ export type PortfolioImportCountOrderByAggregateInput = {
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  importType?: Prisma.SortOrder
   rawHeaderJson?: Prisma.SortOrder
   rawRowCount?: Prisma.SortOrder
   notes?: Prisma.SortOrder
@@ -384,6 +411,7 @@ export type PortfolioImportMaxOrderByAggregateInput = {
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  importType?: Prisma.SortOrder
   rawRowCount?: Prisma.SortOrder
   notes?: Prisma.SortOrder
 }
@@ -393,6 +421,7 @@ export type PortfolioImportMinOrderByAggregateInput = {
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  importType?: Prisma.SortOrder
   rawRowCount?: Prisma.SortOrder
   notes?: Prisma.SortOrder
 }
@@ -416,6 +445,10 @@ export type DateTimeFieldUpdateOperationsInput = {
 
 export type EnumImportStatusFieldUpdateOperationsInput = {
   set?: $Enums.ImportStatus
+}
+
+export type EnumImportTypeFieldUpdateOperationsInput = {
+  set?: $Enums.ImportType
 }
 
 export type IntFieldUpdateOperationsInput = {
@@ -458,15 +491,31 @@ export type PortfolioImportUpdateOneRequiredWithoutPositionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.PortfolioImportUpdateToOneWithWhereWithoutPositionsInput, Prisma.PortfolioImportUpdateWithoutPositionsInput>, Prisma.PortfolioImportUncheckedUpdateWithoutPositionsInput>
 }
 
+export type PortfolioImportCreateNestedOneWithoutTransactionsInput = {
+  create?: Prisma.XOR<Prisma.PortfolioImportCreateWithoutTransactionsInput, Prisma.PortfolioImportUncheckedCreateWithoutTransactionsInput>
+  connectOrCreate?: Prisma.PortfolioImportCreateOrConnectWithoutTransactionsInput
+  connect?: Prisma.PortfolioImportWhereUniqueInput
+}
+
+export type PortfolioImportUpdateOneRequiredWithoutTransactionsNestedInput = {
+  create?: Prisma.XOR<Prisma.PortfolioImportCreateWithoutTransactionsInput, Prisma.PortfolioImportUncheckedCreateWithoutTransactionsInput>
+  connectOrCreate?: Prisma.PortfolioImportCreateOrConnectWithoutTransactionsInput
+  upsert?: Prisma.PortfolioImportUpsertWithoutTransactionsInput
+  connect?: Prisma.PortfolioImportWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.PortfolioImportUpdateToOneWithWhereWithoutTransactionsInput, Prisma.PortfolioImportUpdateWithoutTransactionsInput>, Prisma.PortfolioImportUncheckedUpdateWithoutTransactionsInput>
+}
+
 export type PortfolioImportCreateWithoutAccountsInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
   status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount: number
   notes?: string | null
   positions?: Prisma.PortfolioPositionCreateNestedManyWithoutImportInput
+  transactions?: Prisma.PortfolioTransactionLineCreateNestedManyWithoutImportInput
 }
 
 export type PortfolioImportUncheckedCreateWithoutAccountsInput = {
@@ -474,10 +523,12 @@ export type PortfolioImportUncheckedCreateWithoutAccountsInput = {
   sourceFileName: string
   importedAt?: Date | string
   status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount: number
   notes?: string | null
   positions?: Prisma.PortfolioPositionUncheckedCreateNestedManyWithoutImportInput
+  transactions?: Prisma.PortfolioTransactionLineUncheckedCreateNestedManyWithoutImportInput
 }
 
 export type PortfolioImportCreateOrConnectWithoutAccountsInput = {
@@ -501,10 +552,12 @@ export type PortfolioImportUpdateWithoutAccountsInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   positions?: Prisma.PortfolioPositionUpdateManyWithoutImportNestedInput
+  transactions?: Prisma.PortfolioTransactionLineUpdateManyWithoutImportNestedInput
 }
 
 export type PortfolioImportUncheckedUpdateWithoutAccountsInput = {
@@ -512,10 +565,12 @@ export type PortfolioImportUncheckedUpdateWithoutAccountsInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   positions?: Prisma.PortfolioPositionUncheckedUpdateManyWithoutImportNestedInput
+  transactions?: Prisma.PortfolioTransactionLineUncheckedUpdateManyWithoutImportNestedInput
 }
 
 export type PortfolioImportCreateWithoutPositionsInput = {
@@ -523,10 +578,12 @@ export type PortfolioImportCreateWithoutPositionsInput = {
   sourceFileName: string
   importedAt?: Date | string
   status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount: number
   notes?: string | null
   accounts?: Prisma.PortfolioAccountCreateNestedManyWithoutImportInput
+  transactions?: Prisma.PortfolioTransactionLineCreateNestedManyWithoutImportInput
 }
 
 export type PortfolioImportUncheckedCreateWithoutPositionsInput = {
@@ -534,10 +591,12 @@ export type PortfolioImportUncheckedCreateWithoutPositionsInput = {
   sourceFileName: string
   importedAt?: Date | string
   status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount: number
   notes?: string | null
   accounts?: Prisma.PortfolioAccountUncheckedCreateNestedManyWithoutImportInput
+  transactions?: Prisma.PortfolioTransactionLineUncheckedCreateNestedManyWithoutImportInput
 }
 
 export type PortfolioImportCreateOrConnectWithoutPositionsInput = {
@@ -561,10 +620,12 @@ export type PortfolioImportUpdateWithoutPositionsInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.PortfolioAccountUpdateManyWithoutImportNestedInput
+  transactions?: Prisma.PortfolioTransactionLineUpdateManyWithoutImportNestedInput
 }
 
 export type PortfolioImportUncheckedUpdateWithoutPositionsInput = {
@@ -572,10 +633,80 @@ export type PortfolioImportUncheckedUpdateWithoutPositionsInput = {
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accounts?: Prisma.PortfolioAccountUncheckedUpdateManyWithoutImportNestedInput
+  transactions?: Prisma.PortfolioTransactionLineUncheckedUpdateManyWithoutImportNestedInput
+}
+
+export type PortfolioImportCreateWithoutTransactionsInput = {
+  id?: string
+  sourceFileName: string
+  importedAt?: Date | string
+  status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
+  rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  rawRowCount: number
+  notes?: string | null
+  accounts?: Prisma.PortfolioAccountCreateNestedManyWithoutImportInput
+  positions?: Prisma.PortfolioPositionCreateNestedManyWithoutImportInput
+}
+
+export type PortfolioImportUncheckedCreateWithoutTransactionsInput = {
+  id?: string
+  sourceFileName: string
+  importedAt?: Date | string
+  status?: $Enums.ImportStatus
+  importType?: $Enums.ImportType
+  rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  rawRowCount: number
+  notes?: string | null
+  accounts?: Prisma.PortfolioAccountUncheckedCreateNestedManyWithoutImportInput
+  positions?: Prisma.PortfolioPositionUncheckedCreateNestedManyWithoutImportInput
+}
+
+export type PortfolioImportCreateOrConnectWithoutTransactionsInput = {
+  where: Prisma.PortfolioImportWhereUniqueInput
+  create: Prisma.XOR<Prisma.PortfolioImportCreateWithoutTransactionsInput, Prisma.PortfolioImportUncheckedCreateWithoutTransactionsInput>
+}
+
+export type PortfolioImportUpsertWithoutTransactionsInput = {
+  update: Prisma.XOR<Prisma.PortfolioImportUpdateWithoutTransactionsInput, Prisma.PortfolioImportUncheckedUpdateWithoutTransactionsInput>
+  create: Prisma.XOR<Prisma.PortfolioImportCreateWithoutTransactionsInput, Prisma.PortfolioImportUncheckedCreateWithoutTransactionsInput>
+  where?: Prisma.PortfolioImportWhereInput
+}
+
+export type PortfolioImportUpdateToOneWithWhereWithoutTransactionsInput = {
+  where?: Prisma.PortfolioImportWhereInput
+  data: Prisma.XOR<Prisma.PortfolioImportUpdateWithoutTransactionsInput, Prisma.PortfolioImportUncheckedUpdateWithoutTransactionsInput>
+}
+
+export type PortfolioImportUpdateWithoutTransactionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
+  rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accounts?: Prisma.PortfolioAccountUpdateManyWithoutImportNestedInput
+  positions?: Prisma.PortfolioPositionUpdateManyWithoutImportNestedInput
+}
+
+export type PortfolioImportUncheckedUpdateWithoutTransactionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
+  importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
+  rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  rawRowCount?: Prisma.IntFieldUpdateOperationsInput | number
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accounts?: Prisma.PortfolioAccountUncheckedUpdateManyWithoutImportNestedInput
+  positions?: Prisma.PortfolioPositionUncheckedUpdateManyWithoutImportNestedInput
 }
 
 
@@ -586,11 +717,13 @@ export type PortfolioImportUncheckedUpdateWithoutPositionsInput = {
 export type PortfolioImportCountOutputType = {
   accounts: number
   positions: number
+  transactions: number
 }
 
 export type PortfolioImportCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   accounts?: boolean | PortfolioImportCountOutputTypeCountAccountsArgs
   positions?: boolean | PortfolioImportCountOutputTypeCountPositionsArgs
+  transactions?: boolean | PortfolioImportCountOutputTypeCountTransactionsArgs
 }
 
 /**
@@ -617,17 +750,26 @@ export type PortfolioImportCountOutputTypeCountPositionsArgs<ExtArgs extends run
   where?: Prisma.PortfolioPositionWhereInput
 }
 
+/**
+ * PortfolioImportCountOutputType without action
+ */
+export type PortfolioImportCountOutputTypeCountTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PortfolioTransactionLineWhereInput
+}
+
 
 export type PortfolioImportSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   sourceFileName?: boolean
   importedAt?: boolean
   status?: boolean
+  importType?: boolean
   rawHeaderJson?: boolean
   rawRowCount?: boolean
   notes?: boolean
   accounts?: boolean | Prisma.PortfolioImport$accountsArgs<ExtArgs>
   positions?: boolean | Prisma.PortfolioImport$positionsArgs<ExtArgs>
+  transactions?: boolean | Prisma.PortfolioImport$transactionsArgs<ExtArgs>
   _count?: boolean | Prisma.PortfolioImportCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["portfolioImport"]>
 
@@ -636,6 +778,7 @@ export type PortfolioImportSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   sourceFileName?: boolean
   importedAt?: boolean
   status?: boolean
+  importType?: boolean
   rawHeaderJson?: boolean
   rawRowCount?: boolean
   notes?: boolean
@@ -646,6 +789,7 @@ export type PortfolioImportSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   sourceFileName?: boolean
   importedAt?: boolean
   status?: boolean
+  importType?: boolean
   rawHeaderJson?: boolean
   rawRowCount?: boolean
   notes?: boolean
@@ -656,15 +800,17 @@ export type PortfolioImportSelectScalar = {
   sourceFileName?: boolean
   importedAt?: boolean
   status?: boolean
+  importType?: boolean
   rawHeaderJson?: boolean
   rawRowCount?: boolean
   notes?: boolean
 }
 
-export type PortfolioImportOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sourceFileName" | "importedAt" | "status" | "rawHeaderJson" | "rawRowCount" | "notes", ExtArgs["result"]["portfolioImport"]>
+export type PortfolioImportOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sourceFileName" | "importedAt" | "status" | "importType" | "rawHeaderJson" | "rawRowCount" | "notes", ExtArgs["result"]["portfolioImport"]>
 export type PortfolioImportInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   accounts?: boolean | Prisma.PortfolioImport$accountsArgs<ExtArgs>
   positions?: boolean | Prisma.PortfolioImport$positionsArgs<ExtArgs>
+  transactions?: boolean | Prisma.PortfolioImport$transactionsArgs<ExtArgs>
   _count?: boolean | Prisma.PortfolioImportCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type PortfolioImportIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -675,12 +821,14 @@ export type $PortfolioImportPayload<ExtArgs extends runtime.Types.Extensions.Int
   objects: {
     accounts: Prisma.$PortfolioAccountPayload<ExtArgs>[]
     positions: Prisma.$PortfolioPositionPayload<ExtArgs>[]
+    transactions: Prisma.$PortfolioTransactionLinePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     sourceFileName: string
     importedAt: Date
     status: $Enums.ImportStatus
+    importType: $Enums.ImportType
     rawHeaderJson: runtime.JsonValue
     rawRowCount: number
     notes: string | null
@@ -1080,6 +1228,7 @@ export interface Prisma__PortfolioImportClient<T, Null = never, ExtArgs extends 
   readonly [Symbol.toStringTag]: "PrismaPromise"
   accounts<T extends Prisma.PortfolioImport$accountsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PortfolioImport$accountsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PortfolioAccountPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   positions<T extends Prisma.PortfolioImport$positionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PortfolioImport$positionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PortfolioPositionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  transactions<T extends Prisma.PortfolioImport$transactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PortfolioImport$transactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PortfolioTransactionLinePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1113,6 +1262,7 @@ export interface PortfolioImportFieldRefs {
   readonly sourceFileName: Prisma.FieldRef<"PortfolioImport", 'String'>
   readonly importedAt: Prisma.FieldRef<"PortfolioImport", 'DateTime'>
   readonly status: Prisma.FieldRef<"PortfolioImport", 'ImportStatus'>
+  readonly importType: Prisma.FieldRef<"PortfolioImport", 'ImportType'>
   readonly rawHeaderJson: Prisma.FieldRef<"PortfolioImport", 'Json'>
   readonly rawRowCount: Prisma.FieldRef<"PortfolioImport", 'Int'>
   readonly notes: Prisma.FieldRef<"PortfolioImport", 'String'>
@@ -1554,6 +1704,30 @@ export type PortfolioImport$positionsArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.PortfolioPositionScalarFieldEnum | Prisma.PortfolioPositionScalarFieldEnum[]
+}
+
+/**
+ * PortfolioImport.transactions
+ */
+export type PortfolioImport$transactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PortfolioTransactionLine
+   */
+  select?: Prisma.PortfolioTransactionLineSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PortfolioTransactionLine
+   */
+  omit?: Prisma.PortfolioTransactionLineOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PortfolioTransactionLineInclude<ExtArgs> | null
+  where?: Prisma.PortfolioTransactionLineWhereInput
+  orderBy?: Prisma.PortfolioTransactionLineOrderByWithRelationInput | Prisma.PortfolioTransactionLineOrderByWithRelationInput[]
+  cursor?: Prisma.PortfolioTransactionLineWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PortfolioTransactionLineScalarFieldEnum | Prisma.PortfolioTransactionLineScalarFieldEnum[]
 }
 
 /**

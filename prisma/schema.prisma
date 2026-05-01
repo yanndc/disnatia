@@ -8,15 +8,17 @@ datasource db {
 }
 
 model PortfolioImport {
-  id             String              @id @default(cuid())
+  id             String                     @id @default(cuid())
   sourceFileName String
-  importedAt     DateTime            @default(now())
-  status         ImportStatus         @default(COMPLETED)
+  importedAt     DateTime                   @default(now())
+  status         ImportStatus               @default(COMPLETED)
+  importType     ImportType                 @default(PORTFOLIO)
   rawHeaderJson  Json
   rawRowCount    Int
   notes          String?
   accounts       PortfolioAccount[]
   positions      PortfolioPosition[]
+  transactions   PortfolioTransactionLine[]
 
   @@map("portfolio_imports")
 }
@@ -60,6 +62,30 @@ model PortfolioPosition {
   @@map("portfolio_positions")
 }
 
+model PortfolioTransactionLine {
+  id              String          @id @default(cuid())
+  importId        String
+  accountName     String?
+  accountNumber   String?
+  tradeDate       DateTime?
+  settlementDate  DateTime?
+  transactionType String?
+  ticker          String?
+  securityName    String?
+  currency        String?
+  quantity        Float?
+  price           Float?
+  amount          Float?
+  fees            Float?
+  rawJson         Json
+  import          PortfolioImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId])
+  @@index([ticker])
+  @@index([tradeDate])
+  @@map("portfolio_transaction_lines")
+}
+
 model ChatSession {
   id        String        @id @default(cuid())
   title     String        @default("Conversation portefeuille")
@@ -86,6 +112,14 @@ model ChatMessage {
 enum ImportStatus {
   COMPLETED
   FAILED
+}
+
+enum ImportType {
+  PORTFOLIO
+  POSITIONS
+  TRANSACTIONS
+  MIXED
+  UNKNOWN
 }
 
 enum MessageRole {

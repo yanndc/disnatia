@@ -387,6 +387,7 @@ export const ModelName = {
   PortfolioImport: 'PortfolioImport',
   PortfolioAccount: 'PortfolioAccount',
   PortfolioPosition: 'PortfolioPosition',
+  PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage'
 } as const
@@ -404,7 +405,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "chatSession" | "chatMessage"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioTransactionLine" | "chatSession" | "chatMessage"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -630,6 +631,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    PortfolioTransactionLine: {
+      payload: Prisma.$PortfolioTransactionLinePayload<ExtArgs>
+      fields: Prisma.PortfolioTransactionLineFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioTransactionLineFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioTransactionLineFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioTransactionLineFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioTransactionLineFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioTransactionLineFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioTransactionLineCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioTransactionLineCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioTransactionLineCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioTransactionLineDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>
+        }
+        update: {
+          args: Prisma.PortfolioTransactionLineUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioTransactionLineDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioTransactionLineUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioTransactionLineUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioTransactionLineUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioTransactionLinePayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioTransactionLineAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioTransactionLine>
+        }
+        groupBy: {
+          args: Prisma.PortfolioTransactionLineGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioTransactionLineGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioTransactionLineCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioTransactionLineCountAggregateOutputType> | number
+        }
+      }
+    }
     ChatSession: {
       payload: Prisma.$ChatSessionPayload<ExtArgs>
       fields: Prisma.ChatSessionFieldRefs
@@ -822,6 +897,7 @@ export const PortfolioImportScalarFieldEnum = {
   sourceFileName: 'sourceFileName',
   importedAt: 'importedAt',
   status: 'status',
+  importType: 'importType',
   rawHeaderJson: 'rawHeaderJson',
   rawRowCount: 'rawRowCount',
   notes: 'notes'
@@ -862,6 +938,27 @@ export const PortfolioPositionScalarFieldEnum = {
 } as const
 
 export type PortfolioPositionScalarFieldEnum = (typeof PortfolioPositionScalarFieldEnum)[keyof typeof PortfolioPositionScalarFieldEnum]
+
+
+export const PortfolioTransactionLineScalarFieldEnum = {
+  id: 'id',
+  importId: 'importId',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  tradeDate: 'tradeDate',
+  settlementDate: 'settlementDate',
+  transactionType: 'transactionType',
+  ticker: 'ticker',
+  securityName: 'securityName',
+  currency: 'currency',
+  quantity: 'quantity',
+  price: 'price',
+  amount: 'amount',
+  fees: 'fees',
+  rawJson: 'rawJson'
+} as const
+
+export type PortfolioTransactionLineScalarFieldEnum = (typeof PortfolioTransactionLineScalarFieldEnum)[keyof typeof PortfolioTransactionLineScalarFieldEnum]
 
 
 export const ChatSessionScalarFieldEnum = {
@@ -979,6 +1076,20 @@ export type EnumImportStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Pri
  * Reference to a field of type 'ImportStatus[]'
  */
 export type ListEnumImportStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImportStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ImportType'
+ */
+export type EnumImportTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImportType'>
+    
+
+
+/**
+ * Reference to a field of type 'ImportType[]'
+ */
+export type ListEnumImportTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ImportType[]'>
     
 
 
@@ -1150,6 +1261,7 @@ export type GlobalOmitConfig = {
   portfolioImport?: Prisma.PortfolioImportOmit
   portfolioAccount?: Prisma.PortfolioAccountOmit
   portfolioPosition?: Prisma.PortfolioPositionOmit
+  portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit
 }

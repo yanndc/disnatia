@@ -160,7 +160,7 @@ export async function getImportHistory() {
     take: 20,
     include: {
       _count: {
-        select: { positions: true, accounts: true },
+        select: { positions: true, accounts: true, transactions: true },
       },
     },
   });

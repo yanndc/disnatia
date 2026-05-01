@@ -54,6 +54,7 @@ export const ModelName = {
   PortfolioImport: 'PortfolioImport',
   PortfolioAccount: 'PortfolioAccount',
   PortfolioPosition: 'PortfolioPosition',
+  PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage'
 } as const
@@ -79,6 +80,7 @@ export const PortfolioImportScalarFieldEnum = {
   sourceFileName: 'sourceFileName',
   importedAt: 'importedAt',
   status: 'status',
+  importType: 'importType',
   rawHeaderJson: 'rawHeaderJson',
   rawRowCount: 'rawRowCount',
   notes: 'notes'
@@ -119,6 +121,27 @@ export const PortfolioPositionScalarFieldEnum = {
 } as const
 
 export type PortfolioPositionScalarFieldEnum = (typeof PortfolioPositionScalarFieldEnum)[keyof typeof PortfolioPositionScalarFieldEnum]
+
+
+export const PortfolioTransactionLineScalarFieldEnum = {
+  id: 'id',
+  importId: 'importId',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  tradeDate: 'tradeDate',
+  settlementDate: 'settlementDate',
+  transactionType: 'transactionType',
+  ticker: 'ticker',
+  securityName: 'securityName',
+  currency: 'currency',
+  quantity: 'quantity',
+  price: 'price',
+  amount: 'amount',
+  fees: 'fees',
+  rawJson: 'rawJson'
+} as const
+
+export type PortfolioTransactionLineScalarFieldEnum = (typeof PortfolioTransactionLineScalarFieldEnum)[keyof typeof PortfolioTransactionLineScalarFieldEnum]
 
 
 export const ChatSessionScalarFieldEnum = {
