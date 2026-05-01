@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model PortfolioImport {
+  id             String              @id @default(cuid())
+  sourceFileName String
+  importedAt     DateTime            @default(now())
+  status         ImportStatus         @default(COMPLETED)
+  rawHeaderJson  Json
+  rawRowCount    Int
+  notes          String?
+  accounts       PortfolioAccount[]
+  positions      PortfolioPosition[]
+
+  @@map("portfolio_imports")
+}
+
+model PortfolioAccount {
+  id          String              @id @default(cuid())
+  importId    String
+  accountName String
+  accountType String?
+  currency    String
+  cashValue   Float               @default(0)
+  marketValue Float               @default(0)
+  totalValue  Float               @default(0)
+  import      PortfolioImport     @relation(fields: [importId], references: [id], onDelete: Cascade)
+  positions   PortfolioPosition[]
+
+  @@index([importId])
+  @@map("portfolio_accounts")
+}
+
+model PortfolioPosition {
+  id                 String            @id @default(cuid())
+  importId           String
+  accountId          String?
+  ticker             String
+  securityName       String?
+  currency           String
+  quantity           Float
+  averageCost        Float?
+  marketPrice        Float?
+  marketValue        Float
+  unrealizedGainLoss Float?
+  weightPct          Float?
+  sector             String?
+  assetType          String?
+  import             PortfolioImport   @relation(fields: [importId], references: [id], onDelete: Cascade)
+  account            PortfolioAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([importId])
+  @@index([ticker])
+  @@map("portfolio_positions")
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  title     String        @default("Conversation portefeuille")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id           String      @id @default(cuid())
+  sessionId    String
+  role         MessageRole
+  content      String
+  createdAt    DateTime    @default(now())
+  metadataJson Json?
+  session      ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
+enum ImportStatus {
+  COMPLETED
+  FAILED
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+  tool
+}
