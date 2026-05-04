@@ -301,6 +301,23 @@ export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedFloatNullableFilter<$PrismaModel>
 }
 
+export type EnumTxCategoryNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.TxCategory | Prisma.EnumTxCategoryFieldRefInput<$PrismaModel> | null
+  in?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumTxCategoryNullableFilter<$PrismaModel> | $Enums.TxCategory | null
+}
+
+export type EnumTxCategoryNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TxCategory | Prisma.EnumTxCategoryFieldRefInput<$PrismaModel> | null
+  in?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumTxCategoryNullableWithAggregatesFilter<$PrismaModel> | $Enums.TxCategory | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTxCategoryNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTxCategoryNullableFilter<$PrismaModel>
+}
+
 export type EnumMessageRoleFilter<$PrismaModel = never> = {
   equals?: $Enums.MessageRole | Prisma.EnumMessageRoleFieldRefInput<$PrismaModel>
   in?: $Enums.MessageRole[] | Prisma.ListEnumMessageRoleFieldRefInput<$PrismaModel>
@@ -629,6 +646,23 @@ export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedFloatNullableFilter<$PrismaModel>
   _min?: Prisma.NestedFloatNullableFilter<$PrismaModel>
   _max?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+}
+
+export type NestedEnumTxCategoryNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.TxCategory | Prisma.EnumTxCategoryFieldRefInput<$PrismaModel> | null
+  in?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumTxCategoryNullableFilter<$PrismaModel> | $Enums.TxCategory | null
+}
+
+export type NestedEnumTxCategoryNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TxCategory | Prisma.EnumTxCategoryFieldRefInput<$PrismaModel> | null
+  in?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.TxCategory[] | Prisma.ListEnumTxCategoryFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumTxCategoryNullableWithAggregatesFilter<$PrismaModel> | $Enums.TxCategory | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTxCategoryNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTxCategoryNullableFilter<$PrismaModel>
 }
 
 export type NestedEnumMessageRoleFilter<$PrismaModel = never> = {

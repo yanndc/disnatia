@@ -1226,14 +1226,19 @@ export type PortfolioLiveQuoteScalarFieldEnum = (typeof PortfolioLiveQuoteScalar
 export const PortfolioTransactionLineScalarFieldEnum = {
   id: 'id',
   importId: 'importId',
+  accountKey: 'accountKey',
   accountName: 'accountName',
   accountNumber: 'accountNumber',
   tradeDate: 'tradeDate',
   settlementDate: 'settlementDate',
   transactionType: 'transactionType',
+  txCategory: 'txCategory',
   ticker: 'ticker',
   securityName: 'securityName',
+  market: 'market',
   currency: 'currency',
+  priceDevise: 'priceDevise',
+  assetClass: 'assetClass',
   quantity: 'quantity',
   price: 'price',
   amount: 'amount',
@@ -1415,6 +1420,20 @@ export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, '
  * Reference to a field of type 'Float[]'
  */
 export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
+
+
+/**
+ * Reference to a field of type 'TxCategory'
+ */
+export type EnumTxCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TxCategory'>
+    
+
+
+/**
+ * Reference to a field of type 'TxCategory[]'
+ */
+export type ListEnumTxCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TxCategory[]'>
     
 
 

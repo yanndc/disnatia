@@ -18,13 +18,13 @@ export default async function OverviewPage() {
       <EmptyState
         title={
           summary?.hasAnyImportsInHistory
-            ? "Pas encore de snapshot portefeuille"
+            ? "Transactions importées — portefeuille en attente"
             : "Aucun portefeuille importé"
         }
         description={
           summary?.hasAnyImportsInHistory
-            ? "Tes fichiers importés contiennent des transactions mais aucune position ni compte. Importe un export positions ou relevé de compte Disnat pour voir les KPI."
-            : "Importe un CSV ou Excel Disnat pour alimenter les KPI, graphiques et positions."
+            ? "Des transactions ont été importées mais le portefeuille n'est pas encore reconstitué. Importe d'abord le fichier CSV « Portefeuille » de Disnat pour identifier tes comptes, puis associe les fichiers Historique.xlsx à chaque compte."
+            : "Commence par importer le fichier CSV « Portefeuille » exporté depuis Disnat. Il identifiera tes comptes (CELI, REER, CRI…). Tu pourras ensuite ajouter les fichiers d'historique de transactions."
         }
       />
     );

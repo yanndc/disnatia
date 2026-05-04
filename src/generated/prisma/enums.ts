@@ -9,6 +9,29 @@
 * 🟢 You can import this file directly.
 */
 
+export const TxCategory = {
+  BUY: 'BUY',
+  SELL: 'SELL',
+  DIVIDEND: 'DIVIDEND',
+  INTEREST: 'INTEREST',
+  TAX_WITHHOLD: 'TAX_WITHHOLD',
+  CONTRIBUTION: 'CONTRIBUTION',
+  TRANSFER_IN: 'TRANSFER_IN',
+  TRANSFER_OUT: 'TRANSFER_OUT',
+  INTERNAL_TRANSFER: 'INTERNAL_TRANSFER',
+  REVERSAL: 'REVERSAL',
+  FEE: 'FEE',
+  STOCK_SPLIT: 'STOCK_SPLIT',
+  STOCK_DIVIDEND: 'STOCK_DIVIDEND',
+  EXCHANGE: 'EXCHANGE',
+  TERMINATION: 'TERMINATION',
+  JOURNAL: 'JOURNAL',
+  OTHER: 'OTHER'
+} as const
+
+export type TxCategory = (typeof TxCategory)[keyof typeof TxCategory]
+
+
 export const ImportStatus = {
   COMPLETED: 'COMPLETED',
   FAILED: 'FAILED'

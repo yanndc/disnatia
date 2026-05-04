@@ -43,14 +43,19 @@ export type PortfolioTransactionLineSumAggregateOutputType = {
 export type PortfolioTransactionLineMinAggregateOutputType = {
   id: string | null
   importId: string | null
+  accountKey: string | null
   accountName: string | null
   accountNumber: string | null
   tradeDate: Date | null
   settlementDate: Date | null
   transactionType: string | null
+  txCategory: $Enums.TxCategory | null
   ticker: string | null
   securityName: string | null
+  market: string | null
   currency: string | null
+  priceDevise: string | null
+  assetClass: string | null
   quantity: number | null
   price: number | null
   amount: number | null
@@ -60,14 +65,19 @@ export type PortfolioTransactionLineMinAggregateOutputType = {
 export type PortfolioTransactionLineMaxAggregateOutputType = {
   id: string | null
   importId: string | null
+  accountKey: string | null
   accountName: string | null
   accountNumber: string | null
   tradeDate: Date | null
   settlementDate: Date | null
   transactionType: string | null
+  txCategory: $Enums.TxCategory | null
   ticker: string | null
   securityName: string | null
+  market: string | null
   currency: string | null
+  priceDevise: string | null
+  assetClass: string | null
   quantity: number | null
   price: number | null
   amount: number | null
@@ -77,14 +87,19 @@ export type PortfolioTransactionLineMaxAggregateOutputType = {
 export type PortfolioTransactionLineCountAggregateOutputType = {
   id: number
   importId: number
+  accountKey: number
   accountName: number
   accountNumber: number
   tradeDate: number
   settlementDate: number
   transactionType: number
+  txCategory: number
   ticker: number
   securityName: number
+  market: number
   currency: number
+  priceDevise: number
+  assetClass: number
   quantity: number
   price: number
   amount: number
@@ -111,14 +126,19 @@ export type PortfolioTransactionLineSumAggregateInputType = {
 export type PortfolioTransactionLineMinAggregateInputType = {
   id?: true
   importId?: true
+  accountKey?: true
   accountName?: true
   accountNumber?: true
   tradeDate?: true
   settlementDate?: true
   transactionType?: true
+  txCategory?: true
   ticker?: true
   securityName?: true
+  market?: true
   currency?: true
+  priceDevise?: true
+  assetClass?: true
   quantity?: true
   price?: true
   amount?: true
@@ -128,14 +148,19 @@ export type PortfolioTransactionLineMinAggregateInputType = {
 export type PortfolioTransactionLineMaxAggregateInputType = {
   id?: true
   importId?: true
+  accountKey?: true
   accountName?: true
   accountNumber?: true
   tradeDate?: true
   settlementDate?: true
   transactionType?: true
+  txCategory?: true
   ticker?: true
   securityName?: true
+  market?: true
   currency?: true
+  priceDevise?: true
+  assetClass?: true
   quantity?: true
   price?: true
   amount?: true
@@ -145,14 +170,19 @@ export type PortfolioTransactionLineMaxAggregateInputType = {
 export type PortfolioTransactionLineCountAggregateInputType = {
   id?: true
   importId?: true
+  accountKey?: true
   accountName?: true
   accountNumber?: true
   tradeDate?: true
   settlementDate?: true
   transactionType?: true
+  txCategory?: true
   ticker?: true
   securityName?: true
+  market?: true
   currency?: true
+  priceDevise?: true
+  assetClass?: true
   quantity?: true
   price?: true
   amount?: true
@@ -250,14 +280,19 @@ export type PortfolioTransactionLineGroupByArgs<ExtArgs extends runtime.Types.Ex
 export type PortfolioTransactionLineGroupByOutputType = {
   id: string
   importId: string
+  accountKey: string | null
   accountName: string | null
   accountNumber: string | null
   tradeDate: Date | null
   settlementDate: Date | null
   transactionType: string | null
+  txCategory: $Enums.TxCategory | null
   ticker: string | null
   securityName: string | null
+  market: string | null
   currency: string | null
+  priceDevise: string | null
+  assetClass: string | null
   quantity: number | null
   price: number | null
   amount: number | null
@@ -291,14 +326,19 @@ export type PortfolioTransactionLineWhereInput = {
   NOT?: Prisma.PortfolioTransactionLineWhereInput | Prisma.PortfolioTransactionLineWhereInput[]
   id?: Prisma.StringFilter<"PortfolioTransactionLine"> | string
   importId?: Prisma.StringFilter<"PortfolioTransactionLine"> | string
+  accountKey?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   accountName?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   accountNumber?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   tradeDate?: Prisma.DateTimeNullableFilter<"PortfolioTransactionLine"> | Date | string | null
   settlementDate?: Prisma.DateTimeNullableFilter<"PortfolioTransactionLine"> | Date | string | null
   transactionType?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  txCategory?: Prisma.EnumTxCategoryNullableFilter<"PortfolioTransactionLine"> | $Enums.TxCategory | null
   ticker?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   securityName?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  market?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   currency?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  priceDevise?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  assetClass?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   quantity?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   price?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   amount?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
@@ -310,14 +350,19 @@ export type PortfolioTransactionLineWhereInput = {
 export type PortfolioTransactionLineOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
+  accountKey?: Prisma.SortOrderInput | Prisma.SortOrder
   accountName?: Prisma.SortOrderInput | Prisma.SortOrder
   accountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   tradeDate?: Prisma.SortOrderInput | Prisma.SortOrder
   settlementDate?: Prisma.SortOrderInput | Prisma.SortOrder
   transactionType?: Prisma.SortOrderInput | Prisma.SortOrder
+  txCategory?: Prisma.SortOrderInput | Prisma.SortOrder
   ticker?: Prisma.SortOrderInput | Prisma.SortOrder
   securityName?: Prisma.SortOrderInput | Prisma.SortOrder
+  market?: Prisma.SortOrderInput | Prisma.SortOrder
   currency?: Prisma.SortOrderInput | Prisma.SortOrder
+  priceDevise?: Prisma.SortOrderInput | Prisma.SortOrder
+  assetClass?: Prisma.SortOrderInput | Prisma.SortOrder
   quantity?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -332,14 +377,19 @@ export type PortfolioTransactionLineWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.PortfolioTransactionLineWhereInput[]
   NOT?: Prisma.PortfolioTransactionLineWhereInput | Prisma.PortfolioTransactionLineWhereInput[]
   importId?: Prisma.StringFilter<"PortfolioTransactionLine"> | string
+  accountKey?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   accountName?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   accountNumber?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   tradeDate?: Prisma.DateTimeNullableFilter<"PortfolioTransactionLine"> | Date | string | null
   settlementDate?: Prisma.DateTimeNullableFilter<"PortfolioTransactionLine"> | Date | string | null
   transactionType?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  txCategory?: Prisma.EnumTxCategoryNullableFilter<"PortfolioTransactionLine"> | $Enums.TxCategory | null
   ticker?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   securityName?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  market?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   currency?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  priceDevise?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  assetClass?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   quantity?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   price?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   amount?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
@@ -351,14 +401,19 @@ export type PortfolioTransactionLineWhereUniqueInput = Prisma.AtLeast<{
 export type PortfolioTransactionLineOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
+  accountKey?: Prisma.SortOrderInput | Prisma.SortOrder
   accountName?: Prisma.SortOrderInput | Prisma.SortOrder
   accountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   tradeDate?: Prisma.SortOrderInput | Prisma.SortOrder
   settlementDate?: Prisma.SortOrderInput | Prisma.SortOrder
   transactionType?: Prisma.SortOrderInput | Prisma.SortOrder
+  txCategory?: Prisma.SortOrderInput | Prisma.SortOrder
   ticker?: Prisma.SortOrderInput | Prisma.SortOrder
   securityName?: Prisma.SortOrderInput | Prisma.SortOrder
+  market?: Prisma.SortOrderInput | Prisma.SortOrder
   currency?: Prisma.SortOrderInput | Prisma.SortOrder
+  priceDevise?: Prisma.SortOrderInput | Prisma.SortOrder
+  assetClass?: Prisma.SortOrderInput | Prisma.SortOrder
   quantity?: Prisma.SortOrderInput | Prisma.SortOrder
   price?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -377,14 +432,19 @@ export type PortfolioTransactionLineScalarWhereWithAggregatesInput = {
   NOT?: Prisma.PortfolioTransactionLineScalarWhereWithAggregatesInput | Prisma.PortfolioTransactionLineScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"PortfolioTransactionLine"> | string
   importId?: Prisma.StringWithAggregatesFilter<"PortfolioTransactionLine"> | string
+  accountKey?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
   accountName?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
   accountNumber?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
   tradeDate?: Prisma.DateTimeNullableWithAggregatesFilter<"PortfolioTransactionLine"> | Date | string | null
   settlementDate?: Prisma.DateTimeNullableWithAggregatesFilter<"PortfolioTransactionLine"> | Date | string | null
   transactionType?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
+  txCategory?: Prisma.EnumTxCategoryNullableWithAggregatesFilter<"PortfolioTransactionLine"> | $Enums.TxCategory | null
   ticker?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
   securityName?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
+  market?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
   currency?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
+  priceDevise?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
+  assetClass?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
   quantity?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioTransactionLine"> | number | null
   price?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioTransactionLine"> | number | null
   amount?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioTransactionLine"> | number | null
@@ -394,14 +454,19 @@ export type PortfolioTransactionLineScalarWhereWithAggregatesInput = {
 
 export type PortfolioTransactionLineCreateInput = {
   id?: string
+  accountKey?: string | null
   accountName?: string | null
   accountNumber?: string | null
   tradeDate?: Date | string | null
   settlementDate?: Date | string | null
   transactionType?: string | null
+  txCategory?: $Enums.TxCategory | null
   ticker?: string | null
   securityName?: string | null
+  market?: string | null
   currency?: string | null
+  priceDevise?: string | null
+  assetClass?: string | null
   quantity?: number | null
   price?: number | null
   amount?: number | null
@@ -413,14 +478,19 @@ export type PortfolioTransactionLineCreateInput = {
 export type PortfolioTransactionLineUncheckedCreateInput = {
   id?: string
   importId: string
+  accountKey?: string | null
   accountName?: string | null
   accountNumber?: string | null
   tradeDate?: Date | string | null
   settlementDate?: Date | string | null
   transactionType?: string | null
+  txCategory?: $Enums.TxCategory | null
   ticker?: string | null
   securityName?: string | null
+  market?: string | null
   currency?: string | null
+  priceDevise?: string | null
+  assetClass?: string | null
   quantity?: number | null
   price?: number | null
   amount?: number | null
@@ -430,14 +500,19 @@ export type PortfolioTransactionLineUncheckedCreateInput = {
 
 export type PortfolioTransactionLineUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tradeDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   settlementDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   transactionType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  txCategory?: Prisma.NullableEnumTxCategoryFieldUpdateOperationsInput | $Enums.TxCategory | null
   ticker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  market?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priceDevise?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assetClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -449,14 +524,19 @@ export type PortfolioTransactionLineUpdateInput = {
 export type PortfolioTransactionLineUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tradeDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   settlementDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   transactionType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  txCategory?: Prisma.NullableEnumTxCategoryFieldUpdateOperationsInput | $Enums.TxCategory | null
   ticker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  market?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priceDevise?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assetClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -467,14 +547,19 @@ export type PortfolioTransactionLineUncheckedUpdateInput = {
 export type PortfolioTransactionLineCreateManyInput = {
   id?: string
   importId: string
+  accountKey?: string | null
   accountName?: string | null
   accountNumber?: string | null
   tradeDate?: Date | string | null
   settlementDate?: Date | string | null
   transactionType?: string | null
+  txCategory?: $Enums.TxCategory | null
   ticker?: string | null
   securityName?: string | null
+  market?: string | null
   currency?: string | null
+  priceDevise?: string | null
+  assetClass?: string | null
   quantity?: number | null
   price?: number | null
   amount?: number | null
@@ -484,14 +569,19 @@ export type PortfolioTransactionLineCreateManyInput = {
 
 export type PortfolioTransactionLineUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tradeDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   settlementDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   transactionType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  txCategory?: Prisma.NullableEnumTxCategoryFieldUpdateOperationsInput | $Enums.TxCategory | null
   ticker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  market?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priceDevise?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assetClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -502,14 +592,19 @@ export type PortfolioTransactionLineUpdateManyMutationInput = {
 export type PortfolioTransactionLineUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tradeDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   settlementDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   transactionType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  txCategory?: Prisma.NullableEnumTxCategoryFieldUpdateOperationsInput | $Enums.TxCategory | null
   ticker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  market?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priceDevise?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assetClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -530,14 +625,19 @@ export type PortfolioTransactionLineOrderByRelationAggregateInput = {
 export type PortfolioTransactionLineCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
+  accountKey?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
   accountNumber?: Prisma.SortOrder
   tradeDate?: Prisma.SortOrder
   settlementDate?: Prisma.SortOrder
   transactionType?: Prisma.SortOrder
+  txCategory?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrder
+  market?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  priceDevise?: Prisma.SortOrder
+  assetClass?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -555,14 +655,19 @@ export type PortfolioTransactionLineAvgOrderByAggregateInput = {
 export type PortfolioTransactionLineMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
+  accountKey?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
   accountNumber?: Prisma.SortOrder
   tradeDate?: Prisma.SortOrder
   settlementDate?: Prisma.SortOrder
   transactionType?: Prisma.SortOrder
+  txCategory?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrder
+  market?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  priceDevise?: Prisma.SortOrder
+  assetClass?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -572,14 +677,19 @@ export type PortfolioTransactionLineMaxOrderByAggregateInput = {
 export type PortfolioTransactionLineMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
+  accountKey?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
   accountNumber?: Prisma.SortOrder
   tradeDate?: Prisma.SortOrder
   settlementDate?: Prisma.SortOrder
   transactionType?: Prisma.SortOrder
+  txCategory?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrder
+  market?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  priceDevise?: Prisma.SortOrder
+  assetClass?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -635,16 +745,25 @@ export type PortfolioTransactionLineUncheckedUpdateManyWithoutImportNestedInput 
   deleteMany?: Prisma.PortfolioTransactionLineScalarWhereInput | Prisma.PortfolioTransactionLineScalarWhereInput[]
 }
 
+export type NullableEnumTxCategoryFieldUpdateOperationsInput = {
+  set?: $Enums.TxCategory | null
+}
+
 export type PortfolioTransactionLineCreateWithoutImportInput = {
   id?: string
+  accountKey?: string | null
   accountName?: string | null
   accountNumber?: string | null
   tradeDate?: Date | string | null
   settlementDate?: Date | string | null
   transactionType?: string | null
+  txCategory?: $Enums.TxCategory | null
   ticker?: string | null
   securityName?: string | null
+  market?: string | null
   currency?: string | null
+  priceDevise?: string | null
+  assetClass?: string | null
   quantity?: number | null
   price?: number | null
   amount?: number | null
@@ -654,14 +773,19 @@ export type PortfolioTransactionLineCreateWithoutImportInput = {
 
 export type PortfolioTransactionLineUncheckedCreateWithoutImportInput = {
   id?: string
+  accountKey?: string | null
   accountName?: string | null
   accountNumber?: string | null
   tradeDate?: Date | string | null
   settlementDate?: Date | string | null
   transactionType?: string | null
+  txCategory?: $Enums.TxCategory | null
   ticker?: string | null
   securityName?: string | null
+  market?: string | null
   currency?: string | null
+  priceDevise?: string | null
+  assetClass?: string | null
   quantity?: number | null
   price?: number | null
   amount?: number | null
@@ -701,14 +825,19 @@ export type PortfolioTransactionLineScalarWhereInput = {
   NOT?: Prisma.PortfolioTransactionLineScalarWhereInput | Prisma.PortfolioTransactionLineScalarWhereInput[]
   id?: Prisma.StringFilter<"PortfolioTransactionLine"> | string
   importId?: Prisma.StringFilter<"PortfolioTransactionLine"> | string
+  accountKey?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   accountName?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   accountNumber?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   tradeDate?: Prisma.DateTimeNullableFilter<"PortfolioTransactionLine"> | Date | string | null
   settlementDate?: Prisma.DateTimeNullableFilter<"PortfolioTransactionLine"> | Date | string | null
   transactionType?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  txCategory?: Prisma.EnumTxCategoryNullableFilter<"PortfolioTransactionLine"> | $Enums.TxCategory | null
   ticker?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   securityName?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  market?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   currency?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  priceDevise?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
+  assetClass?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   quantity?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   price?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   amount?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
@@ -718,14 +847,19 @@ export type PortfolioTransactionLineScalarWhereInput = {
 
 export type PortfolioTransactionLineCreateManyImportInput = {
   id?: string
+  accountKey?: string | null
   accountName?: string | null
   accountNumber?: string | null
   tradeDate?: Date | string | null
   settlementDate?: Date | string | null
   transactionType?: string | null
+  txCategory?: $Enums.TxCategory | null
   ticker?: string | null
   securityName?: string | null
+  market?: string | null
   currency?: string | null
+  priceDevise?: string | null
+  assetClass?: string | null
   quantity?: number | null
   price?: number | null
   amount?: number | null
@@ -735,14 +869,19 @@ export type PortfolioTransactionLineCreateManyImportInput = {
 
 export type PortfolioTransactionLineUpdateWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tradeDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   settlementDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   transactionType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  txCategory?: Prisma.NullableEnumTxCategoryFieldUpdateOperationsInput | $Enums.TxCategory | null
   ticker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  market?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priceDevise?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assetClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -752,14 +891,19 @@ export type PortfolioTransactionLineUpdateWithoutImportInput = {
 
 export type PortfolioTransactionLineUncheckedUpdateWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tradeDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   settlementDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   transactionType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  txCategory?: Prisma.NullableEnumTxCategoryFieldUpdateOperationsInput | $Enums.TxCategory | null
   ticker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  market?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priceDevise?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assetClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -769,14 +913,19 @@ export type PortfolioTransactionLineUncheckedUpdateWithoutImportInput = {
 
 export type PortfolioTransactionLineUncheckedUpdateManyWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tradeDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   settlementDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   transactionType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  txCategory?: Prisma.NullableEnumTxCategoryFieldUpdateOperationsInput | $Enums.TxCategory | null
   ticker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  market?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  priceDevise?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  assetClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   price?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
@@ -789,14 +938,19 @@ export type PortfolioTransactionLineUncheckedUpdateManyWithoutImportInput = {
 export type PortfolioTransactionLineSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   importId?: boolean
+  accountKey?: boolean
   accountName?: boolean
   accountNumber?: boolean
   tradeDate?: boolean
   settlementDate?: boolean
   transactionType?: boolean
+  txCategory?: boolean
   ticker?: boolean
   securityName?: boolean
+  market?: boolean
   currency?: boolean
+  priceDevise?: boolean
+  assetClass?: boolean
   quantity?: boolean
   price?: boolean
   amount?: boolean
@@ -808,14 +962,19 @@ export type PortfolioTransactionLineSelect<ExtArgs extends runtime.Types.Extensi
 export type PortfolioTransactionLineSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   importId?: boolean
+  accountKey?: boolean
   accountName?: boolean
   accountNumber?: boolean
   tradeDate?: boolean
   settlementDate?: boolean
   transactionType?: boolean
+  txCategory?: boolean
   ticker?: boolean
   securityName?: boolean
+  market?: boolean
   currency?: boolean
+  priceDevise?: boolean
+  assetClass?: boolean
   quantity?: boolean
   price?: boolean
   amount?: boolean
@@ -827,14 +986,19 @@ export type PortfolioTransactionLineSelectCreateManyAndReturn<ExtArgs extends ru
 export type PortfolioTransactionLineSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   importId?: boolean
+  accountKey?: boolean
   accountName?: boolean
   accountNumber?: boolean
   tradeDate?: boolean
   settlementDate?: boolean
   transactionType?: boolean
+  txCategory?: boolean
   ticker?: boolean
   securityName?: boolean
+  market?: boolean
   currency?: boolean
+  priceDevise?: boolean
+  assetClass?: boolean
   quantity?: boolean
   price?: boolean
   amount?: boolean
@@ -846,14 +1010,19 @@ export type PortfolioTransactionLineSelectUpdateManyAndReturn<ExtArgs extends ru
 export type PortfolioTransactionLineSelectScalar = {
   id?: boolean
   importId?: boolean
+  accountKey?: boolean
   accountName?: boolean
   accountNumber?: boolean
   tradeDate?: boolean
   settlementDate?: boolean
   transactionType?: boolean
+  txCategory?: boolean
   ticker?: boolean
   securityName?: boolean
+  market?: boolean
   currency?: boolean
+  priceDevise?: boolean
+  assetClass?: boolean
   quantity?: boolean
   price?: boolean
   amount?: boolean
@@ -861,7 +1030,7 @@ export type PortfolioTransactionLineSelectScalar = {
   rawJson?: boolean
 }
 
-export type PortfolioTransactionLineOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountName" | "accountNumber" | "tradeDate" | "settlementDate" | "transactionType" | "ticker" | "securityName" | "currency" | "quantity" | "price" | "amount" | "fees" | "rawJson", ExtArgs["result"]["portfolioTransactionLine"]>
+export type PortfolioTransactionLineOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountKey" | "accountName" | "accountNumber" | "tradeDate" | "settlementDate" | "transactionType" | "txCategory" | "ticker" | "securityName" | "market" | "currency" | "priceDevise" | "assetClass" | "quantity" | "price" | "amount" | "fees" | "rawJson", ExtArgs["result"]["portfolioTransactionLine"]>
 export type PortfolioTransactionLineInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
 }
@@ -880,14 +1049,34 @@ export type $PortfolioTransactionLinePayload<ExtArgs extends runtime.Types.Exten
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     importId: string
+    /**
+     * Numéro de compte Disnat associé (lié au snapshot de portefeuille)
+     */
+    accountKey: string | null
     accountName: string | null
     accountNumber: string | null
     tradeDate: Date | null
     settlementDate: Date | null
     transactionType: string | null
+    /**
+     * Catégorie normalisée déduite du type Disnat brut
+     */
+    txCategory: $Enums.TxCategory | null
     ticker: string | null
     securityName: string | null
+    /**
+     * Marché (CAN, USA, …)
+     */
+    market: string | null
     currency: string | null
+    /**
+     * Devise du prix (peut différer de la devise du compte)
+     */
+    priceDevise: string | null
+    /**
+     * Classe d'actif brute Disnat (Actions, Fonds, …)
+     */
+    assetClass: string | null
     quantity: number | null
     price: number | null
     amount: number | null
@@ -1319,14 +1508,19 @@ export interface Prisma__PortfolioTransactionLineClient<T, Null = never, ExtArgs
 export interface PortfolioTransactionLineFieldRefs {
   readonly id: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
   readonly importId: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
+  readonly accountKey: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
   readonly accountName: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
   readonly accountNumber: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
   readonly tradeDate: Prisma.FieldRef<"PortfolioTransactionLine", 'DateTime'>
   readonly settlementDate: Prisma.FieldRef<"PortfolioTransactionLine", 'DateTime'>
   readonly transactionType: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
+  readonly txCategory: Prisma.FieldRef<"PortfolioTransactionLine", 'TxCategory'>
   readonly ticker: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
   readonly securityName: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
+  readonly market: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
   readonly currency: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
+  readonly priceDevise: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
+  readonly assetClass: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
   readonly quantity: Prisma.FieldRef<"PortfolioTransactionLine", 'Float'>
   readonly price: Prisma.FieldRef<"PortfolioTransactionLine", 'Float'>
   readonly amount: Prisma.FieldRef<"PortfolioTransactionLine", 'Float'>

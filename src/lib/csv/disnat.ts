@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import { z } from "zod";
+import { categorizeTxType } from "@/lib/csv/tx-category";
 import type {
   CsvImportKind,
   NormalizedDisnatAccount,
@@ -30,7 +31,10 @@ const columnAliases = {
   accountType: ["type de compte", "account type"],
   ticker: ["symbole", "ticker", "symbol", "titre", "security symbol"],
   securityName: ["nom", "description", "security name", "nom du titre"],
-  currency: ["devise", "currency", "monnaie"],
+  currency: ["devise du compte", "devise", "currency", "monnaie"],
+  priceDevise: ["devise du prix", "price currency"],
+  market: ["marche", "marché", "market", "bourse"],
+  assetClass: ["classe d'actif", "classe dactif", "asset class", "type de titre"],
   quantity: ["quantite", "quantité", "qte", "qté", "qt", "quantity", "qty"],
   averageCost: ["cout moyen", "coût moyen", "cot moyen", "average cost", "avg cost"],
   marketPrice: ["prix", "prix actuel", "market price", "last price", "cours"],
@@ -73,6 +77,7 @@ const columnAliases = {
     "settlement date",
   ],
   transactionType: [
+    "type de transaction",
     "type",
     "operation",
     "opération",
@@ -94,7 +99,7 @@ const columnAliases = {
     "compte #",
     "# compte",
   ],
-  amount: ["montant", "amount", "net amount", "montant net"],
+  amount: ["montant de l'opération", "montant de l'operation", "montant", "amount", "net amount", "montant net"],
   debit: ["debit", "débit", "dbit"],
   credit: ["credit", "crédit", "crdit"],
   fees: ["frais", "commission", "fees"],
@@ -353,15 +358,23 @@ function normalizeTransaction(
     return null;
   }
 
+  const rawMarket = readText(row, columnAliases.market);
+  const rawAssetClass = readText(row, columnAliases.assetClass);
+  const rawPriceDevise = readText(row, columnAliases.priceDevise);
+
   return {
     accountName: readText(row, columnAliases.accountName) || undefined,
     accountNumber: readText(row, columnAliases.accountNumber) || undefined,
     tradeDate,
     settlementDate,
     transactionType,
+    txCategory: categorizeTxType(transactionType),
     ticker: ticker ? ticker.toUpperCase() : undefined,
     securityName: securityName || undefined,
+    market: rawMarket && rawMarket !== "-" ? rawMarket : undefined,
     currency: readText(row, columnAliases.currency)?.toUpperCase() || "CAD",
+    priceDevise: rawPriceDevise && rawPriceDevise !== "-" ? rawPriceDevise.toUpperCase() : undefined,
+    assetClass: rawAssetClass && rawAssetClass !== "-" ? rawAssetClass : undefined,
     quantity: readMoney(row, columnAliases.quantity),
     price: readMoney(row, columnAliases.marketPrice),
     amount,
@@ -609,6 +622,10 @@ function disnatInvestmentHeaderSignalScore(normalizedHeaders: string[]): number 
       score += 2;
       continue;
     }
+    if (h.includes("type de transaction") || h.includes("montant de l")) {
+      score += 2;
+      continue;
+    }
     if (
       h.includes("date de reglement") ||
       h.includes("date dinscription") ||
@@ -616,6 +633,10 @@ function disnatInvestmentHeaderSignalScore(normalizedHeaders: string[]): number 
       h.includes("trade date") ||
       h.includes("date de transaction")
     ) {
+      score += 1;
+      continue;
+    }
+    if (h.includes("devise du compte") || h.includes("classe d")) {
       score += 1;
       continue;
     }

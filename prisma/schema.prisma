@@ -140,16 +140,26 @@ model PortfolioLiveQuote {
 }
 
 model PortfolioTransactionLine {
-  id              String          @id @default(cuid())
+  id              String      @id @default(cuid())
   importId        String
+  /// Numéro de compte Disnat associé (lié au snapshot de portefeuille)
+  accountKey      String?
   accountName     String?
   accountNumber   String?
   tradeDate       DateTime?
   settlementDate  DateTime?
   transactionType String?
+  /// Catégorie normalisée déduite du type Disnat brut
+  txCategory      TxCategory?
   ticker          String?
   securityName    String?
+  /// Marché (CAN, USA, …)
+  market          String?
   currency        String?
+  /// Devise du prix (peut différer de la devise du compte)
+  priceDevise     String?
+  /// Classe d'actif brute Disnat (Actions, Fonds, …)
+  assetClass      String?
   quantity        Float?
   price           Float?
   amount          Float?
@@ -160,6 +170,8 @@ model PortfolioTransactionLine {
   @@index([importId])
   @@index([ticker])
   @@index([tradeDate])
+  @@index([accountKey])
+  @@index([txCategory])
   @@map("portfolio_transaction_lines")
 }
 
@@ -184,6 +196,26 @@ model ChatMessage {
 
   @@index([sessionId])
   @@map("chat_messages")
+}
+
+enum TxCategory {
+  BUY
+  SELL
+  DIVIDEND
+  INTEREST
+  TAX_WITHHOLD
+  CONTRIBUTION
+  TRANSFER_IN
+  TRANSFER_OUT
+  INTERNAL_TRANSFER
+  REVERSAL
+  FEE
+  STOCK_SPLIT
+  STOCK_DIVIDEND
+  EXCHANGE
+  TERMINATION
+  JOURNAL
+  OTHER
 }
 
 enum ImportStatus {

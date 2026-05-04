@@ -24,6 +24,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file");
+  const accountKey = formData.get("accountKey");
+  const accountLabel = formData.get("accountLabel");
 
   if (!(file instanceof File)) {
     return NextResponse.json(
@@ -65,6 +67,27 @@ export async function POST(request: Request) {
 
   const snapshot = buildPortfolioSnapshot(parsed.rows);
 
+  // Pour un fichier de transactions, un compte doit être sélectionné
+  if (snapshot.importKind === "TRANSACTIONS" || snapshot.transactions.length > 0) {
+    if (!accountKey || typeof accountKey !== "string") {
+      // Vérifier si des comptes existent
+      const knownAccountsCount = await prisma.portfolioAccountState.count();
+      if (knownAccountsCount === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Aucun compte connu. Importez d'abord un fichier portefeuille (CSV exporté depuis Disnat) pour identifier vos comptes.",
+          },
+          { status: 422 },
+        );
+      }
+      return NextResponse.json(
+        { error: "Sélectionnez le compte auquel appartiennent ces transactions." },
+        { status: 422 },
+      );
+    }
+  }
+
   if (
     snapshot.positions.length === 0 &&
     snapshot.accounts.length === 0 &&
@@ -89,7 +112,12 @@ export async function POST(request: Request) {
         importType: snapshot.importKind,
         rawHeaderJson: parsed.headers,
         rawRowCount: parsed.rows.length,
-        notes: snapshot.warnings.length > 0 ? snapshot.warnings.join("\n") : null,
+        notes: [
+        accountLabel ? `Compte : ${String(accountLabel)}` : null,
+        snapshot.warnings.length > 0 ? snapshot.warnings.join("\n") : null,
+      ]
+        .filter(Boolean)
+        .join("\n") || null,
         dataFromDate: temporal.dataFrom ?? undefined,
         dataToDate: temporal.dataTo ?? undefined,
       },
@@ -151,14 +179,19 @@ export async function POST(request: Request) {
       await tx.portfolioTransactionLine.createMany({
         data: snapshot.transactions.map((transaction) => ({
           importId: portfolioImport.id,
+          accountKey: typeof accountKey === "string" ? accountKey : null,
           accountName: transaction.accountName,
           accountNumber: transaction.accountNumber,
           tradeDate: transaction.tradeDate,
           settlementDate: transaction.settlementDate,
           transactionType: transaction.transactionType,
+          txCategory: transaction.txCategory ?? null,
           ticker: transaction.ticker,
           securityName: transaction.securityName,
+          market: transaction.market ?? null,
           currency: transaction.currency,
+          priceDevise: transaction.priceDevise ?? null,
+          assetClass: transaction.assetClass ?? null,
           quantity: transaction.quantity,
           price: transaction.price,
           amount: transaction.amount,

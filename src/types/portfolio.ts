@@ -40,9 +40,18 @@ export type NormalizedDisnatTransaction = {
   tradeDate?: Date;
   settlementDate?: Date;
   transactionType?: string;
+  /** Catégorie normalisée (correspond à l'enum Prisma TxCategory) */
+  txCategory?: string;
   ticker?: string;
   securityName?: string;
+  /** Marché d'exécution (CAN, USA, …) */
+  market?: string;
+  /** Devise du compte */
   currency?: string;
+  /** Devise du prix (peut différer de la devise du compte) */
+  priceDevise?: string;
+  /** Classe d'actif Disnat brute */
+  assetClass?: string;
   quantity?: number;
   price?: number;
   amount?: number;

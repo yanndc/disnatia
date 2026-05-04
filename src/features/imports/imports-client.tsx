@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Upload } from "lucide-react";
@@ -14,6 +14,15 @@ import {
 } from "@/lib/csv/disnat";
 import { importFileToParseText } from "@/lib/csv/import-file-text";
 import type { ParsedDisnatRow } from "@/types/portfolio";
+
+type KnownAccount = {
+  accountKey: string;
+  accountName: string;
+  accountNumber: string | null;
+  accountType: string | null;
+  currency: string;
+  totalValue: number;
+};
 
 const importSchema = z.object({
   file: z.instanceof(File, {
@@ -46,14 +55,27 @@ export function ImportsClient({
   const [disnatGate, setDisnatGate] = useState<
     { ok: true } | { ok: false; message: string } | null
   >(null);
+  const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
+  const [selectedAccountKey, setSelectedAccountKey] = useState<string>("");
   const form = useForm<ImportForm>({
     resolver: zodResolver(importSchema),
   });
 
+  useEffect(() => {
+    fetch("/api/accounts")
+      .then((r) => r.json())
+      .then((data: { accounts: KnownAccount[] }) => setKnownAccounts(data.accounts ?? []))
+      .catch(() => {});
+  }, []);
+
   const snapshot = useMemo(() => buildPortfolioSnapshot(rows), [rows]);
+  const isTransactionsFile =
+    snapshot.importKind === "TRANSACTIONS" || snapshot.transactions.length > 0;
+  const needsAccountSelection = isTransactionsFile;
   const canSave =
     !!file &&
     disnatGate?.ok === true &&
+    (!needsAccountSelection || !!selectedAccountKey) &&
     (snapshot.positions.length > 0 ||
       snapshot.accounts.length > 0 ||
       snapshot.transactions.length > 0);
@@ -64,6 +86,7 @@ export function ImportsClient({
     setHeaders([]);
     setMessages([]);
     setDisnatGate(null);
+    setSelectedAccountKey("");
 
     if (!selectedFile) {
       return;
@@ -110,6 +133,16 @@ export function ImportsClient({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (selectedAccountKey) {
+        formData.append("accountKey", selectedAccountKey);
+        const acc = knownAccounts.find((a) => a.accountKey === selectedAccountKey);
+        if (acc) {
+          const label = [acc.accountType, acc.accountNumber, acc.currency]
+            .filter(Boolean)
+            .join(" · ");
+          formData.append("accountLabel", label);
+        }
+      }
 
       const response = await fetch("/api/imports", {
         method: "POST",
@@ -213,6 +246,39 @@ export function ImportsClient({
             <span>{snapshot.accounts.length} comptes détectés</span>
             <span>{snapshot.transactions.length} transactions détectées</span>
           </div>
+
+          {needsAccountSelection && disnatGate?.ok === true ? (
+            <div className="mt-4">
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Compte Disnat associé à ce fichier
+              </label>
+              {knownAccounts.length === 0 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  Aucun compte connu. Importez d'abord un fichier portefeuille pour identifier vos
+                  comptes.
+                </p>
+              ) : (
+                <select
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  value={selectedAccountKey}
+                  onChange={(e) => setSelectedAccountKey(e.target.value)}
+                >
+                  <option value="">— Sélectionner un compte —</option>
+                  {knownAccounts.map((acc) => {
+                    const label = [acc.accountType, acc.accountNumber, acc.currency]
+                      .filter(Boolean)
+                      .join(" · ");
+                    const display = label || acc.accountName;
+                    return (
+                      <option key={acc.accountKey} value={acc.accountKey}>
+                        {display}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+            </div>
+          ) : null}
 
           {messages.length > 0 ? (
             <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
