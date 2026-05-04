@@ -60,6 +60,7 @@ export type PortfolioTransactionLineMinAggregateOutputType = {
   price: number | null
   amount: number | null
   fees: number | null
+  fingerprint: string | null
 }
 
 export type PortfolioTransactionLineMaxAggregateOutputType = {
@@ -82,6 +83,7 @@ export type PortfolioTransactionLineMaxAggregateOutputType = {
   price: number | null
   amount: number | null
   fees: number | null
+  fingerprint: string | null
 }
 
 export type PortfolioTransactionLineCountAggregateOutputType = {
@@ -105,6 +107,7 @@ export type PortfolioTransactionLineCountAggregateOutputType = {
   amount: number
   fees: number
   rawJson: number
+  fingerprint: number
   _all: number
 }
 
@@ -143,6 +146,7 @@ export type PortfolioTransactionLineMinAggregateInputType = {
   price?: true
   amount?: true
   fees?: true
+  fingerprint?: true
 }
 
 export type PortfolioTransactionLineMaxAggregateInputType = {
@@ -165,6 +169,7 @@ export type PortfolioTransactionLineMaxAggregateInputType = {
   price?: true
   amount?: true
   fees?: true
+  fingerprint?: true
 }
 
 export type PortfolioTransactionLineCountAggregateInputType = {
@@ -188,6 +193,7 @@ export type PortfolioTransactionLineCountAggregateInputType = {
   amount?: true
   fees?: true
   rawJson?: true
+  fingerprint?: true
   _all?: true
 }
 
@@ -298,6 +304,7 @@ export type PortfolioTransactionLineGroupByOutputType = {
   amount: number | null
   fees: number | null
   rawJson: runtime.JsonValue
+  fingerprint: string | null
   _count: PortfolioTransactionLineCountAggregateOutputType | null
   _avg: PortfolioTransactionLineAvgAggregateOutputType | null
   _sum: PortfolioTransactionLineSumAggregateOutputType | null
@@ -344,6 +351,7 @@ export type PortfolioTransactionLineWhereInput = {
   amount?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   fees?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   rawJson?: Prisma.JsonFilter<"PortfolioTransactionLine">
+  fingerprint?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
   import?: Prisma.XOR<Prisma.PortfolioImportScalarRelationFilter, Prisma.PortfolioImportWhereInput>
 }
 
@@ -368,11 +376,13 @@ export type PortfolioTransactionLineOrderByWithRelationInput = {
   amount?: Prisma.SortOrderInput | Prisma.SortOrder
   fees?: Prisma.SortOrderInput | Prisma.SortOrder
   rawJson?: Prisma.SortOrder
+  fingerprint?: Prisma.SortOrderInput | Prisma.SortOrder
   import?: Prisma.PortfolioImportOrderByWithRelationInput
 }
 
 export type PortfolioTransactionLineWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  fingerprint?: string
   AND?: Prisma.PortfolioTransactionLineWhereInput | Prisma.PortfolioTransactionLineWhereInput[]
   OR?: Prisma.PortfolioTransactionLineWhereInput[]
   NOT?: Prisma.PortfolioTransactionLineWhereInput | Prisma.PortfolioTransactionLineWhereInput[]
@@ -396,7 +406,7 @@ export type PortfolioTransactionLineWhereUniqueInput = Prisma.AtLeast<{
   fees?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   rawJson?: Prisma.JsonFilter<"PortfolioTransactionLine">
   import?: Prisma.XOR<Prisma.PortfolioImportScalarRelationFilter, Prisma.PortfolioImportWhereInput>
-}, "id">
+}, "id" | "fingerprint">
 
 export type PortfolioTransactionLineOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -419,6 +429,7 @@ export type PortfolioTransactionLineOrderByWithAggregationInput = {
   amount?: Prisma.SortOrderInput | Prisma.SortOrder
   fees?: Prisma.SortOrderInput | Prisma.SortOrder
   rawJson?: Prisma.SortOrder
+  fingerprint?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.PortfolioTransactionLineCountOrderByAggregateInput
   _avg?: Prisma.PortfolioTransactionLineAvgOrderByAggregateInput
   _max?: Prisma.PortfolioTransactionLineMaxOrderByAggregateInput
@@ -450,6 +461,7 @@ export type PortfolioTransactionLineScalarWhereWithAggregatesInput = {
   amount?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioTransactionLine"> | number | null
   fees?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioTransactionLine"> | number | null
   rawJson?: Prisma.JsonWithAggregatesFilter<"PortfolioTransactionLine">
+  fingerprint?: Prisma.StringNullableWithAggregatesFilter<"PortfolioTransactionLine"> | string | null
 }
 
 export type PortfolioTransactionLineCreateInput = {
@@ -472,6 +484,7 @@ export type PortfolioTransactionLineCreateInput = {
   amount?: number | null
   fees?: number | null
   rawJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: string | null
   import: Prisma.PortfolioImportCreateNestedOneWithoutTransactionsInput
 }
 
@@ -496,6 +509,7 @@ export type PortfolioTransactionLineUncheckedCreateInput = {
   amount?: number | null
   fees?: number | null
   rawJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: string | null
 }
 
 export type PortfolioTransactionLineUpdateInput = {
@@ -518,6 +532,7 @@ export type PortfolioTransactionLineUpdateInput = {
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fees?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   rawJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   import?: Prisma.PortfolioImportUpdateOneRequiredWithoutTransactionsNestedInput
 }
 
@@ -542,6 +557,7 @@ export type PortfolioTransactionLineUncheckedUpdateInput = {
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fees?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   rawJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type PortfolioTransactionLineCreateManyInput = {
@@ -565,6 +581,7 @@ export type PortfolioTransactionLineCreateManyInput = {
   amount?: number | null
   fees?: number | null
   rawJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: string | null
 }
 
 export type PortfolioTransactionLineUpdateManyMutationInput = {
@@ -587,6 +604,7 @@ export type PortfolioTransactionLineUpdateManyMutationInput = {
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fees?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   rawJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type PortfolioTransactionLineUncheckedUpdateManyInput = {
@@ -610,6 +628,7 @@ export type PortfolioTransactionLineUncheckedUpdateManyInput = {
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fees?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   rawJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type PortfolioTransactionLineListRelationFilter = {
@@ -643,6 +662,7 @@ export type PortfolioTransactionLineCountOrderByAggregateInput = {
   amount?: Prisma.SortOrder
   fees?: Prisma.SortOrder
   rawJson?: Prisma.SortOrder
+  fingerprint?: Prisma.SortOrder
 }
 
 export type PortfolioTransactionLineAvgOrderByAggregateInput = {
@@ -672,6 +692,7 @@ export type PortfolioTransactionLineMaxOrderByAggregateInput = {
   price?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   fees?: Prisma.SortOrder
+  fingerprint?: Prisma.SortOrder
 }
 
 export type PortfolioTransactionLineMinOrderByAggregateInput = {
@@ -694,6 +715,7 @@ export type PortfolioTransactionLineMinOrderByAggregateInput = {
   price?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   fees?: Prisma.SortOrder
+  fingerprint?: Prisma.SortOrder
 }
 
 export type PortfolioTransactionLineSumOrderByAggregateInput = {
@@ -769,6 +791,7 @@ export type PortfolioTransactionLineCreateWithoutImportInput = {
   amount?: number | null
   fees?: number | null
   rawJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: string | null
 }
 
 export type PortfolioTransactionLineUncheckedCreateWithoutImportInput = {
@@ -791,6 +814,7 @@ export type PortfolioTransactionLineUncheckedCreateWithoutImportInput = {
   amount?: number | null
   fees?: number | null
   rawJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: string | null
 }
 
 export type PortfolioTransactionLineCreateOrConnectWithoutImportInput = {
@@ -843,6 +867,7 @@ export type PortfolioTransactionLineScalarWhereInput = {
   amount?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   fees?: Prisma.FloatNullableFilter<"PortfolioTransactionLine"> | number | null
   rawJson?: Prisma.JsonFilter<"PortfolioTransactionLine">
+  fingerprint?: Prisma.StringNullableFilter<"PortfolioTransactionLine"> | string | null
 }
 
 export type PortfolioTransactionLineCreateManyImportInput = {
@@ -865,6 +890,7 @@ export type PortfolioTransactionLineCreateManyImportInput = {
   amount?: number | null
   fees?: number | null
   rawJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: string | null
 }
 
 export type PortfolioTransactionLineUpdateWithoutImportInput = {
@@ -887,6 +913,7 @@ export type PortfolioTransactionLineUpdateWithoutImportInput = {
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fees?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   rawJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type PortfolioTransactionLineUncheckedUpdateWithoutImportInput = {
@@ -909,6 +936,7 @@ export type PortfolioTransactionLineUncheckedUpdateWithoutImportInput = {
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fees?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   rawJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type PortfolioTransactionLineUncheckedUpdateManyWithoutImportInput = {
@@ -931,6 +959,7 @@ export type PortfolioTransactionLineUncheckedUpdateManyWithoutImportInput = {
   amount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fees?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   rawJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  fingerprint?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -956,6 +985,7 @@ export type PortfolioTransactionLineSelect<ExtArgs extends runtime.Types.Extensi
   amount?: boolean
   fees?: boolean
   rawJson?: boolean
+  fingerprint?: boolean
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["portfolioTransactionLine"]>
 
@@ -980,6 +1010,7 @@ export type PortfolioTransactionLineSelectCreateManyAndReturn<ExtArgs extends ru
   amount?: boolean
   fees?: boolean
   rawJson?: boolean
+  fingerprint?: boolean
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["portfolioTransactionLine"]>
 
@@ -1004,6 +1035,7 @@ export type PortfolioTransactionLineSelectUpdateManyAndReturn<ExtArgs extends ru
   amount?: boolean
   fees?: boolean
   rawJson?: boolean
+  fingerprint?: boolean
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["portfolioTransactionLine"]>
 
@@ -1028,9 +1060,10 @@ export type PortfolioTransactionLineSelectScalar = {
   amount?: boolean
   fees?: boolean
   rawJson?: boolean
+  fingerprint?: boolean
 }
 
-export type PortfolioTransactionLineOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountKey" | "accountName" | "accountNumber" | "tradeDate" | "settlementDate" | "transactionType" | "txCategory" | "ticker" | "securityName" | "market" | "currency" | "priceDevise" | "assetClass" | "quantity" | "price" | "amount" | "fees" | "rawJson", ExtArgs["result"]["portfolioTransactionLine"]>
+export type PortfolioTransactionLineOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountKey" | "accountName" | "accountNumber" | "tradeDate" | "settlementDate" | "transactionType" | "txCategory" | "ticker" | "securityName" | "market" | "currency" | "priceDevise" | "assetClass" | "quantity" | "price" | "amount" | "fees" | "rawJson" | "fingerprint", ExtArgs["result"]["portfolioTransactionLine"]>
 export type PortfolioTransactionLineInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
 }
@@ -1082,6 +1115,10 @@ export type $PortfolioTransactionLinePayload<ExtArgs extends runtime.Types.Exten
     amount: number | null
     fees: number | null
     rawJson: runtime.JsonValue
+    /**
+     * Empreinte déterministe (sha256) pour détecter les doublons à l'import
+     */
+    fingerprint: string | null
   }, ExtArgs["result"]["portfolioTransactionLine"]>
   composites: {}
 }
@@ -1526,6 +1563,7 @@ export interface PortfolioTransactionLineFieldRefs {
   readonly amount: Prisma.FieldRef<"PortfolioTransactionLine", 'Float'>
   readonly fees: Prisma.FieldRef<"PortfolioTransactionLine", 'Float'>
   readonly rawJson: Prisma.FieldRef<"PortfolioTransactionLine", 'Json'>
+  readonly fingerprint: Prisma.FieldRef<"PortfolioTransactionLine", 'String'>
 }
     
 

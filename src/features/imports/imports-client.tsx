@@ -57,6 +57,7 @@ export function ImportsClient({
   >(null);
   const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
   const [selectedAccountKey, setSelectedAccountKey] = useState<string>("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const form = useForm<ImportForm>({
     resolver: zodResolver(importSchema),
   });
@@ -121,6 +122,16 @@ export function ImportsClient({
     ]);
   }
 
+  async function deleteImport(id: string) {
+    setDeletingId(id);
+    try {
+      await fetch(`/api/imports/${id}`, { method: "DELETE" });
+      setImports((prev) => prev.filter((item) => item.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   async function saveImport() {
     const valid = await form.trigger();
     if (!valid || !file) {
@@ -151,6 +162,8 @@ export function ImportsClient({
       type ImportResponsePayload = {
         error?: string;
         details?: unknown;
+        txInserted?: number;
+        txSkipped?: number;
       };
       let payload: ImportResponsePayload | null = null;
 
@@ -177,7 +190,15 @@ export function ImportsClient({
         return;
       }
 
-      setMessages(["Import sauvegardé et portefeuille recalculé."]);
+      const msgs = ["Import sauvegardé."];
+      if (payload?.txInserted !== undefined) {
+        if (payload.txSkipped && payload.txSkipped > 0) {
+          msgs.push(`${payload.txInserted} transaction${payload.txInserted > 1 ? "s" : ""} ajoutée${payload.txInserted > 1 ? "s" : ""}, ${payload.txSkipped} doublon${payload.txSkipped > 1 ? "s" : ""} ignoré${payload.txSkipped > 1 ? "s" : ""}.`);
+        } else {
+          msgs.push(`${payload.txInserted} transaction${payload.txInserted > 1 ? "s" : ""} ajoutée${payload.txInserted > 1 ? "s" : ""}.`);
+        }
+      }
+      setMessages(msgs);
       const historyResponse = await fetch("/api/imports");
       const historyPayload = await historyResponse.json();
       setImports(historyPayload.imports ?? []);
@@ -349,10 +370,23 @@ export function ImportsClient({
                     {item._count.positions} positions ·{" "}
                     {item._count.transactions} transactions
                   </p>
+                  {item.notes ? (
+                    <p className="mt-0.5 text-xs text-slate-400">{item.notes.split("\n")[0]}</p>
+                  ) : null}
                 </div>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                  {item.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                    {item.status}
+                  </span>
+                  <button
+                    onClick={() => void deleteImport(item.id)}
+                    disabled={deletingId === item.id}
+                    className="rounded px-2 py-1 text-xs text-red-500 hover:bg-red-50 disabled:opacity-40"
+                    title="Supprimer cet import"
+                  >
+                    {deletingId === item.id ? "…" : "Supprimer"}
+                  </button>
+                </div>
               </div>
             ))}
             {imports.length === 0 ? (

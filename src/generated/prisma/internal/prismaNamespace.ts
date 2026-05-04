@@ -1199,6 +1199,7 @@ export const PortfolioAccountStateScalarFieldEnum = {
   accountName: 'accountName',
   accountNumber: 'accountNumber',
   accountType: 'accountType',
+  owner: 'owner',
   currency: 'currency',
   cashValue: 'cashValue',
   marketValue: 'marketValue',
@@ -1243,7 +1244,8 @@ export const PortfolioTransactionLineScalarFieldEnum = {
   price: 'price',
   amount: 'amount',
   fees: 'fees',
-  rawJson: 'rawJson'
+  rawJson: 'rawJson',
+  fingerprint: 'fingerprint'
 } as const
 
 export type PortfolioTransactionLineScalarFieldEnum = (typeof PortfolioTransactionLineScalarFieldEnum)[keyof typeof PortfolioTransactionLineScalarFieldEnum]

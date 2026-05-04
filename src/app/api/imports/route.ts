@@ -11,6 +11,7 @@ import { getImportHistory } from "@/features/portfolio/queries";
 import { refreshLiveQuotesForLatestImport } from "@/features/portfolio/refresh-live-quotes";
 import { upsertPortfolioStateFromSnapshot } from "@/features/portfolio/upsert-portfolio-state";
 import { Prisma } from "@/generated/prisma/client";
+import { txFingerprint } from "@/lib/csv/tx-fingerprint";
 
 export async function GET() {
   try {
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const snapshot = buildPortfolioSnapshot(parsed.rows);
+  const snapshot = buildPortfolioSnapshot(parsed.rows, parsed.ownerMap);
 
   // Pour un fichier de transactions, un compte doit être sélectionné
   if (snapshot.importKind === "TRANSACTIONS" || snapshot.transactions.length > 0) {
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const savedImport = await prisma.$transaction(async (tx) => {
+  const savedResult = await prisma.$transaction(async (tx) => {
     const temporal = computeSnapshotTemporalBounds(snapshot);
     const portfolioImport = await tx.portfolioImport.create({
       data: {
@@ -175,11 +176,14 @@ export async function POST(request: Request) {
       });
     }
 
+    let txInserted = 0;
     if (snapshot.transactions.length > 0) {
-      await tx.portfolioTransactionLine.createMany({
+      const ak = typeof accountKey === "string" ? accountKey : null;
+      const result = await tx.portfolioTransactionLine.createMany({
+        skipDuplicates: true,
         data: snapshot.transactions.map((transaction) => ({
           importId: portfolioImport.id,
-          accountKey: typeof accountKey === "string" ? accountKey : null,
+          accountKey: ak,
           accountName: transaction.accountName,
           accountNumber: transaction.accountNumber,
           tradeDate: transaction.tradeDate,
@@ -197,12 +201,17 @@ export async function POST(request: Request) {
           amount: transaction.amount,
           fees: transaction.fees,
           rawJson: transaction.rawJson as Prisma.InputJsonValue,
+          fingerprint: txFingerprint(transaction),
         })),
       });
+      txInserted = result.count;
     }
 
-    return portfolioImport;
+    return { portfolioImport, txInserted, txTotal: snapshot.transactions.length };
   });
+
+  const { portfolioImport: savedImport, txInserted, txTotal } = savedResult;
+  const txSkipped = txTotal - txInserted;
 
   // Mise à jour des tables d'état courant synthétisé (PortfolioHolding / PortfolioAccountState)
   if (snapshot.positions.length > 0 || snapshot.accounts.length > 0) {
@@ -225,5 +234,7 @@ export async function POST(request: Request) {
       warnings: snapshot.warnings,
       errors: parsed.errors,
     },
+    txInserted,
+    txSkipped,
   });
 }

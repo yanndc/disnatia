@@ -157,6 +157,21 @@ export async function getPortfolioSummary() {
     ] as string[]),
   ].slice(0, 24);
 
+  const ownerBreakdown = Object.entries(
+    accountStates.reduce(
+      (acc, a) => {
+        const owner = a.owner ?? "Inconnu";
+        if (!acc[owner]) acc[owner] = { totalValue: 0, cashValue: 0, marketValue: 0, accountCount: 0 };
+        acc[owner].totalValue += a.totalValue;
+        acc[owner].cashValue += a.cashValue;
+        acc[owner].marketValue += a.marketValue;
+        acc[owner].accountCount++;
+        return acc;
+      },
+      {} as Record<string, { totalValue: number; cashValue: number; marketValue: number; accountCount: number }>,
+    ),
+  ).map(([owner, data]) => ({ owner, ...data }));
+
   const topPositions = enrichedPositions
     .toSorted((a, b) => b.displayMarketValue - a.displayMarketValue)
     .slice(0, 5)
@@ -195,6 +210,7 @@ export async function getPortfolioSummary() {
     variationPctVsPrevious: null as number | null,
     hasAnyImportsInHistory: anyImportCount > 0,
     accountCount: accountStates.length,
+    ownerBreakdown,
   };
 }
 
@@ -307,6 +323,177 @@ export async function simulateRebalance(input: {
 }
 
 // ---------------------------------------------------------------------------
+// Comptes
+// ---------------------------------------------------------------------------
+
+export async function getAccountsWithStats() {
+  const accounts = await prisma.portfolioAccountState.findMany({
+    orderBy: [{ accountType: "asc" }, { currency: "asc" }],
+  });
+
+  // Nombre de transactions par compte
+  const txCounts = await prisma.portfolioTransactionLine.groupBy({
+    by: ["accountKey"],
+    _count: { id: true },
+    where: { accountKey: { not: null } },
+  });
+  const txByKey = new Map(txCounts.map((r) => [r.accountKey, r._count.id]));
+
+  // Dernière transaction par compte
+  const latestTx = await prisma.portfolioTransactionLine.findMany({
+    where: { accountKey: { not: null } },
+    orderBy: { settlementDate: "desc" },
+    distinct: ["accountKey"],
+    select: { accountKey: true, settlementDate: true, tradeDate: true },
+  });
+  const lastTxByKey = new Map(
+    latestTx.map((r) => [
+      r.accountKey,
+      r.settlementDate ?? r.tradeDate ?? null,
+    ]),
+  );
+
+  return accounts.map((a) => ({
+    ...a,
+    txCount: txByKey.get(a.accountKey) ?? 0,
+    lastTxDate: lastTxByKey.get(a.accountKey) ?? null,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Transactions
+// ---------------------------------------------------------------------------
+
+export async function getTransactions(opts?: {
+  accountKey?: string;
+  owner?: string;
+  txCategory?: string;
+  ticker?: string;
+  fromDate?: Date;
+  toDate?: Date;
+  limit?: number;
+  offset?: number;
+}) {
+  const where: Record<string, unknown> = {};
+
+  if (opts?.owner) {
+    const ownerAccounts = await prisma.portfolioAccountState.findMany({
+      where: { owner: opts.owner },
+      select: { accountKey: true },
+    });
+    where.accountKey = { in: ownerAccounts.map((a) => a.accountKey) };
+  }
+
+  if (opts?.accountKey) where.accountKey = opts.accountKey;
+  if (opts?.txCategory) where.txCategory = opts.txCategory;
+  if (opts?.ticker) where.ticker = { contains: opts.ticker.toUpperCase(), mode: "insensitive" };
+  if (opts?.fromDate ?? opts?.toDate) {
+    where.settlementDate = {
+      ...(opts.fromDate ? { gte: opts.fromDate } : {}),
+      ...(opts.toDate ? { lte: opts.toDate } : {}),
+    };
+  }
+
+  const [rows, total] = await Promise.all([
+    prisma.portfolioTransactionLine.findMany({
+      where,
+      orderBy: { settlementDate: "desc" },
+      take: opts?.limit ?? 200,
+      skip: opts?.offset ?? 0,
+      select: {
+        id: true,
+        accountKey: true,
+        accountName: true,
+        tradeDate: true,
+        settlementDate: true,
+        transactionType: true,
+        txCategory: true,
+        ticker: true,
+        securityName: true,
+        market: true,
+        currency: true,
+        assetClass: true,
+        quantity: true,
+        price: true,
+        amount: true,
+        fees: true,
+      },
+    }),
+    prisma.portfolioTransactionLine.count({ where }),
+  ]);
+
+  return { rows, total };
+}
+
+// ---------------------------------------------------------------------------
+// Revenus (dividendes, intérêts, retenues)
+// ---------------------------------------------------------------------------
+
+export async function getIncomeByYear() {
+  const rows = await prisma.portfolioTransactionLine.findMany({
+    where: {
+      txCategory: { in: ["DIVIDEND", "STOCK_DIVIDEND", "INTEREST", "TAX_WITHHOLD"] },
+      amount: { not: null },
+    },
+    select: {
+      txCategory: true,
+      settlementDate: true,
+      tradeDate: true,
+      currency: true,
+      amount: true,
+      ticker: true,
+      securityName: true,
+      accountKey: true,
+    },
+    orderBy: { settlementDate: "desc" },
+  });
+
+  type YearEntry = {
+    year: number;
+    DIVIDEND: number;
+    STOCK_DIVIDEND: number;
+    INTEREST: number;
+    TAX_WITHHOLD: number;
+    byAccount: Map<string, number>;
+  };
+
+  const byYear = new Map<number, YearEntry>();
+
+  for (const row of rows) {
+    const date = row.settlementDate ?? row.tradeDate;
+    if (!date || row.amount === null) continue;
+    const year = date.getFullYear();
+    if (!byYear.has(year)) {
+      byYear.set(year, {
+        year,
+        DIVIDEND: 0,
+        STOCK_DIVIDEND: 0,
+        INTEREST: 0,
+        TAX_WITHHOLD: 0,
+        byAccount: new Map(),
+      });
+    }
+    const entry = byYear.get(year)!;
+    const cat = row.txCategory as keyof Omit<YearEntry, "year" | "byAccount">;
+    if (cat in entry) {
+      (entry[cat] as number) += row.amount;
+    }
+    const ak = row.accountKey ?? "—";
+    entry.byAccount.set(ak, (entry.byAccount.get(ak) ?? 0) + row.amount);
+  }
+
+  return Array.from(byYear.values())
+    .sort((a, b) => b.year - a.year)
+    .map((e) => ({
+      ...e,
+      byAccount: Array.from(e.byAccount.entries()).map(([accountKey, amount]) => ({
+        accountKey,
+        amount,
+      })),
+    }));
+}
+
+// ---------------------------------------------------------------------------
 // Fonctions légacy — gardées pour compatibilité avec refresh-live-quotes.ts
 // ---------------------------------------------------------------------------
 
@@ -378,5 +565,6 @@ function emptySummary() {
     variationVsPrevious: null as number | null,
     variationPctVsPrevious: null as number | null,
     hasAnyImportsInHistory: false,
+    ownerBreakdown: [] as { owner: string; totalValue: number; cashValue: number; marketValue: number; accountCount: number }[],
   };
 }

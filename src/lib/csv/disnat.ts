@@ -27,8 +27,21 @@ const normalizedPositionSchema = z.object({
 });
 
 const columnAliases = {
-  accountName: ["compte", "account", "account name", "nom du compte"],
-  accountType: ["type de compte", "account type"],
+  accountName: ["nom", "compte", "account", "account name", "nom du compte"],
+  accountType: ["type de compte", "account type", "nom"],
+  accountNumber: [
+    "compte",
+    "numero de compte",
+    "numéro de compte",
+    "numro de carte",
+    "numero de carte",
+    "account number",
+    "no compte",
+    "no. compte",
+    "no de compte",
+    "compte #",
+    "# compte",
+  ],
   ticker: ["symbole", "ticker", "symbol", "titre", "security symbol"],
   securityName: ["nom", "description", "security name", "nom du titre"],
   currency: ["devise du compte", "devise", "currency", "monnaie"],
@@ -87,18 +100,6 @@ const columnAliases = {
     "catégorie",
     "catgorie",
   ],
-  accountNumber: [
-    "numero de compte",
-    "numéro de compte",
-    "numro de carte",
-    "numero de carte",
-    "account number",
-    "no compte",
-    "no. compte",
-    "no de compte",
-    "compte #",
-    "# compte",
-  ],
   amount: ["montant de l'opération", "montant de l'operation", "montant", "amount", "net amount", "montant net"],
   debit: ["debit", "débit", "dbit"],
   credit: ["credit", "crédit", "crdit"],
@@ -107,6 +108,7 @@ const columnAliases = {
 
 export function parseDisnatCsv(fileText: string) {
   const delimiter = detectDelimiter(fileText);
+  const ownerMap = extractOwnerMap(fileText, delimiter);
   const lines = fileText
     .replace(/^\uFEFF/, "")
     .split(/\r\n|\n|\r/)
@@ -143,6 +145,7 @@ export function parseDisnatCsv(fileText: string) {
     importKind,
     headers: headerCells,
     rows,
+    ownerMap,
     errors: rawResult.errors.map((error) => ({
       row: error.row,
       message: error.message,
@@ -152,6 +155,7 @@ export function parseDisnatCsv(fileText: string) {
 
 export function normalizeDisnatRows(
   rows: ParsedDisnatRow[],
+  ownerMap?: Map<string, string>,
 ): PortfolioSnapshotInput {
   const warnings: string[] = [];
   const positions: NormalizedDisnatPosition[] = [];
@@ -182,10 +186,13 @@ export function normalizeDisnatRows(
     }
 
     if (!ticker && (cashValue !== undefined || marketValue !== undefined || totalValue !== undefined)) {
+      const acctNum = accountNumber?.toUpperCase();
+      const owner = (acctNum && ownerMap?.get(acctNum)) || undefined;
       upsertAccount(cashByAccount, {
         accountName,
         accountNumber,
         accountType: readText(row, columnAliases.accountType) || undefined,
+        owner,
         currency,
         cashValue: cashValue ?? Math.max((totalValue ?? 0) - (marketValue ?? 0), 0),
         marketValue: marketValue ?? Math.max((totalValue ?? 0) - (cashValue ?? 0), 0),
@@ -260,8 +267,9 @@ export function normalizeDisnatRows(
 
 export function buildPortfolioSnapshot(
   normalizedRows: ParsedDisnatRow[],
+  ownerMap?: Map<string, string>,
 ): PortfolioSnapshotInput {
-  return normalizeDisnatRows(normalizedRows);
+  return normalizeDisnatRows(normalizedRows, ownerMap);
 }
 
 /** Fenêtre temporelle déduite des lignes d’opérations (min / max des dates lues). */
@@ -309,6 +317,7 @@ function upsertAccount(
         : account.accountName,
     accountNumber: account.accountNumber ?? current?.accountNumber,
     accountType: current?.accountType ?? account.accountType,
+    owner: account.owner ?? current?.owner,
     currency: account.currency,
     cashValue: (current?.cashValue ?? 0) + account.cashValue,
     marketValue: (current?.marketValue ?? 0) + account.marketValue,
@@ -543,6 +552,54 @@ function detectImportKind(
   return "UNKNOWN";
 }
 
+/**
+ * Extrait une map accountNumber → propriétaire depuis les sections
+ * d'en-tête du CSV portefeuille Disnat (ex. "YANN DE CHAMPLAIN").
+ * Une ligne est considérée comme un en-tête de propriétaire si :
+ *  - elle ne contient pas le délimiteur (ou contient 1 seul champ)
+ *  - elle est tout en majuscules + espaces/tirets/apostrophes
+ *  - elle a plus de 4 caractères
+ *  - elle n'est pas une ligne générique connue ("Portefeuille", "Total des actifs…")
+ */
+export function extractOwnerMap(fileText: string, delimiter: string): Map<string, string> {
+  const ownerMap = new Map<string, string>();
+  const lines = fileText
+    .replace(/^\uFEFF/, "")
+    .split(/\r\n|\n|\r/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const ignorePatterns = /^(portefeuille|total des actifs|vue d'ensemble|nom|en date du|taux de change)/i;
+  const ownerPattern = /^[A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇŒÆ][A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇŒÆ\s\-']+$/;
+
+  let currentOwner: string | null = null;
+
+  for (const line of lines) {
+    const cells = line.split(delimiter);
+    const isSingleCell = cells.length === 1;
+    const value = cells[0].trim();
+
+    if (isSingleCell && ownerPattern.test(value) && value.length > 4 && !ignorePatterns.test(value)) {
+      currentOwner = value;
+      continue;
+    }
+
+    // Ligne de données avec no de compte en position 2 (colonne "Compte")
+    if (currentOwner && cells.length >= 3) {
+      const accountNumber = cells[2]?.trim().toUpperCase();
+      if (
+        accountNumber &&
+        accountNumber.length >= 4 &&
+        !/^(total|ensemble|encaisse|vue|nom|devise)/i.test(accountNumber)
+      ) {
+        ownerMap.set(accountNumber, currentOwner);
+      }
+    }
+  }
+
+  return ownerMap;
+}
+
 function detectDelimiter(fileText: string) {
   const candidates = [";", "\t", ","];
   const sample = fileText.split(/\r\n|\n|\r/).slice(0, 30);
@@ -722,7 +779,9 @@ function isSummaryOrHeaderLabel(value: string) {
     normalized === "nom" ||
     normalized.startsWith("total des actifs") ||
     normalized.startsWith("vue d'ensemble") ||
-    normalized.startsWith("vue densemble")
+    normalized.startsWith("vue densemble") ||
+    normalized.startsWith("en date du") ||
+    normalized.startsWith("taux de change")
   );
 }
 

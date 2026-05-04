@@ -28,6 +28,8 @@ export type NormalizedDisnatAccount = {
   accountName: string;
   accountNumber?: string;
   accountType?: string;
+  /** Propriétaire du compte extrait des sections d'en-tête du CSV portefeuille */
+  owner?: string;
   currency: string;
   cashValue: number;
   marketValue: number;

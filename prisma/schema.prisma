@@ -113,6 +113,8 @@ model PortfolioAccountState {
   accountName   String
   accountNumber String?
   accountType   String?
+  /// Propriétaire du compte (ex. "YANN DE CHAMPLAIN")
+  owner         String?
   currency      String
   cashValue     Float    @default(0)
   marketValue   Float    @default(0)
@@ -123,6 +125,7 @@ model PortfolioAccountState {
 
   @@unique([accountKey, currency])
   @@index([accountKey])
+  @@index([owner])
   @@map("portfolio_account_states")
 }
 
@@ -165,6 +168,8 @@ model PortfolioTransactionLine {
   amount          Float?
   fees            Float?
   rawJson         Json
+  /// Empreinte déterministe (sha256) pour détecter les doublons à l'import
+  fingerprint     String?  @unique
   import          PortfolioImport @relation(fields: [importId], references: [id], onDelete: Cascade)
 
   @@index([importId])

@@ -9,6 +9,7 @@ export async function GET() {
       accountName: true,
       accountNumber: true,
       accountType: true,
+      owner: true,
       currency: true,
       totalValue: true,
     },

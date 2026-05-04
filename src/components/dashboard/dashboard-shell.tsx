@@ -1,10 +1,22 @@
 import Link from "next/link";
-import { BarChart3, FileUp, LayoutDashboard, MessageSquareText, Table2 } from "lucide-react";
+import {
+  BarChart3,
+  FileUp,
+  LayoutDashboard,
+  MessageSquareText,
+  Table2,
+  Landmark,
+  ArrowLeftRight,
+  TrendingUp,
+} from "lucide-react";
 
 const navigation = [
-  { href: "/overview", label: "Overview", icon: LayoutDashboard },
-  { href: "/imports", label: "Imports", icon: FileUp },
+  { href: "/overview", label: "Vue d'ensemble", icon: LayoutDashboard },
+  { href: "/comptes", label: "Comptes", icon: Landmark },
   { href: "/positions", label: "Positions", icon: Table2 },
+  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { href: "/revenus", label: "Revenus", icon: TrendingUp },
+  { href: "/imports", label: "Imports", icon: FileUp },
   { href: "/insights", label: "Insights IA", icon: MessageSquareText },
 ];
 

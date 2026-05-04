@@ -5,10 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Normalise les codes devise Disnat ("US" → "USD", "CAN" → "CAD"). */
+export function normalizeCurrency(raw?: string | null): string {
+  if (!raw) return "CAD";
+  const up = raw.toUpperCase();
+  if (up === "US") return "USD";
+  if (up === "CAN") return "CAD";
+  return up;
+}
+
 export function formatCurrency(value: number, currency = "CAD") {
   return new Intl.NumberFormat("fr-CA", {
     style: "currency",
-    currency,
+    currency: normalizeCurrency(currency),
     maximumFractionDigits: 0,
   }).format(Number.isFinite(value) ? value : 0);
 }

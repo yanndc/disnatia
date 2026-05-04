@@ -80,8 +80,8 @@ export default async function OverviewPage() {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Valeur totale" value={formatCurrency(summary.totalValue)} />
-        <KpiCard label="Encaisse" value={formatCurrency(summary.cashValue)} />
+        <KpiCard label="Valeur totale combinée" value={formatCurrency(summary.totalValue)} />
+        <KpiCard label="Encaisse combinée" value={formatCurrency(summary.cashValue)} />
         <KpiCard
           label="Titres (cours affichés)"
           value={formatCurrency(summary.displayPositionsValue)}
@@ -97,6 +97,30 @@ export default async function OverviewPage() {
           value={formatPercent(summary.maxConcentration)}
         />
       </div>
+
+      {summary.ownerBreakdown.length > 1 && (
+        <section>
+          <h3 className="mb-3 text-sm font-semibold text-slate-600 uppercase tracking-wide">
+            Par portefeuille
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {summary.ownerBreakdown.map((ob) => (
+              <Card key={ob.owner}>
+                <CardHeader>
+                  <CardTitle className="text-slate-700 text-base">{ob.owner}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  <p className="text-2xl font-semibold text-slate-950">{formatCurrency(ob.totalValue)}</p>
+                  <p className="text-sm text-slate-500">
+                    Titres {formatCurrency(ob.marketValue)} · Encaisse {formatCurrency(ob.cashValue)}
+                  </p>
+                  <p className="text-xs text-slate-400">{ob.accountCount} compte{ob.accountCount > 1 ? "s" : ""}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <KpiCard
