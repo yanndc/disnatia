@@ -33,6 +33,26 @@ export type PortfolioAccount = Prisma.PortfolioAccountModel
  */
 export type PortfolioPosition = Prisma.PortfolioPositionModel
 /**
+ * Model PortfolioHolding
+ * *
+ *  * État courant synthétisé du portefeuille — une ligne par (compte + ticker + devise).
+ *  * Mis à jour à chaque import snapshot plus récent que la date déjà connue pour ce compte.
+ *  * Lecture principale du tableau de bord (PAS le dernier fichier).
+ */
+export type PortfolioHolding = Prisma.PortfolioHoldingModel
+/**
+ * Model PortfolioAccountState
+ * *
+ *  * État courant synthétisé des comptes — une ligne par (compte + devise).
+ *  * Encaisse, valeur titres et total issus du dernier snapshot connu pour ce compte.
+ */
+export type PortfolioAccountState = Prisma.PortfolioAccountStateModel
+/**
+ * Model PortfolioLiveQuote
+ * Dernier cours connu pour une ligne (ticker + devise ligne Disnat). Non lié à un import : sert au tableau de bord « en cours ».
+ */
+export type PortfolioLiveQuote = Prisma.PortfolioLiveQuoteModel
+/**
  * Model PortfolioTransactionLine
  * 
  */

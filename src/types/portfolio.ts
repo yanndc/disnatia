@@ -9,6 +9,7 @@ export type CsvImportKind =
 
 export type NormalizedDisnatPosition = {
   accountName: string;
+  accountNumber?: string;
   accountType?: string;
   ticker: string;
   securityName?: string;
@@ -25,6 +26,7 @@ export type NormalizedDisnatPosition = {
 
 export type NormalizedDisnatAccount = {
   accountName: string;
+  accountNumber?: string;
   accountType?: string;
   currency: string;
   cashValue: number;

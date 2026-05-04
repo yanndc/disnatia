@@ -42,6 +42,7 @@ export type PortfolioAccountMinAggregateOutputType = {
   id: string | null
   importId: string | null
   accountName: string | null
+  accountNumber: string | null
   accountType: string | null
   currency: string | null
   cashValue: number | null
@@ -53,6 +54,7 @@ export type PortfolioAccountMaxAggregateOutputType = {
   id: string | null
   importId: string | null
   accountName: string | null
+  accountNumber: string | null
   accountType: string | null
   currency: string | null
   cashValue: number | null
@@ -64,6 +66,7 @@ export type PortfolioAccountCountAggregateOutputType = {
   id: number
   importId: number
   accountName: number
+  accountNumber: number
   accountType: number
   currency: number
   cashValue: number
@@ -89,6 +92,7 @@ export type PortfolioAccountMinAggregateInputType = {
   id?: true
   importId?: true
   accountName?: true
+  accountNumber?: true
   accountType?: true
   currency?: true
   cashValue?: true
@@ -100,6 +104,7 @@ export type PortfolioAccountMaxAggregateInputType = {
   id?: true
   importId?: true
   accountName?: true
+  accountNumber?: true
   accountType?: true
   currency?: true
   cashValue?: true
@@ -111,6 +116,7 @@ export type PortfolioAccountCountAggregateInputType = {
   id?: true
   importId?: true
   accountName?: true
+  accountNumber?: true
   accountType?: true
   currency?: true
   cashValue?: true
@@ -209,6 +215,7 @@ export type PortfolioAccountGroupByOutputType = {
   id: string
   importId: string
   accountName: string
+  accountNumber: string | null
   accountType: string | null
   currency: string
   cashValue: number
@@ -243,6 +250,7 @@ export type PortfolioAccountWhereInput = {
   id?: Prisma.StringFilter<"PortfolioAccount"> | string
   importId?: Prisma.StringFilter<"PortfolioAccount"> | string
   accountName?: Prisma.StringFilter<"PortfolioAccount"> | string
+  accountNumber?: Prisma.StringNullableFilter<"PortfolioAccount"> | string | null
   accountType?: Prisma.StringNullableFilter<"PortfolioAccount"> | string | null
   currency?: Prisma.StringFilter<"PortfolioAccount"> | string
   cashValue?: Prisma.FloatFilter<"PortfolioAccount"> | number
@@ -256,6 +264,7 @@ export type PortfolioAccountOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   accountType?: Prisma.SortOrderInput | Prisma.SortOrder
   currency?: Prisma.SortOrder
   cashValue?: Prisma.SortOrder
@@ -272,6 +281,7 @@ export type PortfolioAccountWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PortfolioAccountWhereInput | Prisma.PortfolioAccountWhereInput[]
   importId?: Prisma.StringFilter<"PortfolioAccount"> | string
   accountName?: Prisma.StringFilter<"PortfolioAccount"> | string
+  accountNumber?: Prisma.StringNullableFilter<"PortfolioAccount"> | string | null
   accountType?: Prisma.StringNullableFilter<"PortfolioAccount"> | string | null
   currency?: Prisma.StringFilter<"PortfolioAccount"> | string
   cashValue?: Prisma.FloatFilter<"PortfolioAccount"> | number
@@ -285,6 +295,7 @@ export type PortfolioAccountOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   accountType?: Prisma.SortOrderInput | Prisma.SortOrder
   currency?: Prisma.SortOrder
   cashValue?: Prisma.SortOrder
@@ -304,6 +315,7 @@ export type PortfolioAccountScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"PortfolioAccount"> | string
   importId?: Prisma.StringWithAggregatesFilter<"PortfolioAccount"> | string
   accountName?: Prisma.StringWithAggregatesFilter<"PortfolioAccount"> | string
+  accountNumber?: Prisma.StringNullableWithAggregatesFilter<"PortfolioAccount"> | string | null
   accountType?: Prisma.StringNullableWithAggregatesFilter<"PortfolioAccount"> | string | null
   currency?: Prisma.StringWithAggregatesFilter<"PortfolioAccount"> | string
   cashValue?: Prisma.FloatWithAggregatesFilter<"PortfolioAccount"> | number
@@ -314,6 +326,7 @@ export type PortfolioAccountScalarWhereWithAggregatesInput = {
 export type PortfolioAccountCreateInput = {
   id?: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -327,6 +340,7 @@ export type PortfolioAccountUncheckedCreateInput = {
   id?: string
   importId: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -338,6 +352,7 @@ export type PortfolioAccountUncheckedCreateInput = {
 export type PortfolioAccountUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -351,6 +366,7 @@ export type PortfolioAccountUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -363,6 +379,7 @@ export type PortfolioAccountCreateManyInput = {
   id?: string
   importId: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -373,6 +390,7 @@ export type PortfolioAccountCreateManyInput = {
 export type PortfolioAccountUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -384,6 +402,7 @@ export type PortfolioAccountUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -405,6 +424,7 @@ export type PortfolioAccountCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrder
   accountType?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   cashValue?: Prisma.SortOrder
@@ -422,6 +442,7 @@ export type PortfolioAccountMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrder
   accountType?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   cashValue?: Prisma.SortOrder
@@ -433,6 +454,7 @@ export type PortfolioAccountMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountName?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrder
   accountType?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   cashValue?: Prisma.SortOrder
@@ -520,6 +542,7 @@ export type PortfolioAccountUpdateOneWithoutPositionsNestedInput = {
 export type PortfolioAccountCreateWithoutImportInput = {
   id?: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -531,6 +554,7 @@ export type PortfolioAccountCreateWithoutImportInput = {
 export type PortfolioAccountUncheckedCreateWithoutImportInput = {
   id?: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -572,6 +596,7 @@ export type PortfolioAccountScalarWhereInput = {
   id?: Prisma.StringFilter<"PortfolioAccount"> | string
   importId?: Prisma.StringFilter<"PortfolioAccount"> | string
   accountName?: Prisma.StringFilter<"PortfolioAccount"> | string
+  accountNumber?: Prisma.StringNullableFilter<"PortfolioAccount"> | string | null
   accountType?: Prisma.StringNullableFilter<"PortfolioAccount"> | string | null
   currency?: Prisma.StringFilter<"PortfolioAccount"> | string
   cashValue?: Prisma.FloatFilter<"PortfolioAccount"> | number
@@ -582,6 +607,7 @@ export type PortfolioAccountScalarWhereInput = {
 export type PortfolioAccountCreateWithoutPositionsInput = {
   id?: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -594,6 +620,7 @@ export type PortfolioAccountUncheckedCreateWithoutPositionsInput = {
   id?: string
   importId: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -620,6 +647,7 @@ export type PortfolioAccountUpdateToOneWithWhereWithoutPositionsInput = {
 export type PortfolioAccountUpdateWithoutPositionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -632,6 +660,7 @@ export type PortfolioAccountUncheckedUpdateWithoutPositionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -642,6 +671,7 @@ export type PortfolioAccountUncheckedUpdateWithoutPositionsInput = {
 export type PortfolioAccountCreateManyImportInput = {
   id?: string
   accountName: string
+  accountNumber?: string | null
   accountType?: string | null
   currency: string
   cashValue?: number
@@ -652,6 +682,7 @@ export type PortfolioAccountCreateManyImportInput = {
 export type PortfolioAccountUpdateWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -663,6 +694,7 @@ export type PortfolioAccountUpdateWithoutImportInput = {
 export type PortfolioAccountUncheckedUpdateWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -674,6 +706,7 @@ export type PortfolioAccountUncheckedUpdateWithoutImportInput = {
 export type PortfolioAccountUncheckedUpdateManyWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accountType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   cashValue?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -716,6 +749,7 @@ export type PortfolioAccountSelect<ExtArgs extends runtime.Types.Extensions.Inte
   id?: boolean
   importId?: boolean
   accountName?: boolean
+  accountNumber?: boolean
   accountType?: boolean
   currency?: boolean
   cashValue?: boolean
@@ -730,6 +764,7 @@ export type PortfolioAccountSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   id?: boolean
   importId?: boolean
   accountName?: boolean
+  accountNumber?: boolean
   accountType?: boolean
   currency?: boolean
   cashValue?: boolean
@@ -742,6 +777,7 @@ export type PortfolioAccountSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   id?: boolean
   importId?: boolean
   accountName?: boolean
+  accountNumber?: boolean
   accountType?: boolean
   currency?: boolean
   cashValue?: boolean
@@ -754,6 +790,7 @@ export type PortfolioAccountSelectScalar = {
   id?: boolean
   importId?: boolean
   accountName?: boolean
+  accountNumber?: boolean
   accountType?: boolean
   currency?: boolean
   cashValue?: boolean
@@ -761,7 +798,7 @@ export type PortfolioAccountSelectScalar = {
   totalValue?: boolean
 }
 
-export type PortfolioAccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountName" | "accountType" | "currency" | "cashValue" | "marketValue" | "totalValue", ExtArgs["result"]["portfolioAccount"]>
+export type PortfolioAccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountName" | "accountNumber" | "accountType" | "currency" | "cashValue" | "marketValue" | "totalValue", ExtArgs["result"]["portfolioAccount"]>
 export type PortfolioAccountInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
   positions?: boolean | Prisma.PortfolioAccount$positionsArgs<ExtArgs>
@@ -784,6 +821,7 @@ export type $PortfolioAccountPayload<ExtArgs extends runtime.Types.Extensions.In
     id: string
     importId: string
     accountName: string
+    accountNumber: string | null
     accountType: string | null
     currency: string
     cashValue: number
@@ -1217,6 +1255,7 @@ export interface PortfolioAccountFieldRefs {
   readonly id: Prisma.FieldRef<"PortfolioAccount", 'String'>
   readonly importId: Prisma.FieldRef<"PortfolioAccount", 'String'>
   readonly accountName: Prisma.FieldRef<"PortfolioAccount", 'String'>
+  readonly accountNumber: Prisma.FieldRef<"PortfolioAccount", 'String'>
   readonly accountType: Prisma.FieldRef<"PortfolioAccount", 'String'>
   readonly currency: Prisma.FieldRef<"PortfolioAccount", 'String'>
   readonly cashValue: Prisma.FieldRef<"PortfolioAccount", 'Float'>

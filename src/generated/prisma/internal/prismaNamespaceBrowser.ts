@@ -54,6 +54,9 @@ export const ModelName = {
   PortfolioImport: 'PortfolioImport',
   PortfolioAccount: 'PortfolioAccount',
   PortfolioPosition: 'PortfolioPosition',
+  PortfolioHolding: 'PortfolioHolding',
+  PortfolioAccountState: 'PortfolioAccountState',
+  PortfolioLiveQuote: 'PortfolioLiveQuote',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage'
@@ -79,6 +82,8 @@ export const PortfolioImportScalarFieldEnum = {
   id: 'id',
   sourceFileName: 'sourceFileName',
   importedAt: 'importedAt',
+  dataFromDate: 'dataFromDate',
+  dataToDate: 'dataToDate',
   status: 'status',
   importType: 'importType',
   rawHeaderJson: 'rawHeaderJson',
@@ -93,6 +98,7 @@ export const PortfolioAccountScalarFieldEnum = {
   id: 'id',
   importId: 'importId',
   accountName: 'accountName',
+  accountNumber: 'accountNumber',
   accountType: 'accountType',
   currency: 'currency',
   cashValue: 'cashValue',
@@ -107,6 +113,7 @@ export const PortfolioPositionScalarFieldEnum = {
   id: 'id',
   importId: 'importId',
   accountId: 'accountId',
+  accountNumber: 'accountNumber',
   ticker: 'ticker',
   securityName: 'securityName',
   currency: 'currency',
@@ -121,6 +128,60 @@ export const PortfolioPositionScalarFieldEnum = {
 } as const
 
 export type PortfolioPositionScalarFieldEnum = (typeof PortfolioPositionScalarFieldEnum)[keyof typeof PortfolioPositionScalarFieldEnum]
+
+
+export const PortfolioHoldingScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  accountType: 'accountType',
+  ticker: 'ticker',
+  securityName: 'securityName',
+  currency: 'currency',
+  quantity: 'quantity',
+  averageCost: 'averageCost',
+  snapshotPrice: 'snapshotPrice',
+  snapshotValue: 'snapshotValue',
+  unrealizedGainLoss: 'unrealizedGainLoss',
+  sector: 'sector',
+  assetType: 'assetType',
+  asOf: 'asOf',
+  sourceImportId: 'sourceImportId',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioHoldingScalarFieldEnum = (typeof PortfolioHoldingScalarFieldEnum)[keyof typeof PortfolioHoldingScalarFieldEnum]
+
+
+export const PortfolioAccountStateScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  accountType: 'accountType',
+  currency: 'currency',
+  cashValue: 'cashValue',
+  marketValue: 'marketValue',
+  totalValue: 'totalValue',
+  asOf: 'asOf',
+  sourceImportId: 'sourceImportId',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioAccountStateScalarFieldEnum = (typeof PortfolioAccountStateScalarFieldEnum)[keyof typeof PortfolioAccountStateScalarFieldEnum]
+
+
+export const PortfolioLiveQuoteScalarFieldEnum = {
+  id: 'id',
+  ticker: 'ticker',
+  currency: 'currency',
+  price: 'price',
+  fetchedAt: 'fetchedAt',
+  yahooSymbol: 'yahooSymbol'
+} as const
+
+export type PortfolioLiveQuoteScalarFieldEnum = (typeof PortfolioLiveQuoteScalarFieldEnum)[keyof typeof PortfolioLiveQuoteScalarFieldEnum]
 
 
 export const PortfolioTransactionLineScalarFieldEnum = {

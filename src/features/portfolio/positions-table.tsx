@@ -10,30 +10,17 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
+import type { EnrichedPosition } from "@/features/portfolio/queries";
 import { Input } from "@/components/ui/input";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 
-type PositionRow = {
-  id: string;
-  ticker: string;
-  securityName: string | null;
-  accountName: string;
-  currency: string;
-  quantity: number;
-  averageCost: number | null;
-  marketPrice: number | null;
-  marketValue: number;
-  weightPct: number | null;
-  unrealizedGainLoss: number | null;
-};
-
-export function PositionsTable({ positions }: { positions: PositionRow[] }) {
+export function PositionsTable({ positions }: { positions: EnrichedPosition[] }) {
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "marketValue", desc: true },
+    { id: "displayMarketValue", desc: true },
   ]);
   const [globalFilter, setGlobalFilter] = useState("");
 
-  const columns = useMemo<ColumnDef<PositionRow>[]>(
+  const columns = useMemo<ColumnDef<EnrichedPosition>[]>(
     () => [
       {
         accessorKey: "ticker",
@@ -42,10 +29,24 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
           <div>
             <p className="font-medium text-slate-950">{row.original.ticker}</p>
             <p className="text-xs text-slate-500">{row.original.securityName}</p>
+            {row.original.usesLiveQuote ? (
+              <p className="text-[10px] uppercase tracking-wide text-emerald-700">cours live</p>
+            ) : null}
           </div>
         ),
       },
-      { accessorKey: "accountName", header: "Compte" },
+      {
+        accessorKey: "accountName",
+        header: "Compte",
+        cell: ({ row }) => (
+          <div>
+            <p>{row.original.accountName}</p>
+            {row.original.accountNumber ? (
+              <p className="text-xs text-slate-500">#{row.original.accountNumber}</p>
+            ) : null}
+          </div>
+        ),
+      },
       { accessorKey: "currency", header: "Devise" },
       {
         accessorKey: "quantity",
@@ -61,18 +62,24 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
             : formatCurrency(row.original.averageCost, row.original.currency),
       },
       {
-        accessorKey: "marketPrice",
-        header: "Prix",
+        accessorKey: "displayPrice",
+        header: "Prix affiché",
         cell: ({ row }) =>
-          row.original.marketPrice === null
+          row.original.displayPrice === null
             ? "-"
-            : formatCurrency(row.original.marketPrice, row.original.currency),
+            : formatCurrency(row.original.displayPrice, row.original.currency),
       },
       {
-        accessorKey: "marketValue",
-        header: "Valeur",
+        accessorKey: "displayMarketValue",
+        header: "Valeur affichée",
         cell: ({ row }) =>
-          formatCurrency(row.original.marketValue, row.original.currency),
+          formatCurrency(row.original.displayMarketValue, row.original.currency),
+      },
+      {
+        accessorKey: "disnatMarketValue",
+        header: "Valeur import",
+        cell: ({ row }) =>
+          formatCurrency(row.original.disnatMarketValue, row.original.currency),
       },
       {
         accessorKey: "weightPct",
@@ -119,7 +126,7 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
         </p>
       </div>
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[1100px] text-left text-sm">
+        <table className="w-full min-w-[1200px] text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -153,7 +160,7 @@ export function PositionsTable({ positions }: { positions: PositionRow[] }) {
         </table>
         {positions.length === 0 ? (
           <p className="p-8 text-center text-sm text-slate-500">
-            Aucune position. Importe un CSV Disnat pour remplir la table.
+            Aucune position. Importe un fichier Disnat pour remplir la table.
           </p>
         ) : null}
       </div>

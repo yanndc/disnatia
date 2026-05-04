@@ -387,6 +387,9 @@ export const ModelName = {
   PortfolioImport: 'PortfolioImport',
   PortfolioAccount: 'PortfolioAccount',
   PortfolioPosition: 'PortfolioPosition',
+  PortfolioHolding: 'PortfolioHolding',
+  PortfolioAccountState: 'PortfolioAccountState',
+  PortfolioLiveQuote: 'PortfolioLiveQuote',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage'
@@ -405,7 +408,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioTransactionLine" | "chatSession" | "chatMessage"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioTransactionLine" | "chatSession" | "chatMessage"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -628,6 +631,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PortfolioPositionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PortfolioPositionCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioHolding: {
+      payload: Prisma.$PortfolioHoldingPayload<ExtArgs>
+      fields: Prisma.PortfolioHoldingFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioHoldingFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioHoldingFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioHoldingFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioHoldingFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioHoldingFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioHoldingCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioHoldingCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioHoldingCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioHoldingDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>
+        }
+        update: {
+          args: Prisma.PortfolioHoldingUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioHoldingDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioHoldingUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioHoldingUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioHoldingUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioHoldingPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioHoldingAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioHolding>
+        }
+        groupBy: {
+          args: Prisma.PortfolioHoldingGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioHoldingGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioHoldingCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioHoldingCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioAccountState: {
+      payload: Prisma.$PortfolioAccountStatePayload<ExtArgs>
+      fields: Prisma.PortfolioAccountStateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioAccountStateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioAccountStateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioAccountStateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioAccountStateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioAccountStateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioAccountStateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioAccountStateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioAccountStateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioAccountStateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>
+        }
+        update: {
+          args: Prisma.PortfolioAccountStateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioAccountStateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioAccountStateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioAccountStateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioAccountStateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountStatePayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioAccountStateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioAccountState>
+        }
+        groupBy: {
+          args: Prisma.PortfolioAccountStateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioAccountStateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioAccountStateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioAccountStateCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioLiveQuote: {
+      payload: Prisma.$PortfolioLiveQuotePayload<ExtArgs>
+      fields: Prisma.PortfolioLiveQuoteFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioLiveQuoteFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioLiveQuoteFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioLiveQuoteFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioLiveQuoteFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioLiveQuoteFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioLiveQuoteCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioLiveQuoteCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioLiveQuoteCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioLiveQuoteDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>
+        }
+        update: {
+          args: Prisma.PortfolioLiveQuoteUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioLiveQuoteDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioLiveQuoteUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioLiveQuoteUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioLiveQuoteUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioLiveQuotePayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioLiveQuoteAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioLiveQuote>
+        }
+        groupBy: {
+          args: Prisma.PortfolioLiveQuoteGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioLiveQuoteGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioLiveQuoteCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioLiveQuoteCountAggregateOutputType> | number
         }
       }
     }
@@ -896,6 +1121,8 @@ export const PortfolioImportScalarFieldEnum = {
   id: 'id',
   sourceFileName: 'sourceFileName',
   importedAt: 'importedAt',
+  dataFromDate: 'dataFromDate',
+  dataToDate: 'dataToDate',
   status: 'status',
   importType: 'importType',
   rawHeaderJson: 'rawHeaderJson',
@@ -910,6 +1137,7 @@ export const PortfolioAccountScalarFieldEnum = {
   id: 'id',
   importId: 'importId',
   accountName: 'accountName',
+  accountNumber: 'accountNumber',
   accountType: 'accountType',
   currency: 'currency',
   cashValue: 'cashValue',
@@ -924,6 +1152,7 @@ export const PortfolioPositionScalarFieldEnum = {
   id: 'id',
   importId: 'importId',
   accountId: 'accountId',
+  accountNumber: 'accountNumber',
   ticker: 'ticker',
   securityName: 'securityName',
   currency: 'currency',
@@ -938,6 +1167,60 @@ export const PortfolioPositionScalarFieldEnum = {
 } as const
 
 export type PortfolioPositionScalarFieldEnum = (typeof PortfolioPositionScalarFieldEnum)[keyof typeof PortfolioPositionScalarFieldEnum]
+
+
+export const PortfolioHoldingScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  accountType: 'accountType',
+  ticker: 'ticker',
+  securityName: 'securityName',
+  currency: 'currency',
+  quantity: 'quantity',
+  averageCost: 'averageCost',
+  snapshotPrice: 'snapshotPrice',
+  snapshotValue: 'snapshotValue',
+  unrealizedGainLoss: 'unrealizedGainLoss',
+  sector: 'sector',
+  assetType: 'assetType',
+  asOf: 'asOf',
+  sourceImportId: 'sourceImportId',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioHoldingScalarFieldEnum = (typeof PortfolioHoldingScalarFieldEnum)[keyof typeof PortfolioHoldingScalarFieldEnum]
+
+
+export const PortfolioAccountStateScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  accountType: 'accountType',
+  currency: 'currency',
+  cashValue: 'cashValue',
+  marketValue: 'marketValue',
+  totalValue: 'totalValue',
+  asOf: 'asOf',
+  sourceImportId: 'sourceImportId',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioAccountStateScalarFieldEnum = (typeof PortfolioAccountStateScalarFieldEnum)[keyof typeof PortfolioAccountStateScalarFieldEnum]
+
+
+export const PortfolioLiveQuoteScalarFieldEnum = {
+  id: 'id',
+  ticker: 'ticker',
+  currency: 'currency',
+  price: 'price',
+  fetchedAt: 'fetchedAt',
+  yahooSymbol: 'yahooSymbol'
+} as const
+
+export type PortfolioLiveQuoteScalarFieldEnum = (typeof PortfolioLiveQuoteScalarFieldEnum)[keyof typeof PortfolioLiveQuoteScalarFieldEnum]
 
 
 export const PortfolioTransactionLineScalarFieldEnum = {
@@ -1261,6 +1544,9 @@ export type GlobalOmitConfig = {
   portfolioImport?: Prisma.PortfolioImportOmit
   portfolioAccount?: Prisma.PortfolioAccountOmit
   portfolioPosition?: Prisma.PortfolioPositionOmit
+  portfolioHolding?: Prisma.PortfolioHoldingOmit
+  portfolioAccountState?: Prisma.PortfolioAccountStateOmit
+  portfolioLiveQuote?: Prisma.PortfolioLiveQuoteOmit
   portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit

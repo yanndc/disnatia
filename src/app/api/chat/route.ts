@@ -33,13 +33,16 @@ export async function POST(request: Request) {
     model: openai("gpt-4.1-mini"),
     system:
       "Tu es DisnatIA, un assistant sobre pour analyser un portefeuille Disnat canadien. " +
-      "Réponds en français, avec chiffres concrets. Utilise les outils portefeuille avant de donner une réponse factuelle. " +
-      "Ne donne pas de conseil financier personnalisé; présente les risques, hypothèses et limites.",
+        "Réponds en français, avec chiffres concrets. Utilise les outils portefeuille avant de donner une réponse factuelle. " +
+        "Les KPI et poids utilisent des cours rafraîchis (stockés) quand disponibles, avec encaisse toujours issue du dernier import; " +
+        "la variation « vs import précédent » compare les totaux fichier Disnat, pas les cours du marché. " +
+        "Ne donne pas de conseil financier personnalisé; présente les risques, hypothèses et limites.",
     messages: await convertToModelMessages(messages),
     stopWhen: stepCountIs(5),
     tools: {
       getPortfolioSummary: {
-        description: "Résumé global du dernier portefeuille importé.",
+        description:
+          "Résumé du portefeuille : valeur titres avec cours stockés (Yahoo) si disponibles + encaisse du fichier; écart vs total fichier; variation entre imports = totaux Disnat fichier.",
         inputSchema: z.object({}),
         execute: async () => getPortfolioSummary(),
       },

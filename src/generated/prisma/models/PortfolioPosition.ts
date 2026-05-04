@@ -48,6 +48,7 @@ export type PortfolioPositionMinAggregateOutputType = {
   id: string | null
   importId: string | null
   accountId: string | null
+  accountNumber: string | null
   ticker: string | null
   securityName: string | null
   currency: string | null
@@ -65,6 +66,7 @@ export type PortfolioPositionMaxAggregateOutputType = {
   id: string | null
   importId: string | null
   accountId: string | null
+  accountNumber: string | null
   ticker: string | null
   securityName: string | null
   currency: string | null
@@ -82,6 +84,7 @@ export type PortfolioPositionCountAggregateOutputType = {
   id: number
   importId: number
   accountId: number
+  accountNumber: number
   ticker: number
   securityName: number
   currency: number
@@ -119,6 +122,7 @@ export type PortfolioPositionMinAggregateInputType = {
   id?: true
   importId?: true
   accountId?: true
+  accountNumber?: true
   ticker?: true
   securityName?: true
   currency?: true
@@ -136,6 +140,7 @@ export type PortfolioPositionMaxAggregateInputType = {
   id?: true
   importId?: true
   accountId?: true
+  accountNumber?: true
   ticker?: true
   securityName?: true
   currency?: true
@@ -153,6 +158,7 @@ export type PortfolioPositionCountAggregateInputType = {
   id?: true
   importId?: true
   accountId?: true
+  accountNumber?: true
   ticker?: true
   securityName?: true
   currency?: true
@@ -257,6 +263,7 @@ export type PortfolioPositionGroupByOutputType = {
   id: string
   importId: string
   accountId: string | null
+  accountNumber: string | null
   ticker: string
   securityName: string | null
   currency: string
@@ -297,6 +304,7 @@ export type PortfolioPositionWhereInput = {
   id?: Prisma.StringFilter<"PortfolioPosition"> | string
   importId?: Prisma.StringFilter<"PortfolioPosition"> | string
   accountId?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
+  accountNumber?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   ticker?: Prisma.StringFilter<"PortfolioPosition"> | string
   securityName?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   currency?: Prisma.StringFilter<"PortfolioPosition"> | string
@@ -316,6 +324,7 @@ export type PortfolioPositionOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountId?: Prisma.SortOrderInput | Prisma.SortOrder
+  accountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrderInput | Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -338,6 +347,7 @@ export type PortfolioPositionWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PortfolioPositionWhereInput | Prisma.PortfolioPositionWhereInput[]
   importId?: Prisma.StringFilter<"PortfolioPosition"> | string
   accountId?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
+  accountNumber?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   ticker?: Prisma.StringFilter<"PortfolioPosition"> | string
   securityName?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   currency?: Prisma.StringFilter<"PortfolioPosition"> | string
@@ -357,6 +367,7 @@ export type PortfolioPositionOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountId?: Prisma.SortOrderInput | Prisma.SortOrder
+  accountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrderInput | Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -382,6 +393,7 @@ export type PortfolioPositionScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"PortfolioPosition"> | string
   importId?: Prisma.StringWithAggregatesFilter<"PortfolioPosition"> | string
   accountId?: Prisma.StringNullableWithAggregatesFilter<"PortfolioPosition"> | string | null
+  accountNumber?: Prisma.StringNullableWithAggregatesFilter<"PortfolioPosition"> | string | null
   ticker?: Prisma.StringWithAggregatesFilter<"PortfolioPosition"> | string
   securityName?: Prisma.StringNullableWithAggregatesFilter<"PortfolioPosition"> | string | null
   currency?: Prisma.StringWithAggregatesFilter<"PortfolioPosition"> | string
@@ -397,6 +409,7 @@ export type PortfolioPositionScalarWhereWithAggregatesInput = {
 
 export type PortfolioPositionCreateInput = {
   id?: string
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -416,6 +429,7 @@ export type PortfolioPositionUncheckedCreateInput = {
   id?: string
   importId: string
   accountId?: string | null
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -431,6 +445,7 @@ export type PortfolioPositionUncheckedCreateInput = {
 
 export type PortfolioPositionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -450,6 +465,7 @@ export type PortfolioPositionUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
   accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -467,6 +483,7 @@ export type PortfolioPositionCreateManyInput = {
   id?: string
   importId: string
   accountId?: string | null
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -482,6 +499,7 @@ export type PortfolioPositionCreateManyInput = {
 
 export type PortfolioPositionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -499,6 +517,7 @@ export type PortfolioPositionUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
   accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -526,6 +545,7 @@ export type PortfolioPositionCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -552,6 +572,7 @@ export type PortfolioPositionMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -569,6 +590,7 @@ export type PortfolioPositionMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   importId?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
+  accountNumber?: Prisma.SortOrder
   ticker?: Prisma.SortOrder
   securityName?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -685,6 +707,7 @@ export type NullableFloatFieldUpdateOperationsInput = {
 
 export type PortfolioPositionCreateWithoutImportInput = {
   id?: string
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -702,6 +725,7 @@ export type PortfolioPositionCreateWithoutImportInput = {
 export type PortfolioPositionUncheckedCreateWithoutImportInput = {
   id?: string
   accountId?: string | null
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -748,6 +772,7 @@ export type PortfolioPositionScalarWhereInput = {
   id?: Prisma.StringFilter<"PortfolioPosition"> | string
   importId?: Prisma.StringFilter<"PortfolioPosition"> | string
   accountId?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
+  accountNumber?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   ticker?: Prisma.StringFilter<"PortfolioPosition"> | string
   securityName?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   currency?: Prisma.StringFilter<"PortfolioPosition"> | string
@@ -763,6 +788,7 @@ export type PortfolioPositionScalarWhereInput = {
 
 export type PortfolioPositionCreateWithoutAccountInput = {
   id?: string
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -780,6 +806,7 @@ export type PortfolioPositionCreateWithoutAccountInput = {
 export type PortfolioPositionUncheckedCreateWithoutAccountInput = {
   id?: string
   importId: string
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -822,6 +849,7 @@ export type PortfolioPositionUpdateManyWithWhereWithoutAccountInput = {
 export type PortfolioPositionCreateManyImportInput = {
   id?: string
   accountId?: string | null
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -837,6 +865,7 @@ export type PortfolioPositionCreateManyImportInput = {
 
 export type PortfolioPositionUpdateWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -854,6 +883,7 @@ export type PortfolioPositionUpdateWithoutImportInput = {
 export type PortfolioPositionUncheckedUpdateWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -870,6 +900,7 @@ export type PortfolioPositionUncheckedUpdateWithoutImportInput = {
 export type PortfolioPositionUncheckedUpdateManyWithoutImportInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -886,6 +917,7 @@ export type PortfolioPositionUncheckedUpdateManyWithoutImportInput = {
 export type PortfolioPositionCreateManyAccountInput = {
   id?: string
   importId: string
+  accountNumber?: string | null
   ticker: string
   securityName?: string | null
   currency: string
@@ -901,6 +933,7 @@ export type PortfolioPositionCreateManyAccountInput = {
 
 export type PortfolioPositionUpdateWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -918,6 +951,7 @@ export type PortfolioPositionUpdateWithoutAccountInput = {
 export type PortfolioPositionUncheckedUpdateWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -934,6 +968,7 @@ export type PortfolioPositionUncheckedUpdateWithoutAccountInput = {
 export type PortfolioPositionUncheckedUpdateManyWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   importId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   securityName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -953,6 +988,7 @@ export type PortfolioPositionSelect<ExtArgs extends runtime.Types.Extensions.Int
   id?: boolean
   importId?: boolean
   accountId?: boolean
+  accountNumber?: boolean
   ticker?: boolean
   securityName?: boolean
   currency?: boolean
@@ -972,6 +1008,7 @@ export type PortfolioPositionSelectCreateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   importId?: boolean
   accountId?: boolean
+  accountNumber?: boolean
   ticker?: boolean
   securityName?: boolean
   currency?: boolean
@@ -991,6 +1028,7 @@ export type PortfolioPositionSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   id?: boolean
   importId?: boolean
   accountId?: boolean
+  accountNumber?: boolean
   ticker?: boolean
   securityName?: boolean
   currency?: boolean
@@ -1010,6 +1048,7 @@ export type PortfolioPositionSelectScalar = {
   id?: boolean
   importId?: boolean
   accountId?: boolean
+  accountNumber?: boolean
   ticker?: boolean
   securityName?: boolean
   currency?: boolean
@@ -1023,7 +1062,7 @@ export type PortfolioPositionSelectScalar = {
   assetType?: boolean
 }
 
-export type PortfolioPositionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountId" | "ticker" | "securityName" | "currency" | "quantity" | "averageCost" | "marketPrice" | "marketValue" | "unrealizedGainLoss" | "weightPct" | "sector" | "assetType", ExtArgs["result"]["portfolioPosition"]>
+export type PortfolioPositionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountId" | "accountNumber" | "ticker" | "securityName" | "currency" | "quantity" | "averageCost" | "marketPrice" | "marketValue" | "unrealizedGainLoss" | "weightPct" | "sector" | "assetType", ExtArgs["result"]["portfolioPosition"]>
 export type PortfolioPositionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
   account?: boolean | Prisma.PortfolioPosition$accountArgs<ExtArgs>
@@ -1047,6 +1086,7 @@ export type $PortfolioPositionPayload<ExtArgs extends runtime.Types.Extensions.I
     id: string
     importId: string
     accountId: string | null
+    accountNumber: string | null
     ticker: string
     securityName: string | null
     currency: string
@@ -1486,6 +1526,7 @@ export interface PortfolioPositionFieldRefs {
   readonly id: Prisma.FieldRef<"PortfolioPosition", 'String'>
   readonly importId: Prisma.FieldRef<"PortfolioPosition", 'String'>
   readonly accountId: Prisma.FieldRef<"PortfolioPosition", 'String'>
+  readonly accountNumber: Prisma.FieldRef<"PortfolioPosition", 'String'>
   readonly ticker: Prisma.FieldRef<"PortfolioPosition", 'String'>
   readonly securityName: Prisma.FieldRef<"PortfolioPosition", 'String'>
   readonly currency: Prisma.FieldRef<"PortfolioPosition", 'String'>

@@ -38,6 +38,8 @@ export type PortfolioImportMinAggregateOutputType = {
   id: string | null
   sourceFileName: string | null
   importedAt: Date | null
+  dataFromDate: Date | null
+  dataToDate: Date | null
   status: $Enums.ImportStatus | null
   importType: $Enums.ImportType | null
   rawRowCount: number | null
@@ -48,6 +50,8 @@ export type PortfolioImportMaxAggregateOutputType = {
   id: string | null
   sourceFileName: string | null
   importedAt: Date | null
+  dataFromDate: Date | null
+  dataToDate: Date | null
   status: $Enums.ImportStatus | null
   importType: $Enums.ImportType | null
   rawRowCount: number | null
@@ -58,6 +62,8 @@ export type PortfolioImportCountAggregateOutputType = {
   id: number
   sourceFileName: number
   importedAt: number
+  dataFromDate: number
+  dataToDate: number
   status: number
   importType: number
   rawHeaderJson: number
@@ -79,6 +85,8 @@ export type PortfolioImportMinAggregateInputType = {
   id?: true
   sourceFileName?: true
   importedAt?: true
+  dataFromDate?: true
+  dataToDate?: true
   status?: true
   importType?: true
   rawRowCount?: true
@@ -89,6 +97,8 @@ export type PortfolioImportMaxAggregateInputType = {
   id?: true
   sourceFileName?: true
   importedAt?: true
+  dataFromDate?: true
+  dataToDate?: true
   status?: true
   importType?: true
   rawRowCount?: true
@@ -99,6 +109,8 @@ export type PortfolioImportCountAggregateInputType = {
   id?: true
   sourceFileName?: true
   importedAt?: true
+  dataFromDate?: true
+  dataToDate?: true
   status?: true
   importType?: true
   rawHeaderJson?: true
@@ -197,6 +209,8 @@ export type PortfolioImportGroupByOutputType = {
   id: string
   sourceFileName: string
   importedAt: Date
+  dataFromDate: Date | null
+  dataToDate: Date | null
   status: $Enums.ImportStatus
   importType: $Enums.ImportType
   rawHeaderJson: runtime.JsonValue
@@ -231,6 +245,8 @@ export type PortfolioImportWhereInput = {
   id?: Prisma.StringFilter<"PortfolioImport"> | string
   sourceFileName?: Prisma.StringFilter<"PortfolioImport"> | string
   importedAt?: Prisma.DateTimeFilter<"PortfolioImport"> | Date | string
+  dataFromDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
+  dataToDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
   status?: Prisma.EnumImportStatusFilter<"PortfolioImport"> | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFilter<"PortfolioImport"> | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonFilter<"PortfolioImport">
@@ -245,6 +261,8 @@ export type PortfolioImportOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
+  dataFromDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  dataToDate?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   importType?: Prisma.SortOrder
   rawHeaderJson?: Prisma.SortOrder
@@ -262,6 +280,8 @@ export type PortfolioImportWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PortfolioImportWhereInput | Prisma.PortfolioImportWhereInput[]
   sourceFileName?: Prisma.StringFilter<"PortfolioImport"> | string
   importedAt?: Prisma.DateTimeFilter<"PortfolioImport"> | Date | string
+  dataFromDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
+  dataToDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
   status?: Prisma.EnumImportStatusFilter<"PortfolioImport"> | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFilter<"PortfolioImport"> | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonFilter<"PortfolioImport">
@@ -276,6 +296,8 @@ export type PortfolioImportOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
+  dataFromDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  dataToDate?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   importType?: Prisma.SortOrder
   rawHeaderJson?: Prisma.SortOrder
@@ -295,6 +317,8 @@ export type PortfolioImportScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"PortfolioImport"> | string
   sourceFileName?: Prisma.StringWithAggregatesFilter<"PortfolioImport"> | string
   importedAt?: Prisma.DateTimeWithAggregatesFilter<"PortfolioImport"> | Date | string
+  dataFromDate?: Prisma.DateTimeNullableWithAggregatesFilter<"PortfolioImport"> | Date | string | null
+  dataToDate?: Prisma.DateTimeNullableWithAggregatesFilter<"PortfolioImport"> | Date | string | null
   status?: Prisma.EnumImportStatusWithAggregatesFilter<"PortfolioImport"> | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeWithAggregatesFilter<"PortfolioImport"> | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonWithAggregatesFilter<"PortfolioImport">
@@ -306,6 +330,8 @@ export type PortfolioImportCreateInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -320,6 +346,8 @@ export type PortfolioImportUncheckedCreateInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -334,6 +362,8 @@ export type PortfolioImportUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -348,6 +378,8 @@ export type PortfolioImportUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -362,6 +394,8 @@ export type PortfolioImportCreateManyInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -373,6 +407,8 @@ export type PortfolioImportUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -384,6 +420,8 @@ export type PortfolioImportUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -395,6 +433,8 @@ export type PortfolioImportCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
+  dataFromDate?: Prisma.SortOrder
+  dataToDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
   importType?: Prisma.SortOrder
   rawHeaderJson?: Prisma.SortOrder
@@ -410,6 +450,8 @@ export type PortfolioImportMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
+  dataFromDate?: Prisma.SortOrder
+  dataToDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
   importType?: Prisma.SortOrder
   rawRowCount?: Prisma.SortOrder
@@ -420,6 +462,8 @@ export type PortfolioImportMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
+  dataFromDate?: Prisma.SortOrder
+  dataToDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
   importType?: Prisma.SortOrder
   rawRowCount?: Prisma.SortOrder
@@ -441,6 +485,10 @@ export type StringFieldUpdateOperationsInput = {
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
 }
 
 export type EnumImportStatusFieldUpdateOperationsInput = {
@@ -509,6 +557,8 @@ export type PortfolioImportCreateWithoutAccountsInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -522,6 +572,8 @@ export type PortfolioImportUncheckedCreateWithoutAccountsInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -551,6 +603,8 @@ export type PortfolioImportUpdateWithoutAccountsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -564,6 +618,8 @@ export type PortfolioImportUncheckedUpdateWithoutAccountsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -577,6 +633,8 @@ export type PortfolioImportCreateWithoutPositionsInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -590,6 +648,8 @@ export type PortfolioImportUncheckedCreateWithoutPositionsInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -619,6 +679,8 @@ export type PortfolioImportUpdateWithoutPositionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -632,6 +694,8 @@ export type PortfolioImportUncheckedUpdateWithoutPositionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -645,6 +709,8 @@ export type PortfolioImportCreateWithoutTransactionsInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -658,6 +724,8 @@ export type PortfolioImportUncheckedCreateWithoutTransactionsInput = {
   id?: string
   sourceFileName: string
   importedAt?: Date | string
+  dataFromDate?: Date | string | null
+  dataToDate?: Date | string | null
   status?: $Enums.ImportStatus
   importType?: $Enums.ImportType
   rawHeaderJson: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -687,6 +755,8 @@ export type PortfolioImportUpdateWithoutTransactionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -700,6 +770,8 @@ export type PortfolioImportUncheckedUpdateWithoutTransactionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumImportStatusFieldUpdateOperationsInput | $Enums.ImportStatus
   importType?: Prisma.EnumImportTypeFieldUpdateOperationsInput | $Enums.ImportType
   rawHeaderJson?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -762,6 +834,8 @@ export type PortfolioImportSelect<ExtArgs extends runtime.Types.Extensions.Inter
   id?: boolean
   sourceFileName?: boolean
   importedAt?: boolean
+  dataFromDate?: boolean
+  dataToDate?: boolean
   status?: boolean
   importType?: boolean
   rawHeaderJson?: boolean
@@ -777,6 +851,8 @@ export type PortfolioImportSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   id?: boolean
   sourceFileName?: boolean
   importedAt?: boolean
+  dataFromDate?: boolean
+  dataToDate?: boolean
   status?: boolean
   importType?: boolean
   rawHeaderJson?: boolean
@@ -788,6 +864,8 @@ export type PortfolioImportSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   id?: boolean
   sourceFileName?: boolean
   importedAt?: boolean
+  dataFromDate?: boolean
+  dataToDate?: boolean
   status?: boolean
   importType?: boolean
   rawHeaderJson?: boolean
@@ -799,6 +877,8 @@ export type PortfolioImportSelectScalar = {
   id?: boolean
   sourceFileName?: boolean
   importedAt?: boolean
+  dataFromDate?: boolean
+  dataToDate?: boolean
   status?: boolean
   importType?: boolean
   rawHeaderJson?: boolean
@@ -806,7 +886,7 @@ export type PortfolioImportSelectScalar = {
   notes?: boolean
 }
 
-export type PortfolioImportOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sourceFileName" | "importedAt" | "status" | "importType" | "rawHeaderJson" | "rawRowCount" | "notes", ExtArgs["result"]["portfolioImport"]>
+export type PortfolioImportOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sourceFileName" | "importedAt" | "dataFromDate" | "dataToDate" | "status" | "importType" | "rawHeaderJson" | "rawRowCount" | "notes", ExtArgs["result"]["portfolioImport"]>
 export type PortfolioImportInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   accounts?: boolean | Prisma.PortfolioImport$accountsArgs<ExtArgs>
   positions?: boolean | Prisma.PortfolioImport$positionsArgs<ExtArgs>
@@ -827,6 +907,14 @@ export type $PortfolioImportPayload<ExtArgs extends runtime.Types.Extensions.Int
     id: string
     sourceFileName: string
     importedAt: Date
+    /**
+     * Borne basse des dates présentes dans le fichier (ex. min date d’opération).
+     */
+    dataFromDate: Date | null
+    /**
+     * Borne haute des dates dans le fichier (ex. max date d’opération) ; référence d’« état » pour l’activité.
+     */
+    dataToDate: Date | null
     status: $Enums.ImportStatus
     importType: $Enums.ImportType
     rawHeaderJson: runtime.JsonValue
@@ -1261,6 +1349,8 @@ export interface PortfolioImportFieldRefs {
   readonly id: Prisma.FieldRef<"PortfolioImport", 'String'>
   readonly sourceFileName: Prisma.FieldRef<"PortfolioImport", 'String'>
   readonly importedAt: Prisma.FieldRef<"PortfolioImport", 'DateTime'>
+  readonly dataFromDate: Prisma.FieldRef<"PortfolioImport", 'DateTime'>
+  readonly dataToDate: Prisma.FieldRef<"PortfolioImport", 'DateTime'>
   readonly status: Prisma.FieldRef<"PortfolioImport", 'ImportStatus'>
   readonly importType: Prisma.FieldRef<"PortfolioImport", 'ImportType'>
   readonly rawHeaderJson: Prisma.FieldRef<"PortfolioImport", 'Json'>

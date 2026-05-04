@@ -635,10 +635,6 @@ export type PortfolioTransactionLineUncheckedUpdateManyWithoutImportNestedInput 
   deleteMany?: Prisma.PortfolioTransactionLineScalarWhereInput | Prisma.PortfolioTransactionLineScalarWhereInput[]
 }
 
-export type NullableDateTimeFieldUpdateOperationsInput = {
-  set?: Date | string | null
-}
-
 export type PortfolioTransactionLineCreateWithoutImportInput = {
   id?: string
   accountName?: string | null

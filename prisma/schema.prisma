@@ -11,6 +11,10 @@ model PortfolioImport {
   id             String                     @id @default(cuid())
   sourceFileName String
   importedAt     DateTime                   @default(now())
+  /// Borne basse des dates présentes dans le fichier (ex. min date d’opération).
+  dataFromDate   DateTime?
+  /// Borne haute des dates dans le fichier (ex. max date d’opération) ; référence d’« état » pour l’activité.
+  dataToDate     DateTime?
   status         ImportStatus               @default(COMPLETED)
   importType     ImportType                 @default(PORTFOLIO)
   rawHeaderJson  Json
@@ -24,18 +28,20 @@ model PortfolioImport {
 }
 
 model PortfolioAccount {
-  id          String              @id @default(cuid())
-  importId    String
-  accountName String
-  accountType String?
-  currency    String
-  cashValue   Float               @default(0)
-  marketValue Float               @default(0)
-  totalValue  Float               @default(0)
-  import      PortfolioImport     @relation(fields: [importId], references: [id], onDelete: Cascade)
-  positions   PortfolioPosition[]
+  id             String              @id @default(cuid())
+  importId       String
+  accountName    String
+  accountNumber  String?
+  accountType    String?
+  currency       String
+  cashValue      Float               @default(0)
+  marketValue    Float               @default(0)
+  totalValue     Float               @default(0)
+  import         PortfolioImport     @relation(fields: [importId], references: [id], onDelete: Cascade)
+  positions      PortfolioPosition[]
 
   @@index([importId])
+  @@index([accountNumber])
   @@map("portfolio_accounts")
 }
 
@@ -43,6 +49,7 @@ model PortfolioPosition {
   id                 String            @id @default(cuid())
   importId           String
   accountId          String?
+  accountNumber      String?
   ticker             String
   securityName       String?
   currency           String
@@ -59,7 +66,77 @@ model PortfolioPosition {
 
   @@index([importId])
   @@index([ticker])
+  @@index([accountNumber])
   @@map("portfolio_positions")
+}
+
+/**
+ * État courant synthétisé du portefeuille — une ligne par (compte + ticker + devise).
+ * Mis à jour à chaque import snapshot plus récent que la date déjà connue pour ce compte.
+ * Lecture principale du tableau de bord (PAS le dernier fichier).
+ */
+model PortfolioHolding {
+  id                 String    @id @default(cuid())
+  /// Numéro de compte normalisé (clé stable)
+  accountKey         String
+  accountName        String
+  accountNumber      String?
+  accountType        String?
+  ticker             String
+  securityName       String?
+  currency           String
+  quantity           Float
+  averageCost        Float?
+  snapshotPrice      Float?
+  snapshotValue      Float
+  unrealizedGainLoss Float?
+  sector             String?
+  assetType          String?
+  /// Date de référence des données (dataToDate de l'import ou importedAt)
+  asOf               DateTime
+  sourceImportId     String
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([accountKey, ticker, currency])
+  @@index([ticker])
+  @@index([accountKey])
+  @@map("portfolio_holdings")
+}
+
+/**
+ * État courant synthétisé des comptes — une ligne par (compte + devise).
+ * Encaisse, valeur titres et total issus du dernier snapshot connu pour ce compte.
+ */
+model PortfolioAccountState {
+  id            String   @id @default(cuid())
+  accountKey    String
+  accountName   String
+  accountNumber String?
+  accountType   String?
+  currency      String
+  cashValue     Float    @default(0)
+  marketValue   Float    @default(0)
+  totalValue    Float    @default(0)
+  asOf          DateTime
+  sourceImportId String
+  updatedAt     DateTime @updatedAt
+
+  @@unique([accountKey, currency])
+  @@index([accountKey])
+  @@map("portfolio_account_states")
+}
+
+/// Dernier cours connu pour une ligne (ticker + devise ligne Disnat). Non lié à un import : sert au tableau de bord « en cours ».
+model PortfolioLiveQuote {
+  id          String   @id @default(cuid())
+  ticker      String
+  currency    String
+  price       Float
+  fetchedAt   DateTime @default(now())
+  yahooSymbol String?
+
+  @@unique([ticker, currency])
+  @@map("portfolio_live_quotes")
 }
 
 model PortfolioTransactionLine {

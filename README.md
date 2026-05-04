@@ -59,6 +59,8 @@ OPENAI_API_KEY=""
 
 Next.js charge `.env.local` en local. La configuration Prisma charge aussi `.env.local`, puis `.env` en repli pour les commandes CLI.
 
+Si tu modifies le schéma Prisma après avoir lancé `pnpm dev`, relance ensuite `pnpm prisma:generate`, arrête puis redémarre le serveur de dev. Sinon le singleton Prisma en mémoire peut rester sur une ancienne version du client et provoquer des erreurs comme `Unknown argument importType` ou `_count.select.transactions` inconnu après une migration.
+
 ## Importer un CSV Disnat
 
 Va dans `/imports`, dépose un fichier `.csv`, vérifie la preview et les messages de validation, puis clique sur `Valider et sauvegarder l'import`.

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortfolioCharts } from "@/features/portfolio/portfolio-charts";
+import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getPortfolioSummary } from "@/features/portfolio/queries";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
@@ -9,31 +10,88 @@ export const dynamic = "force-dynamic";
 export default async function OverviewPage() {
   const summary = await getPortfolioSummary().catch(() => null);
 
-  if (!summary?.latestImportId) {
+  const hasPortfolioData =
+    (summary?.positionCount ?? 0) > 0 || (summary?.accountCount ?? 0) > 0;
+
+  if (!hasPortfolioData) {
     return (
       <EmptyState
-        title="Aucun portefeuille importé"
-        description="Importe un CSV Disnat pour alimenter les KPI, graphiques et positions."
+        title={
+          summary?.hasAnyImportsInHistory
+            ? "Pas encore de snapshot portefeuille"
+            : "Aucun portefeuille importé"
+        }
+        description={
+          summary?.hasAnyImportsInHistory
+            ? "Tes fichiers importés contiennent des transactions mais aucune position ni compte. Importe un export positions ou relevé de compte Disnat pour voir les KPI."
+            : "Importe un CSV ou Excel Disnat pour alimenter les KPI, graphiques et positions."
+        }
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      <section>
-        <p className="text-sm text-slate-500">Dernier import</p>
-        <h2 className="text-2xl font-semibold text-slate-950">
-          Vue d&apos;ensemble du portefeuille
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Données importées le {summary.importedAt?.toLocaleString("fr-CA")}
-        </p>
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-slate-500">Tableau de bord</p>
+          <h2 className="text-2xl font-semibold text-slate-950">
+            Vue d&apos;ensemble du portefeuille
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            <span className="font-medium text-slate-700">Référence :</span>{" "}
+            {summary.referenceAsOf?.toLocaleDateString("fr-CA") ?? "—"}
+            {summary.importedAt ? (
+              <> · dernier import {summary.importedAt.toLocaleDateString("fr-CA")}</>
+            ) : null}
+            {summary.quotesAsOf ? (
+              <> · cours {summary.quotesAsOf.toLocaleString("fr-CA")}</>
+            ) : null}
+          </p>
+          {summary.transactionsGlobalCount > 0 ? (
+            <p className="mt-1 text-xs text-slate-600">
+              <span className="font-medium text-slate-700">Transactions historiques :</span>{" "}
+              {summary.transactionsGlobalCount} lignes ·{" "}
+              {summary.transactionsGlobalFrom?.toLocaleDateString("fr-CA")} au{" "}
+              {summary.transactionsGlobalTo?.toLocaleDateString("fr-CA")}
+            </p>
+          ) : null}
+          {summary.distinctAccountNumbers.length > 0 ? (
+            <p className="mt-1 text-xs text-slate-600">
+              <span className="font-medium text-slate-700">Comptes :</span>{" "}
+              {summary.distinctAccountNumbers.join(", ")}
+            </p>
+          ) : null}
+          {summary.driftVsDisnatPct !== null ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Contrôle qualité : écart cours live vs Disnat :{" "}
+              <span
+                className={
+                  Math.abs(summary.driftVsDisnatPct) > 5 ? "text-amber-600 font-medium" : ""
+                }
+              >
+                {formatPercent(summary.driftVsDisnatPct)}
+              </span>{" "}
+              (valeur Disnat : {formatCurrency(summary.disnatReferenceTotalValue)})
+            </p>
+          ) : null}
+        </div>
+        <RefreshQuotesButton />
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Valeur totale" value={formatCurrency(summary.totalValue)} />
         <KpiCard label="Encaisse" value={formatCurrency(summary.cashValue)} />
-        <KpiCard label="Positions" value={String(summary.positionCount)} />
+        <KpiCard
+          label="Titres (cours affichés)"
+          value={formatCurrency(summary.displayPositionsValue)}
+          detail={[
+            `${summary.positionCount} positions · ${summary.accountCount} comptes`,
+            summary.quoteCoverage.total > 0
+              ? `${summary.quoteCoverage.matched}/${summary.quoteCoverage.total} tickers avec cours`
+              : "Aucun cours — clique Actualiser les cours",
+          ].join(" · ")}
+        />
         <KpiCard
           label="Concentration max"
           value={formatPercent(summary.maxConcentration)}
@@ -42,20 +100,16 @@ export default async function OverviewPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <KpiCard
-          label="Variation vs import précédent"
+          label="Variation vs Disnat"
           value={
-            summary.variationVsPrevious === null
-              ? "Non disponible"
-              : formatCurrency(summary.variationVsPrevious)
+            summary.driftVsDisnatPct === null
+              ? "—"
+              : formatPercent(summary.driftVsDisnatPct)
           }
-          detail={
-            summary.variationPctVsPrevious === null
-              ? "Import initial"
-              : formatPercent(summary.variationPctVsPrevious)
-          }
+          detail="Écart entre cours live et valeur snapshot Disnat"
         />
         <KpiCard
-          label="Répartition CAD/USD"
+          label="Répartition CAD / USD"
           value={summary.currencyExposure
             .map((item) => `${item.currency} ${formatCurrency(item.value, item.currency)}`)
             .join(" · ")}
@@ -108,7 +162,7 @@ function EmptyState({
           href="/imports"
           className="mt-5 rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
-          Importer un CSV
+          Importer un fichier
         </Link>
       </CardContent>
     </Card>

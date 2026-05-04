@@ -11,6 +11,7 @@ import type {
 
 const normalizedPositionSchema = z.object({
   accountName: z.string().min(1),
+  accountNumber: z.string().optional(),
   accountType: z.string().optional(),
   ticker: z.string().min(1),
   securityName: z.string().optional(),
@@ -53,7 +54,18 @@ const columnAliases = {
   cashValue: ["encaisse", "cash", "cash value", "solde"],
   sector: ["secteur", "sector"],
   assetType: ["type actif", "asset type", "categorie", "catégorie"],
-  tradeDate: ["date", "date de transaction", "date de la transaction", "trade date"],
+  tradeDate: [
+    "date",
+    "date de transaction",
+    "date de la transaction",
+    "trade date",
+    "date doperation",
+    "date d'operation",
+    "date opération",
+    "date operation",
+    "dt transaction",
+    "date valeur",
+  ],
   settlementDate: [
     "date de reglement",
     "date de règlement",
@@ -76,6 +88,11 @@ const columnAliases = {
     "numro de carte",
     "numero de carte",
     "account number",
+    "no compte",
+    "no. compte",
+    "no de compte",
+    "compte #",
+    "# compte",
   ],
   amount: ["montant", "amount", "net amount", "montant net"],
   debit: ["debit", "débit", "dbit"],
@@ -143,6 +160,7 @@ export function normalizeDisnatRows(
       readText(row, columnAliases.accountName) ||
       readText(row, ["nom", "name"]) ||
       "Compte Disnat";
+    const accountNumber = readText(row, columnAliases.accountNumber) || undefined;
     const currency = inferCurrency(row);
     const marketValue = readMoney(row, columnAliases.marketValue);
     const totalValue = readMoney(row, columnAliases.totalValue);
@@ -161,6 +179,7 @@ export function normalizeDisnatRows(
     if (!ticker && (cashValue !== undefined || marketValue !== undefined || totalValue !== undefined)) {
       upsertAccount(cashByAccount, {
         accountName,
+        accountNumber,
         accountType: readText(row, columnAliases.accountType) || undefined,
         currency,
         cashValue: cashValue ?? Math.max((totalValue ?? 0) - (marketValue ?? 0), 0),
@@ -181,6 +200,7 @@ export function normalizeDisnatRows(
 
     const candidate = {
       accountName,
+      accountNumber,
       accountType: readText(row, columnAliases.accountType) || undefined,
       ticker: ticker.toUpperCase(),
       securityName: readText(row, columnAliases.securityName) || undefined,
@@ -203,6 +223,7 @@ export function normalizeDisnatRows(
     positions.push(parsed.data);
     upsertAccount(cashByAccount, {
       accountName,
+      accountNumber: parsed.data.accountNumber,
       accountType: parsed.data.accountType,
       currency,
       cashValue: 0,
@@ -238,15 +259,50 @@ export function buildPortfolioSnapshot(
   return normalizeDisnatRows(normalizedRows);
 }
 
+/** Fenêtre temporelle déduite des lignes d’opérations (min / max des dates lues). */
+export function computeSnapshotTemporalBounds(snapshot: PortfolioSnapshotInput): {
+  dataFrom: Date | null;
+  dataTo: Date | null;
+} {
+  const times: number[] = [];
+  for (const t of snapshot.transactions) {
+    if (t.tradeDate) {
+      times.push(t.tradeDate.getTime());
+    }
+    if (t.settlementDate) {
+      times.push(t.settlementDate.getTime());
+    }
+  }
+  if (times.length === 0) {
+    return { dataFrom: null, dataTo: null };
+  }
+  return {
+    dataFrom: new Date(Math.min(...times)),
+    dataTo: new Date(Math.max(...times)),
+  };
+}
+
+function accountMergeKey(name: string, currency: string, accountNumber?: string) {
+  const n = accountNumber?.replace(/\s/g, "") ?? "";
+  if (n) {
+    return `n:${n}|${currency}`;
+  }
+  return `name:${name}|${currency}`;
+}
+
 function upsertAccount(
   map: Map<string, NormalizedDisnatAccount>,
   account: NormalizedDisnatAccount,
 ) {
-  const key = `${account.accountName}-${account.currency}`;
+  const key = accountMergeKey(account.accountName, account.currency, account.accountNumber);
   const current = map.get(key);
 
   map.set(key, {
-    accountName: account.accountName,
+    accountName:
+      current && current.accountName !== account.accountName
+        ? `${current.accountName} · ${account.accountName}`.slice(0, 160)
+        : account.accountName,
+    accountNumber: account.accountNumber ?? current?.accountNumber,
     accountType: current?.accountType ?? account.accountType,
     currency: account.currency,
     cashValue: (current?.cashValue ?? 0) + account.cashValue,
@@ -347,13 +403,44 @@ function readTransactionAmount(row: ParsedDisnatRow) {
   return (credit ?? 0) - (debit ?? 0);
 }
 
+function excelSerialToDate(serial: number): Date | undefined {
+  const rounded = Math.round(serial);
+  if (rounded < 1 || rounded > 1_000_000) {
+    return undefined;
+  }
+  const excelEpochUtc = Date.UTC(1899, 11, 30);
+  const ms = excelEpochUtc + rounded * 86400000;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
 function readDate(row: ParsedDisnatRow, aliases: readonly string[]) {
   const raw = readRaw(row, aliases);
   if (!raw) {
     return undefined;
   }
 
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    const fromSerial = excelSerialToDate(raw);
+    if (fromSerial) {
+      return fromSerial;
+    }
+  }
+
   const value = String(raw).trim();
+  const compactNum = Number.parseFloat(value.replace(",", "."));
+  if (
+    Number.isFinite(compactNum) &&
+    compactNum > 25000 &&
+    compactNum < 120000 &&
+    !/[/-]/.test(value)
+  ) {
+    const fromSerial = excelSerialToDate(compactNum);
+    if (fromSerial) {
+      return fromSerial;
+    }
+  }
+
   const isoLike = value.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
   const frenchLike = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   const date = isoLike
@@ -460,9 +547,8 @@ function countDelimiter(lines: string[], delimiter: string) {
   );
 }
 
-function isDisnatHeaderLine(line: string, delimiter: string) {
-  const normalizedCells = line.split(delimiter).map(normalizeHeader);
-  const expected = [
+function disnatTableHeaderMarkers(): string[] {
+  return [
     "nom",
     "compte",
     "devise",
@@ -471,7 +557,124 @@ function isDisnatHeaderLine(line: string, delimiter: string) {
     "valeur totale ($)",
     "symbole",
     "ticker",
-  ];
+  ].map(normalizeHeader);
+}
+
+function headersLookLikeDisnatTable(headers: string[]): boolean {
+  const normalizedCells = headers.map(normalizeHeader);
+  const expected = disnatTableHeaderMarkers();
+  return expected.filter((marker) => normalizedCells.includes(marker)).length >= 3;
+}
+
+function disnatBrandingInPreamble(fileText: string): boolean {
+  const head = fileText.slice(0, 5000).toLowerCase();
+  return (
+    /\bdisnat\b/.test(head) ||
+    /\bdesjardins\b/.test(head) ||
+    /\bdes\s*jardins\b/.test(head)
+  );
+}
+
+function disnatInvestmentHeaderSignalScore(normalizedHeaders: string[]): number {
+  let score = 0;
+
+  for (const h of normalizedHeaders) {
+    if (
+      h.includes("valeur marchande") ||
+      h.includes("market value") ||
+      h.includes("valeur des titres") ||
+      h.includes("valeur totale") ||
+      h.includes("total value")
+    ) {
+      score += 2;
+      continue;
+    }
+    if (
+      h.includes("cout moyen") ||
+      h.includes("average cost") ||
+      h.includes("avg cost")
+    ) {
+      score += 2;
+      continue;
+    }
+    if (
+      (h.includes("gain") && (h.includes("perte") || h.includes("loss"))) ||
+      h.includes("unrealized") ||
+      h.includes("profits non")
+    ) {
+      score += 2;
+      continue;
+    }
+    if (h.includes("encaisse") || h.includes("cash value")) {
+      score += 2;
+      continue;
+    }
+    if (
+      h.includes("date de reglement") ||
+      h.includes("date dinscription") ||
+      h.includes("settlement date") ||
+      h.includes("trade date") ||
+      h.includes("date de transaction")
+    ) {
+      score += 1;
+      continue;
+    }
+    if (h.includes("numero de compte") || h.includes("account number")) {
+      score += 1;
+      continue;
+    }
+    if (h.includes("type de compte") || h.includes("account type")) {
+      score += 1;
+      continue;
+    }
+  }
+
+  return score;
+}
+
+export type DisnatInvestmentCsvValidation =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/**
+ * Rejette les CSV génériques dont les colonnes (date, montant, type…) collent
+ * au mapping alors que l’export ne ressemble pas à un relevé Disnat.
+ */
+export function validateDisnatInvestmentExportFile(input: {
+  rawText: string;
+  headers: string[];
+  importKind: CsvImportKind;
+}): DisnatInvestmentCsvValidation {
+  const normalizedHeaders = input.headers.map(normalizeHeader);
+  const branding = disnatBrandingInPreamble(input.rawText);
+  const tableLike = headersLookLikeDisnatTable(input.headers);
+  const signals = disnatInvestmentHeaderSignalScore(normalizedHeaders);
+
+  const fingerprintOk =
+    tableLike || signals >= 3 || (branding && signals >= 2);
+
+  if (!fingerprintOk) {
+    return {
+      ok: false,
+      message:
+        "Ce fichier ne ressemble pas à un export Disnat (positions, encaisses ou opérations). Utilise un fichier CSV ou Excel exporté depuis Disnat, avec des colonnes du type « Valeur marchande », « Encaisse », « Date de règlement », etc.",
+    };
+  }
+
+  if (input.importKind === "UNKNOWN") {
+    return {
+      ok: false,
+      message:
+        "Le type d’export n’a pas été reconnu (positions, solde ou activité). Vérifie le fichier ou réessaie avec un export Disnat standard.",
+    };
+  }
+
+  return { ok: true };
+}
+
+function isDisnatHeaderLine(line: string, delimiter: string) {
+  const normalizedCells = line.split(delimiter).map(normalizeHeader);
+  const expected = disnatTableHeaderMarkers();
 
   return expected.filter((header) => normalizedCells.includes(header)).length >= 3;
 }

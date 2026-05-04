@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
-import { parseDisnatCsv, buildPortfolioSnapshot } from "@/lib/csv/disnat";
+import {
+  buildPortfolioSnapshot,
+  computeSnapshotTemporalBounds,
+  parseDisnatCsv,
+  validateDisnatInvestmentExportFile,
+} from "@/lib/csv/disnat";
+import { importFileToParseText } from "@/lib/csv/import-file-text";
 import { prisma } from "@/lib/db/prisma";
 import { getImportHistory } from "@/features/portfolio/queries";
+import { refreshLiveQuotesForLatestImport } from "@/features/portfolio/refresh-live-quotes";
+import { upsertPortfolioStateFromSnapshot } from "@/features/portfolio/upsert-portfolio-state";
 import { Prisma } from "@/generated/prisma/client";
 
 export async function GET() {
@@ -19,13 +27,42 @@ export async function POST(request: Request) {
 
   if (!(file instanceof File)) {
     return NextResponse.json(
-      { error: "Aucun fichier CSV reçu." },
+      { error: "Aucun fichier reçu." },
       { status: 400 },
     );
   }
 
-  const fileText = await file.text();
+  let fileText: string;
+  try {
+    fileText = await importFileToParseText(file);
+  } catch (cause) {
+    return NextResponse.json(
+      {
+        error:
+          cause instanceof Error
+            ? cause.message
+            : "Impossible de lire le fichier.",
+      },
+      { status: 400 },
+    );
+  }
   const parsed = parseDisnatCsv(fileText);
+  const disnatCheck = validateDisnatInvestmentExportFile({
+    rawText: fileText,
+    headers: parsed.headers,
+    importKind: parsed.importKind,
+  });
+
+  if (!disnatCheck.ok) {
+    return NextResponse.json(
+      {
+        error: disnatCheck.message,
+        details: parsed.errors.map((error) => error.message),
+      },
+      { status: 422 },
+    );
+  }
+
   const snapshot = buildPortfolioSnapshot(parsed.rows);
 
   if (
@@ -44,6 +81,7 @@ export async function POST(request: Request) {
   }
 
   const savedImport = await prisma.$transaction(async (tx) => {
+    const temporal = computeSnapshotTemporalBounds(snapshot);
     const portfolioImport = await tx.portfolioImport.create({
       data: {
         sourceFileName: file.name,
@@ -52,15 +90,30 @@ export async function POST(request: Request) {
         rawHeaderJson: parsed.headers,
         rawRowCount: parsed.rows.length,
         notes: snapshot.warnings.length > 0 ? snapshot.warnings.join("\n") : null,
+        dataFromDate: temporal.dataFrom ?? undefined,
+        dataToDate: temporal.dataTo ?? undefined,
       },
     });
 
     const accountIdByKey = new Map<string, string>();
+    function accountRowKey(input: {
+      accountName: string;
+      currency: string;
+      accountNumber?: string | null;
+    }) {
+      const n = input.accountNumber?.replace(/\s/g, "") ?? "";
+      if (n) {
+        return `${n}|${input.currency}`;
+      }
+      return `name:${input.accountName}|${input.currency}`;
+    }
+
     for (const account of snapshot.accounts) {
       const created = await tx.portfolioAccount.create({
         data: {
           importId: portfolioImport.id,
           accountName: account.accountName,
+          accountNumber: account.accountNumber ?? null,
           accountType: account.accountType,
           currency: account.currency,
           cashValue: account.cashValue,
@@ -68,7 +121,7 @@ export async function POST(request: Request) {
           totalValue: account.totalValue,
         },
       });
-      accountIdByKey.set(`${account.accountName}-${account.currency}`, created.id);
+      accountIdByKey.set(accountRowKey(account), created.id);
     }
 
     if (snapshot.positions.length > 0) {
@@ -76,8 +129,9 @@ export async function POST(request: Request) {
         data: snapshot.positions.map((position) => ({
           importId: portfolioImport.id,
           accountId:
-            accountIdByKey.get(`${position.accountName}-${position.currency}`) ??
+            accountIdByKey.get(accountRowKey(position)) ??
             null,
+          accountNumber: position.accountNumber ?? null,
           ticker: position.ticker,
           securityName: position.securityName,
           currency: position.currency,
@@ -116,6 +170,17 @@ export async function POST(request: Request) {
 
     return portfolioImport;
   });
+
+  // Mise à jour des tables d'état courant synthétisé (PortfolioHolding / PortfolioAccountState)
+  if (snapshot.positions.length > 0 || snapshot.accounts.length > 0) {
+    const temporal = computeSnapshotTemporalBounds(snapshot);
+    const asOf = temporal.dataTo ?? savedImport.importedAt;
+    void upsertPortfolioStateFromSnapshot(snapshot, savedImport.id, asOf).catch(() => {});
+  }
+
+  if (snapshot.positions.length > 0) {
+    void refreshLiveQuotesForLatestImport().catch(() => {});
+  }
 
   return NextResponse.json({
     import: savedImport,

@@ -7,11 +7,18 @@ import { Upload } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { parseDisnatCsv, buildPortfolioSnapshot } from "@/lib/csv/disnat";
+import {
+  buildPortfolioSnapshot,
+  parseDisnatCsv,
+  validateDisnatInvestmentExportFile,
+} from "@/lib/csv/disnat";
+import { importFileToParseText } from "@/lib/csv/import-file-text";
 import type { ParsedDisnatRow } from "@/types/portfolio";
 
 const importSchema = z.object({
-  file: z.instanceof(File, { message: "Sélectionne un fichier CSV." }),
+  file: z.instanceof(File, {
+    message: "Sélectionne un fichier CSV ou Excel (.csv, .xlsx).",
+  }),
 });
 
 type ImportForm = z.infer<typeof importSchema>;
@@ -36,13 +43,17 @@ export function ImportsClient({
   const [messages, setMessages] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [imports, setImports] = useState(initialImports);
+  const [disnatGate, setDisnatGate] = useState<
+    { ok: true } | { ok: false; message: string } | null
+  >(null);
   const form = useForm<ImportForm>({
     resolver: zodResolver(importSchema),
   });
 
   const snapshot = useMemo(() => buildPortfolioSnapshot(rows), [rows]);
   const canSave =
-    file &&
+    !!file &&
+    disnatGate?.ok === true &&
     (snapshot.positions.length > 0 ||
       snapshot.accounts.length > 0 ||
       snapshot.transactions.length > 0);
@@ -52,18 +63,37 @@ export function ImportsClient({
     setRows([]);
     setHeaders([]);
     setMessages([]);
+    setDisnatGate(null);
 
     if (!selectedFile) {
       return;
     }
 
     form.setValue("file", selectedFile, { shouldValidate: true });
-    const text = await selectedFile.text();
+
+    let text: string;
+    try {
+      text = await importFileToParseText(selectedFile);
+    } catch (cause) {
+      const msg =
+        cause instanceof Error ? cause.message : "Impossible de lire le fichier.";
+      setDisnatGate({ ok: false, message: msg });
+      setMessages([msg]);
+      return;
+    }
+
     const parsed = parseDisnatCsv(text);
+    const gate = validateDisnatInvestmentExportFile({
+      rawText: text,
+      headers: parsed.headers,
+      importKind: parsed.importKind,
+    });
+    setDisnatGate(gate);
     setRows(parsed.rows);
     setHeaders(parsed.headers);
     setMessages([
-      ...parsed.errors.map((error) => `CSV: ${error.message}`),
+      ...(gate.ok ? [] : [gate.message]),
+      ...parsed.errors.map((error) => `Fichier: ${error.message}`),
       ...buildPortfolioSnapshot(parsed.rows).warnings,
     ]);
   }
@@ -77,31 +107,62 @@ export function ImportsClient({
     setIsSaving(true);
     setMessages([]);
 
-    const formData = new FormData();
-    formData.append("file", file);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    const response = await fetch("/api/imports", {
-      method: "POST",
-      body: formData,
-    });
-    const payload = await response.json();
-    setIsSaving(false);
+      const response = await fetch("/api/imports", {
+        method: "POST",
+        body: formData,
+      });
+      type ImportResponsePayload = {
+        error?: string;
+        details?: unknown;
+      };
+      let payload: ImportResponsePayload | null = null;
 
-    if (!response.ok) {
-      setMessages([payload.error ?? "Import impossible.", ...(payload.details ?? [])]);
-      return;
+      try {
+        payload = (await response.json()) as ImportResponsePayload;
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok) {
+        const detailsArray = Array.isArray(payload?.details)
+          ? (payload?.details as string[])
+          : [];
+        const errorText =
+          !payload?.error && !response.ok
+            ? response.status >= 500
+              ? `Erreur serveur (${response.status}). Regénère Prisma puis redémarre le serveur (pnpm prisma:generate, puis nouveau pnpm dev).`
+              : `Import impossible (${response.status}).`
+            : undefined;
+        setMessages([
+          payload?.error ?? errorText ?? "Import impossible.",
+          ...detailsArray,
+        ]);
+        return;
+      }
+
+      setMessages(["Import sauvegardé et portefeuille recalculé."]);
+      const historyResponse = await fetch("/api/imports");
+      const historyPayload = await historyResponse.json();
+      setImports(historyPayload.imports ?? []);
+    } catch (cause) {
+      setMessages([
+        cause instanceof Error
+          ? cause.message
+          : "Erreur réseau lors de la sauvegarde.",
+      ]);
+    } finally {
+      setIsSaving(false);
     }
-
-    setMessages(["Import sauvegardé et portefeuille recalculé."]);
-    const historyResponse = await fetch("/api/imports");
-    const historyPayload = await historyResponse.json();
-    setImports(historyPayload.imports ?? []);
   }
 
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm text-slate-500">Import CSV Disnat</p>
+        <p className="text-sm text-slate-500">Import Disnat (CSV ou Excel)</p>
         <h2 className="text-2xl font-semibold text-slate-950">Imports</h2>
         <p className="mt-1 text-sm text-slate-500">
           Le mapping accepte plusieurs variantes de colonnes Disnat et signale les
@@ -122,15 +183,17 @@ export function ImportsClient({
           >
             <Upload className="size-8 text-slate-500" />
             <span className="mt-3 text-sm font-medium text-slate-950">
-              Dépose un CSV ici ou clique pour sélectionner
+              Dépose un fichier ici ou clique pour sélectionner
             </span>
             <span className="mt-1 text-xs text-slate-500">
-              {file ? file.name : "Format .csv exporté depuis Disnat"}
+              {file
+                ? file.name
+                : ".csv ou .xlsx exporté depuis Disnat (1re feuille pour Excel)"}
             </span>
             <input
               id="csv-file"
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               className="sr-only"
               onChange={(event) => void handleFile(event.target.files?.[0] ?? null)}
             />
