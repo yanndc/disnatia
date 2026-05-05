@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,17 @@ const suggestedQuestions = [
   "Si je déplace 2000 CAD de BBD.B vers XEQT, qu'est-ce que ça change?",
 ];
 
-export function ChatPanel() {
+export function ChatPanel({
+  sessionId,
+  initialMessages,
+}: {
+  sessionId: string;
+  initialMessages: UIMessage[];
+}) {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, error } = useChat({
+    id: sessionId,
+    messages: initialMessages,
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 

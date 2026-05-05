@@ -328,7 +328,7 @@ export async function getPortfolioSummary() {
 
   const topPositions = enrichedPositions
     .toSorted((a, b) => positionDisplayValueCad(b, usdToCad) - positionDisplayValueCad(a, usdToCad))
-    .slice(0, 5)
+    .slice(0, 8)
     .map((p) => ({
       ticker: p.ticker,
       marketValue: positionDisplayValueCad(p, usdToCad),

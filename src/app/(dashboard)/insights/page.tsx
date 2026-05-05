@@ -1,6 +1,12 @@
 import { ChatPanel } from "@/features/chat/chat-panel";
+import {
+  loadPortfolioInsightsMessages,
+  PORTFOLIO_INSIGHTS_CHAT_SESSION_ID,
+} from "@/features/chat/portfolio-insights-chat";
 
-export default function InsightsPage() {
+export default async function InsightsPage() {
+  const initialMessages = await loadPortfolioInsightsMessages();
+
   return (
     <div className="space-y-6">
       <section>
@@ -11,7 +17,10 @@ export default function InsightsPage() {
           portefeuille.
         </p>
       </section>
-      <ChatPanel />
+      <ChatPanel
+        sessionId={PORTFOLIO_INSIGHTS_CHAT_SESSION_ID}
+        initialMessages={initialMessages}
+      />
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { BarChart3, CircleDollarSign, Gauge, ShieldCheck, type LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ShieldCheck } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { CurrencyExposureKpiCard } from "@/features/portfolio/currency-exposure-kpi-card";
-import { PortfolioCharts } from "@/features/portfolio/portfolio-charts";
+import { PortfolioCompositionKpiCard } from "@/features/portfolio/portfolio-composition-kpi-card";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getPortfolioSummary } from "@/features/portfolio/queries";
+import { TopPositionsKpiCard } from "@/features/portfolio/top-positions-kpi-card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export default async function OverviewPage() {
   return (
     <div className="space-y-8">
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-sm">
-        <div className="relative isolate grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.4fr_0.8fr]">
+        <div className="relative isolate p-6 sm:p-8">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.28),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.18),transparent_30%)]" />
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-100">
@@ -57,58 +58,34 @@ export default async function OverviewPage() {
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
               Suivi de la valeur reconstruite depuis les données importées : positions,
-              encaisse, devises et concentration.
+              encaisse, devises et principaux titres.
             </p>
 
-            <div className="mt-7 grid gap-3 text-sm sm:grid-cols-3">
-              <InfoPill label="Référence" value={referenceLabel} />
-              <InfoPill label="Dernier import" value={importLabel} />
-              <InfoPill label="Cours" value={quotesLabel} />
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm text-slate-300">Valeur reconstruite</p>
-                <p className="mt-2 text-4xl font-semibold">{formatCurrency(summary.totalValue)}</p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <div className="grid flex-1 gap-3 text-sm sm:grid-cols-3 min-w-[12rem]">
+                <InfoPill label="Référence" value={referenceLabel} />
+                <InfoPill label="Dernier import" value={importLabel} />
+                <InfoPill label="Cours" value={quotesLabel} />
               </div>
               <RefreshQuotesButton />
-            </div>
-            <div className="mt-6 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
-              <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-xs text-slate-400">Encaisse connue</p>
-                <p className="mt-1 text-xl font-semibold text-white">{formatCurrency(summary.cashValue)}</p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-xs text-slate-400">Titres reconstruits</p>
-                <p className="mt-1 text-xl font-semibold text-white">{formatCurrency(summary.displayPositionsValue)}</p>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          icon={CircleDollarSign}
-          label="Valeur reconstruite"
-          value={formatCurrency(summary.totalValue)}
-          detail="Positions recalculées + encaisse connue"
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <PortfolioCompositionKpiCard
+          totalValue={summary.totalValue}
+          positionsValue={summary.displayPositionsValue}
+          cashValue={summary.cashValue}
+          detail={[
+            `${summary.positionCount} positions`,
+            quoteCoverageLabel,
+            "Positions recalculées + encaisse connue",
+          ].join(" · ")}
         />
         <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
-        <KpiCard
-          icon={BarChart3}
-          label="Titres reconstruits"
-          value={formatCurrency(summary.displayPositionsValue)}
-          detail={[`${summary.positionCount} positions`, quoteCoverageLabel].join(" · ")}
-        />
-        <KpiCard
-          icon={Gauge}
-          label="Concentration max"
-          value={formatPercent(summary.maxConcentration)}
-          detail="Poids de la plus grande position reconstruite"
-        />
+        <TopPositionsKpiCard topPositions={summary.topPositions} totalValue={summary.totalValue} />
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
@@ -136,41 +113,7 @@ export default async function OverviewPage() {
           </div>
         </div>
       </section>
-
-      <PortfolioCharts
-        currencyExposure={summary.currencyExposure}
-        topPositions={summary.topPositions}
-      />
     </div>
-  );
-}
-
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-  detail,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  detail?: string;
-}) {
-  return (
-    <Card className="overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <CardTitle className="text-slate-500">{label}</CardTitle>
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
-            <Icon className="size-5" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
-        {detail ? <p className="mt-1 text-sm text-slate-500">{detail}</p> : null}
-      </CardContent>
-    </Card>
   );
 }
 
