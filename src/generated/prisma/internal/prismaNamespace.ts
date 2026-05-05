@@ -392,7 +392,8 @@ export const ModelName = {
   PortfolioLiveQuote: 'PortfolioLiveQuote',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
-  ChatMessage: 'ChatMessage'
+  ChatMessage: 'ChatMessage',
+  UsdCadDailyRate: 'UsdCadDailyRate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -408,7 +409,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioTransactionLine" | "chatSession" | "chatMessage"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "usdCadDailyRate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1078,6 +1079,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    UsdCadDailyRate: {
+      payload: Prisma.$UsdCadDailyRatePayload<ExtArgs>
+      fields: Prisma.UsdCadDailyRateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.UsdCadDailyRateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.UsdCadDailyRateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>
+        }
+        findFirst: {
+          args: Prisma.UsdCadDailyRateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.UsdCadDailyRateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>
+        }
+        findMany: {
+          args: Prisma.UsdCadDailyRateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>[]
+        }
+        create: {
+          args: Prisma.UsdCadDailyRateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>
+        }
+        createMany: {
+          args: Prisma.UsdCadDailyRateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.UsdCadDailyRateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>[]
+        }
+        delete: {
+          args: Prisma.UsdCadDailyRateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>
+        }
+        update: {
+          args: Prisma.UsdCadDailyRateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>
+        }
+        deleteMany: {
+          args: Prisma.UsdCadDailyRateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.UsdCadDailyRateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.UsdCadDailyRateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>[]
+        }
+        upsert: {
+          args: Prisma.UsdCadDailyRateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UsdCadDailyRatePayload>
+        }
+        aggregate: {
+          args: Prisma.UsdCadDailyRateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUsdCadDailyRate>
+        }
+        groupBy: {
+          args: Prisma.UsdCadDailyRateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UsdCadDailyRateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.UsdCadDailyRateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UsdCadDailyRateCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1271,6 +1346,18 @@ export const ChatMessageScalarFieldEnum = {
 } as const
 
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
+
+
+export const UsdCadDailyRateScalarFieldEnum = {
+  id: 'id',
+  rateDate: 'rateDate',
+  usdToCad: 'usdToCad',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UsdCadDailyRateScalarFieldEnum = (typeof UsdCadDailyRateScalarFieldEnum)[keyof typeof UsdCadDailyRateScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1571,6 +1658,7 @@ export type GlobalOmitConfig = {
   portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit
+  usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
 }
 
 /* Types for Logging */

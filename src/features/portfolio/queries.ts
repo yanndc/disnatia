@@ -1,3 +1,4 @@
+import type { PortfolioPosition } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import {
   enrichPositionRow,
@@ -5,8 +6,51 @@ import {
   withDisplayWeights,
   type EnrichedPosition,
 } from "./live-enrichment";
+import { makeAccountKey } from "./upsert-portfolio-state";
 
 export type { EnrichedPosition };
+
+type MergedImportedPosition = {
+  position: PortfolioPosition;
+  accountDisplayName: string;
+  asOf: Date;
+};
+
+/**
+ * Même logique que l'UPSERT holdings : état « courant » dérivé des lignes importées,
+ * en prenant la ligne la plus récente par (compte + ticker + devise).
+ * Utilisé quand portfolio_holdings est vide (ex. upsert post-import tombé dans le vide).
+ */
+async function loadMergedImportedPositions(): Promise<MergedImportedPosition[]> {
+  const imports = await prisma.portfolioImport.findMany({
+    where: { positions: { some: {} } },
+    include: { accounts: true, positions: true },
+    orderBy: { importedAt: "asc" },
+  });
+
+  const map = new Map<string, MergedImportedPosition>();
+
+  for (const imp of imports) {
+    const asOf = imp.dataToDate ?? imp.importedAt;
+    for (const p of imp.positions) {
+      const acc = p.accountId ? imp.accounts.find((a) => a.id === p.accountId) : undefined;
+      const accountName =
+        acc?.accountName ?? (p.accountNumber ? String(p.accountNumber) : null) ?? "Compte Disnat";
+      const accountNumber = acc?.accountNumber ?? p.accountNumber ?? null;
+      const accountKey = makeAccountKey(accountName, p.currency, accountNumber);
+      const ticker = p.ticker.toUpperCase();
+      const currency = p.currency.toUpperCase();
+      const mergeKey = `${accountKey}|${ticker}|${currency}`;
+      const prev = map.get(mergeKey);
+      if (prev && prev.asOf >= asOf) continue;
+
+      const accountDisplayName = `${accountName}${accountNumber ? ` (${accountNumber})` : ""}`;
+      map.set(mergeKey, { position: p, accountDisplayName, asOf });
+    }
+  }
+
+  return Array.from(map.values());
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,60 +91,13 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
   const holdings = await prisma.portfolioHolding.findMany({
     orderBy: { snapshotValue: "desc" },
   });
-  if (holdings.length === 0) return [];
 
-  const quotes = await loadQuotesForHoldings(holdings);
-  const quoteMap = indexQuotesByTickerCurrency(quotes);
+  let rows: ReturnType<typeof enrichPositionRow>[];
 
-  const rows = holdings.map((h) =>
-    enrichPositionRow(
-      {
-        id: h.id,
-        importId: h.sourceImportId,
-        accountId: null,
-        accountNumber: h.accountNumber ?? null,
-        ticker: h.ticker,
-        securityName: h.securityName ?? "",
-        currency: h.currency,
-        quantity: h.quantity,
-        averageCost: h.averageCost ?? null,
-        marketPrice: h.snapshotPrice ?? null,
-        marketValue: h.snapshotValue,
-        unrealizedGainLoss: h.unrealizedGainLoss ?? null,
-        weightPct: null,
-        sector: h.sector ?? null,
-        assetType: h.assetType ?? null,
-      },
-      `${h.accountName}${h.accountNumber ? ` (${h.accountNumber})` : ""}`,
-      quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
-    ),
-  );
-
-  return withDisplayWeights(rows).toSorted((a, b) => b.displayMarketValue - a.displayMarketValue);
-}
-
-/** Résumé du tableau de bord, basé sur l'état synthétisé. */
-export async function getPortfolioSummary() {
-  const [holdings, accountStates, anyImportCount, txGlobal] = await Promise.all([
-    prisma.portfolioHolding.findMany({ orderBy: { snapshotValue: "desc" } }),
-    prisma.portfolioAccountState.findMany(),
-    prisma.portfolioImport.count(),
-    prisma.portfolioTransactionLine.aggregate({
-      _min: { tradeDate: true },
-      _max: { tradeDate: true },
-      _count: { _all: true },
-    }),
-  ]);
-
-  if (holdings.length === 0 && accountStates.length === 0) {
-    return { ...emptySummary(), hasAnyImportsInHistory: anyImportCount > 0 };
-  }
-
-  const quotes = await loadQuotesForHoldings(holdings);
-  const quoteMap = indexQuotesByTickerCurrency(quotes);
-
-  const enrichedPositions = withDisplayWeights(
-    holdings.map((h) =>
+  if (holdings.length > 0) {
+    const quotes = await loadQuotesForHoldings(holdings);
+    const quoteMap = indexQuotesByTickerCurrency(quotes);
+    rows = holdings.map((h) =>
       enrichPositionRow(
         {
           id: h.id,
@@ -122,7 +119,94 @@ export async function getPortfolioSummary() {
         `${h.accountName}${h.accountNumber ? ` (${h.accountNumber})` : ""}`,
         quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
       ),
-    ),
+    );
+  } else {
+    const merged = await loadMergedImportedPositions();
+    if (merged.length === 0) return [];
+    const quotes = await loadQuotesForHoldings(
+      merged.map((m) => ({ ticker: m.position.ticker, currency: m.position.currency })),
+    );
+    const quoteMap = indexQuotesByTickerCurrency(quotes);
+    rows = merged.map((m) =>
+      enrichPositionRow(
+        m.position,
+        m.accountDisplayName,
+        quoteMap.get(`${m.position.ticker.toUpperCase()}|${m.position.currency.toUpperCase()}`),
+      ),
+    );
+  }
+
+  return withDisplayWeights(rows).toSorted((a, b) => b.displayMarketValue - a.displayMarketValue);
+}
+
+/** Résumé du tableau de bord, basé sur l'état synthétisé. */
+export async function getPortfolioSummary() {
+  const [holdings, accountStates, anyImportCount, txGlobal] = await Promise.all([
+    prisma.portfolioHolding.findMany({ orderBy: { snapshotValue: "desc" } }),
+    prisma.portfolioAccountState.findMany(),
+    prisma.portfolioImport.count(),
+    prisma.portfolioTransactionLine.aggregate({
+      _min: { tradeDate: true },
+      _max: { tradeDate: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const mergedImported =
+    holdings.length === 0 ? await loadMergedImportedPositions() : [];
+
+  if (
+    holdings.length === 0 &&
+    accountStates.length === 0 &&
+    mergedImported.length === 0
+  ) {
+    return { ...emptySummary(), hasAnyImportsInHistory: anyImportCount > 0 };
+  }
+
+  const quoteSource =
+    holdings.length > 0
+      ? holdings
+      : mergedImported.map((m) => ({
+          ticker: m.position.ticker,
+          currency: m.position.currency,
+        }));
+  const quotes = await loadQuotesForHoldings(quoteSource);
+  const quoteMap = indexQuotesByTickerCurrency(quotes);
+
+  const enrichedPositions = withDisplayWeights(
+    holdings.length > 0
+      ? holdings.map((h) =>
+          enrichPositionRow(
+            {
+              id: h.id,
+              importId: h.sourceImportId,
+              accountId: null,
+              accountNumber: h.accountNumber ?? null,
+              ticker: h.ticker,
+              securityName: h.securityName ?? "",
+              currency: h.currency,
+              quantity: h.quantity,
+              averageCost: h.averageCost ?? null,
+              marketPrice: h.snapshotPrice ?? null,
+              marketValue: h.snapshotValue,
+              unrealizedGainLoss: h.unrealizedGainLoss ?? null,
+              weightPct: null,
+              sector: h.sector ?? null,
+              assetType: h.assetType ?? null,
+            },
+            `${h.accountName}${h.accountNumber ? ` (${h.accountNumber})` : ""}`,
+            quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
+          ),
+        )
+      : mergedImported.map((m) =>
+          enrichPositionRow(
+            m.position,
+            m.accountDisplayName,
+            quoteMap.get(
+              `${m.position.ticker.toUpperCase()}|${m.position.currency.toUpperCase()}`,
+            ),
+          ),
+        ),
   );
 
   const cashValue = sum(accountStates.map((a) => a.cashValue));
@@ -143,17 +227,20 @@ export async function getPortfolioSummary() {
   const matchedQuotes = enrichedPositions.filter((p) => p.usesLiveQuote).length;
 
   // Date de référence globale = date la plus récente parmi tous les états de compte
-  const allAsOf = [
-    ...accountStates.map((a) => a.asOf),
-    ...holdings.map((h) => h.asOf),
-  ];
+  const holdingAsOfSource =
+    holdings.length > 0
+      ? holdings.map((h) => h.asOf)
+      : mergedImported.map((m) => m.asOf);
+  const allAsOf = [...accountStates.map((a) => a.asOf), ...holdingAsOfSource];
   const referenceAsOf = allAsOf.length > 0 ? new Date(Math.max(...allAsOf.map((d) => d.getTime()))) : null;
   const snapshotDataFrom = allAsOf.length > 0 ? new Date(Math.min(...allAsOf.map((d) => d.getTime()))) : null;
 
   const distinctAccountNumbers = [
     ...new Set([
       ...accountStates.map((a) => a.accountNumber?.trim()).filter(Boolean),
-      ...holdings.map((h) => h.accountNumber?.trim()).filter(Boolean),
+      ...(holdings.length > 0
+        ? holdings.map((h) => h.accountNumber?.trim()).filter(Boolean)
+        : mergedImported.map((m) => m.position.accountNumber?.trim()).filter(Boolean)),
     ] as string[]),
   ].slice(0, 24);
 
@@ -202,7 +289,7 @@ export async function getPortfolioSummary() {
     quoteCoverage: { matched: matchedQuotes, total: enrichedPositions.length },
     quotesAsOf,
     cashValue,
-    positionCount: holdings.length,
+    positionCount: enrichedPositions.length,
     currencyExposure: buildCurrencyExposure(enrichedPositions, accountStates),
     topPositions,
     maxConcentration,
@@ -224,28 +311,11 @@ export async function getTopPositions(limit = 5) {
 }
 
 export async function getCurrencyExposure() {
-  const [holdings, accountStates] = await Promise.all([
-    prisma.portfolioHolding.findMany(),
+  const [positions, accountStates] = await Promise.all([
+    getAllPositions(),
     prisma.portfolioAccountState.findMany(),
   ]);
-  const quotes = await loadQuotesForHoldings(holdings);
-  const quoteMap = indexQuotesByTickerCurrency(quotes);
-  const enriched = holdings.map((h) =>
-    enrichPositionRow(
-      {
-        id: h.id, importId: h.sourceImportId, accountId: null,
-        accountNumber: h.accountNumber ?? null, ticker: h.ticker,
-        securityName: h.securityName ?? "", currency: h.currency,
-        quantity: h.quantity, averageCost: h.averageCost ?? null,
-        marketPrice: h.snapshotPrice ?? null, marketValue: h.snapshotValue,
-        unrealizedGainLoss: h.unrealizedGainLoss ?? null,
-        weightPct: null, sector: h.sector ?? null, assetType: h.assetType ?? null,
-      },
-      h.accountName,
-      quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
-    ),
-  );
-  return buildCurrencyExposure(enriched, accountStates);
+  return buildCurrencyExposure(positions, accountStates);
 }
 
 export async function getConcentrationRisk() {

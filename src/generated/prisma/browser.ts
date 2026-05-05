@@ -67,3 +67,11 @@ export type ChatSession = Prisma.ChatSessionModel
  * 
  */
 export type ChatMessage = Prisma.ChatMessageModel
+/**
+ * Model UsdCadDailyRate
+ * *
+ *  * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).
+ *  * Alimenté via Frankfurter (données publiques) ; les jours sans cotation (fins de semaine)
+ *  * sont complétés en reportant le dernier cours connu.
+ */
+export type UsdCadDailyRate = Prisma.UsdCadDailyRateModel

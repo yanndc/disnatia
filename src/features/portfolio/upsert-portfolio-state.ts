@@ -5,7 +5,7 @@ import type { PortfolioSnapshotInput } from "@/types/portfolio";
  * Clé stable pour identifier un compte indépendamment du nom d'affichage.
  * Priorité : numéro de compte normalisé → nom normalisé.
  */
-function makeAccountKey(name: string, currency: string, accountNumber?: string | null): string {
+export function makeAccountKey(name: string, currency: string, accountNumber?: string | null): string {
   const num = accountNumber?.replace(/\s/g, "").toUpperCase() ?? "";
   if (num) {
     return `${num}|${currency.toUpperCase()}`;

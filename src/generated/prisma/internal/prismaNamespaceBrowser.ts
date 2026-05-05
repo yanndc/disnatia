@@ -59,7 +59,8 @@ export const ModelName = {
   PortfolioLiveQuote: 'PortfolioLiveQuote',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
-  ChatMessage: 'ChatMessage'
+  ChatMessage: 'ChatMessage',
+  UsdCadDailyRate: 'UsdCadDailyRate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -232,6 +233,18 @@ export const ChatMessageScalarFieldEnum = {
 } as const
 
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
+
+
+export const UsdCadDailyRateScalarFieldEnum = {
+  id: 'id',
+  rateDate: 'rateDate',
+  usdToCad: 'usdToCad',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UsdCadDailyRateScalarFieldEnum = (typeof UsdCadDailyRateScalarFieldEnum)[keyof typeof UsdCadDailyRateScalarFieldEnum]
 
 
 export const SortOrder = {

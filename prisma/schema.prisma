@@ -242,3 +242,21 @@ enum MessageRole {
   system
   tool
 }
+
+/**
+ * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).
+ * Alimenté via Frankfurter (données publiques) ; les jours sans cotation (fins de semaine)
+ * sont complétés en reportant le dernier cours connu.
+ */
+model UsdCadDailyRate {
+  id       String   @id @default(cuid())
+  rateDate DateTime @map("rate_date") @db.Date
+  usdToCad Float    @map("usd_to_cad")
+  source   String   @default("frankfurter")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([rateDate])
+  @@index([rateDate])
+  @@map("usd_cad_daily_rates")
+}
