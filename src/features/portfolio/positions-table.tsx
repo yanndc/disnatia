@@ -109,7 +109,7 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
 
           return (
             <div>
-              <p className="font-medium text-emerald-700">Live Yahoo</p>
+              <p className="font-medium text-emerald-700">Cours en direct</p>
               <p className="text-xs text-slate-500">
                 {quoteFetchedAt.toLocaleString("fr-CA")} · il y a {formatQuoteAge(quoteFetchedAt)}
               </p>

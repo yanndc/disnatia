@@ -67,7 +67,7 @@ export function RefreshQuotesButton() {
         {pending ? "Mise à jour…" : "Actualiser les cours"}
       </Button>
       {pending ? (
-        <p className="text-xs text-slate-500">Appel Yahoo en cours…</p>
+        <p className="text-xs text-slate-500">Yahoo puis Stooq…</p>
       ) : null}
       {refreshState.status === "success" ? (
         <p className="max-w-sm text-xs leading-relaxed text-slate-500">
@@ -77,7 +77,8 @@ export function RefreshQuotesButton() {
           {refreshState.result.quotesMissing > 0
             ? ` · ${refreshState.result.quotesMissing} manquant(s)`
             : ""}{" "}
-          · {refreshState.result.yahooSymbolsRequested} symboles Yahoo ·{" "}
+          · {refreshState.result.yahooSymbolsRequested} appels Yahoo ·
+          {` ${refreshState.result.stooqFilled ?? 0} via Stooq · `}
           {new Date(refreshState.result.fetchedAt).toLocaleString("fr-CA")}
           {refreshState.result.missingYahooSymbols.length > 0
             ? ` · non retournés : ${refreshState.result.missingYahooSymbols.join(", ")}`

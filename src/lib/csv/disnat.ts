@@ -106,11 +106,34 @@ const columnAliases = {
   fees: ["frais", "commission", "fees"],
 } as const;
 
+/**
+ * Excel exporte parfois une première ligne `sep=;` (ou fusionnée avec l'en-tête).
+ * Sans ce nettoyage, la première colonne devient `sep=` et toutes les données sont décalées.
+ */
+function preprocessDisnatCsvText(rawText: string): string {
+  const bomStripped = rawText.replace(/^\uFEFF/, "");
+  const lines = bomStripped.split(/\r\n|\n|\r/);
+  if (lines.length === 0) {
+    return bomStripped;
+  }
+  const trimmed = (lines[0] ?? "").trim();
+  if (/^sep\s*=/i.test(trimmed)) {
+    let rest = trimmed.replace(/^sep\s*=\s*/i, "");
+    rest = rest.replace(/^[;,|\t]+/, "").trim();
+    if (rest.length > 0) {
+      lines[0] = rest;
+    } else {
+      lines.shift();
+    }
+  }
+  return lines.join("\n");
+}
+
 export function parseDisnatCsv(fileText: string) {
-  const delimiter = detectDelimiter(fileText);
-  const ownerMap = extractOwnerMap(fileText, delimiter);
-  const lines = fileText
-    .replace(/^\uFEFF/, "")
+  const cleanedText = preprocessDisnatCsvText(fileText);
+  const delimiter = detectDelimiter(cleanedText);
+  const ownerMap = extractOwnerMap(cleanedText, delimiter);
+  const lines = cleanedText
     .split(/\r\n|\n|\r/)
     .map((line) => line.trim())
     .filter(Boolean);
@@ -202,7 +225,7 @@ export function normalizeDisnatRows(
     }
 
     if (!ticker || marketValue === undefined) {
-      if (importKind !== "TRANSACTIONS") {
+      if (importKind !== "TRANSACTIONS" && importKind !== "PORTFOLIO") {
         warnings.push(
           `Ligne ${index + 2}: ticker ou valeur marchande manquant, ligne ignorée.`,
         );
@@ -510,7 +533,7 @@ function detectImportKind(
     "crdit",
     "description",
   ].some((header) => normalizedHeaders.includes(normalizeHeader(header)));
-  const hasPositionColumns = ["symbole", "ticker", "quantite", "quantité"].some(
+  const hasPositionColumns = ["symbole", "ticker", "quantite", "quantité", "qte"].some(
     (header) => normalizedHeaders.includes(normalizeHeader(header)),
   );
   const hasPortfolioColumns = [

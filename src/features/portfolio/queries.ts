@@ -1,11 +1,13 @@
 import type { PortfolioPosition } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { loadHoldingsForDashboard } from "./holdings-display-query";
 import {
   enrichPositionRow,
   indexQuotesByTickerCurrency,
   withDisplayWeights,
   type EnrichedPosition,
 } from "./live-enrichment";
+import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { makeAccountKey } from "./upsert-portfolio-state";
 import { formatAccountNumber } from "@/lib/utils";
 
@@ -61,6 +63,40 @@ function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
 }
 
+/** Valeur en CAD approximatif : USD × taux, autres devises laissées telles quelles. */
+function toCadEquivalent(value: number, currency: string, usdToCad: number): number {
+  const cur = currency.trim().toUpperCase();
+  if (cur === "USD" || cur === "US") return value * usdToCad;
+  if (cur === "CAD" || cur === "CAN" || cur === "CDN") return value;
+  return value;
+}
+
+function positionDisplayValueCad(
+  p: EnrichedPosition,
+  usdToCad: number | null,
+): number {
+  return usdToCad !== null
+    ? toCadEquivalent(p.displayMarketValue, p.currency, usdToCad)
+    : p.displayMarketValue;
+}
+
+/**
+ * Poids des positions : base en équivalent CAD si un taux est disponible,
+ * sinon somme des valeurs affichées (peut mélanger USD et CAD).
+ */
+function withDisplayWeightsCad(
+  positions: EnrichedPosition[],
+  usdToCad: number | null,
+): EnrichedPosition[] {
+  const totals = positions.map((p) => positionDisplayValueCad(p, usdToCad));
+  const total = totals.reduce((s, v) => s + v, 0);
+  if (total <= 0) return positions;
+  return positions.map((p, i) => ({
+    ...p,
+    weightPct: (totals[i]! / total) * 100,
+  }));
+}
+
 async function loadQuotesForHoldings(
   holdings: { ticker: string; currency: string }[],
 ) {
@@ -89,9 +125,10 @@ async function loadQuotesForHoldings(
 
 /** Toutes les positions courantes (une seule ligne par compte+ticker, la plus récente). */
 export async function getAllPositions(): Promise<EnrichedPosition[]> {
-  const holdings = await prisma.portfolioHolding.findMany({
-    orderBy: { snapshotValue: "desc" },
-  });
+  const [holdings, txCount] = await Promise.all([
+    loadHoldingsForDashboard(),
+    prisma.portfolioTransactionLine.count(),
+  ]);
 
   let rows: ReturnType<typeof enrichPositionRow>[];
 
@@ -121,6 +158,8 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
         quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
       ),
     );
+  } else if (txCount > 0) {
+    return [];
   } else {
     const merged = await loadMergedImportedPositions();
     if (merged.length === 0) return [];
@@ -143,7 +182,7 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
 /** Résumé du tableau de bord, basé sur l'état synthétisé. */
 export async function getPortfolioSummary() {
   const [holdings, accountStates, anyImportCount, txGlobal] = await Promise.all([
-    prisma.portfolioHolding.findMany({ orderBy: { snapshotValue: "desc" } }),
+    loadHoldingsForDashboard(),
     prisma.portfolioAccountState.findMany(),
     prisma.portfolioImport.count(),
     prisma.portfolioTransactionLine.aggregate({
@@ -153,8 +192,10 @@ export async function getPortfolioSummary() {
     }),
   ]);
 
+  const txCount = txGlobal._count._all;
+
   const mergedImported =
-    holdings.length === 0 ? await loadMergedImportedPositions() : [];
+    holdings.length === 0 && txCount === 0 ? await loadMergedImportedPositions() : [];
 
   if (
     holdings.length === 0 &&
@@ -174,7 +215,7 @@ export async function getPortfolioSummary() {
   const quotes = await loadQuotesForHoldings(quoteSource);
   const quoteMap = indexQuotesByTickerCurrency(quotes);
 
-  const enrichedPositions = withDisplayWeights(
+  const enrichedPositionsBase =
     holdings.length > 0
       ? holdings.map((h) =>
           enrichPositionRow(
@@ -207,13 +248,41 @@ export async function getPortfolioSummary() {
               `${m.position.ticker.toUpperCase()}|${m.position.currency.toUpperCase()}`,
             ),
           ),
-        ),
-  );
+        );
 
-  const cashValue = sum(accountStates.map((a) => a.cashValue));
-  const disnatReferenceTotalValue = sum(accountStates.map((a) => a.totalValue));
-  const displayPositionsValue = sum(enrichedPositions.map((p) => p.displayMarketValue));
-  const disnatPositionsValue = sum(enrichedPositions.map((p) => p.disnatMarketValue));
+  const holdingAsOfSource =
+    holdings.length > 0
+      ? holdings.map((h) => h.asOf)
+      : mergedImported.map((m) => m.asOf);
+  const allAsOf = [...accountStates.map((a) => a.asOf), ...holdingAsOfSource];
+  const referenceAsOf =
+    allAsOf.length > 0 ? new Date(Math.max(...allAsOf.map((d) => d.getTime()))) : null;
+  const snapshotDataFrom =
+    allAsOf.length > 0 ? new Date(Math.min(...allAsOf.map((d) => d.getTime()))) : null;
+
+  const fxRow = await getUsdCadRateNear(referenceAsOf);
+  const usdToCad = fxRow?.usdToCad ?? null;
+
+  const enrichedPositions = withDisplayWeightsCad(enrichedPositionsBase, usdToCad);
+
+  const cashValue =
+    usdToCad !== null
+      ? sum(accountStates.map((a) => toCadEquivalent(a.cashValue, a.currency, usdToCad)))
+      : sum(accountStates.map((a) => a.cashValue));
+  const disnatReferenceTotalValue =
+    usdToCad !== null
+      ? sum(accountStates.map((a) => toCadEquivalent(a.totalValue, a.currency, usdToCad)))
+      : sum(accountStates.map((a) => a.totalValue));
+  const displayPositionsValue = sum(
+    enrichedPositions.map((p) => positionDisplayValueCad(p, usdToCad)),
+  );
+  const disnatPositionsValue = sum(
+    enrichedPositions.map((p) =>
+      usdToCad !== null
+        ? toCadEquivalent(p.disnatMarketValue, p.currency, usdToCad)
+        : p.disnatMarketValue,
+    ),
+  );
   const totalValue = displayPositionsValue + cashValue;
 
   const driftVsDisnatPct =
@@ -226,15 +295,6 @@ export async function getPortfolioSummary() {
       ? new Date(Math.max(...quotes.map((q) => q.fetchedAt.getTime())))
       : null;
   const matchedQuotes = enrichedPositions.filter((p) => p.usesLiveQuote).length;
-
-  // Date de référence globale = date la plus récente parmi tous les états de compte
-  const holdingAsOfSource =
-    holdings.length > 0
-      ? holdings.map((h) => h.asOf)
-      : mergedImported.map((m) => m.asOf);
-  const allAsOf = [...accountStates.map((a) => a.asOf), ...holdingAsOfSource];
-  const referenceAsOf = allAsOf.length > 0 ? new Date(Math.max(...allAsOf.map((d) => d.getTime()))) : null;
-  const snapshotDataFrom = allAsOf.length > 0 ? new Date(Math.min(...allAsOf.map((d) => d.getTime()))) : null;
 
   const distinctAccountNumbers = [
     ...new Set([
@@ -250,9 +310,15 @@ export async function getPortfolioSummary() {
       (acc, a) => {
         const owner = a.owner ?? "Inconnu";
         if (!acc[owner]) acc[owner] = { totalValue: 0, cashValue: 0, marketValue: 0, accountCount: 0 };
-        acc[owner].totalValue += a.totalValue;
-        acc[owner].cashValue += a.cashValue;
-        acc[owner].marketValue += a.marketValue;
+        if (usdToCad !== null) {
+          acc[owner].totalValue += toCadEquivalent(a.totalValue, a.currency, usdToCad);
+          acc[owner].cashValue += toCadEquivalent(a.cashValue, a.currency, usdToCad);
+          acc[owner].marketValue += toCadEquivalent(a.marketValue, a.currency, usdToCad);
+        } else {
+          acc[owner].totalValue += a.totalValue;
+          acc[owner].cashValue += a.cashValue;
+          acc[owner].marketValue += a.marketValue;
+        }
         acc[owner].accountCount++;
         return acc;
       },
@@ -261,11 +327,14 @@ export async function getPortfolioSummary() {
   ).map(([owner, data]) => ({ owner, ...data }));
 
   const topPositions = enrichedPositions
-    .toSorted((a, b) => b.displayMarketValue - a.displayMarketValue)
+    .toSorted((a, b) => positionDisplayValueCad(b, usdToCad) - positionDisplayValueCad(a, usdToCad))
     .slice(0, 5)
-    .map((p) => ({ ticker: p.ticker, marketValue: p.displayMarketValue }));
+    .map((p) => ({
+      ticker: p.ticker,
+      marketValue: positionDisplayValueCad(p, usdToCad),
+    }));
 
-  const maxConcentration = enrichedPositions[0]?.weightPct ?? 0;
+  const maxConcentration = Math.max(0, ...enrichedPositions.map((p) => p.weightPct ?? 0));
 
   // Import le plus récent (pour l'affichage info seulement)
   const latestImport = await prisma.portfolioImport.findFirst({
@@ -299,6 +368,9 @@ export async function getPortfolioSummary() {
     hasAnyImportsInHistory: anyImportCount > 0,
     accountCount: accountStates.length,
     ownerBreakdown,
+    usdToCadRate: fxRow?.usdToCad ?? null,
+    usdToCadRateDate: fxRow?.rateDate ?? null,
+    totalsInCadEquivalent: usdToCad !== null,
   };
 }
 
@@ -402,6 +474,40 @@ export async function getAccountsWithStats() {
     orderBy: [{ accountType: "asc" }, { currency: "asc" }],
   });
 
+  const holdings = await loadHoldingsForDashboard();
+  const reconstructedByAccountKey = new Map<string, number>();
+  if (holdings.length > 0) {
+    const quotes = await loadQuotesForHoldings(holdings);
+    const quoteMap = indexQuotesByTickerCurrency(quotes);
+    for (const h of holdings) {
+      const enriched = enrichPositionRow(
+        {
+          id: h.id,
+          importId: h.sourceImportId,
+          accountId: null,
+          accountNumber: h.accountNumber ?? null,
+          ticker: h.ticker,
+          securityName: h.securityName ?? "",
+          currency: h.currency,
+          quantity: h.quantity,
+          averageCost: h.averageCost ?? null,
+          marketPrice: h.snapshotPrice ?? null,
+          marketValue: h.snapshotValue,
+          unrealizedGainLoss: h.unrealizedGainLoss ?? null,
+          weightPct: null,
+          sector: h.sector ?? null,
+          assetType: h.assetType ?? null,
+        },
+        h.accountName,
+        quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
+      );
+      reconstructedByAccountKey.set(
+        h.accountKey,
+        (reconstructedByAccountKey.get(h.accountKey) ?? 0) + enriched.displayMarketValue,
+      );
+    }
+  }
+
   // Nombre de transactions par compte
   const txCounts = await prisma.portfolioTransactionLine.groupBy({
     by: ["accountKey"],
@@ -424,11 +530,21 @@ export async function getAccountsWithStats() {
     ]),
   );
 
-  return accounts.map((a) => ({
-    ...a,
-    txCount: txByKey.get(a.accountKey) ?? 0,
-    lastTxDate: lastTxByKey.get(a.accountKey) ?? null,
-  }));
+  const hasHoldings = holdings.length > 0;
+  return accounts.map((a) => {
+    const reconstructedMarketValue = hasHoldings
+      ? (reconstructedByAccountKey.get(a.accountKey) ?? 0)
+      : null;
+    const driftTitresVsSnapshot =
+      reconstructedMarketValue === null ? null : reconstructedMarketValue - a.marketValue;
+    return {
+      ...a,
+      txCount: txByKey.get(a.accountKey) ?? 0,
+      lastTxDate: lastTxByKey.get(a.accountKey) ?? null,
+      reconstructedMarketValue,
+      driftTitresVsSnapshot,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -637,5 +753,8 @@ function emptySummary() {
     variationPctVsPrevious: null as number | null,
     hasAnyImportsInHistory: false,
     ownerBreakdown: [] as { owner: string; totalValue: number; cashValue: number; marketValue: number; accountCount: number }[],
+    usdToCadRate: null as number | null,
+    usdToCadRateDate: null as Date | null,
+    totalsInCadEquivalent: false,
   };
 }

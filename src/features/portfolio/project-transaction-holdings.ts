@@ -1,20 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
-
-type PositionTxCategory =
-  | "BUY"
-  | "SELL"
-  | "TRANSFER_IN"
-  | "TRANSFER_OUT"
-  | "STOCK_DIVIDEND";
+import { globalTransactionFingerprint } from "@/lib/csv/tx-fingerprint";
+import type { TxCategory } from "@/generated/prisma/enums";
 
 type ProjectableTransaction = {
+  id: string;
   accountKey: string | null;
   accountName: string | null;
   accountNumber: string | null;
   settlementDate: Date | null;
   tradeDate: Date | null;
-  txCategory: string | null;
+  transactionType: string | null;
+  txCategory: TxCategory | null;
   ticker: string | null;
   securityName: string | null;
   currency: string | null;
@@ -37,14 +34,23 @@ type PositionState = {
   asOf: Date;
 };
 
-const PROJECTED_IMPORT_ID = "transactions-projection";
+/** Identifiant `sourceImportId` des lignes issues de `projectHoldingsFromTransactions`. */
+export const PROJECTED_HOLDINGS_SOURCE_ID = "transactions-projection";
 const KEY_SEPARATOR = "\u001F";
-const POSITION_CATEGORIES = new Set<PositionTxCategory>([
+
+/** Types Disnat qui peuvent déplacer des titres ou des quantités signées importées telles quelles. */
+const POSITION_CATEGORIES = new Set<TxCategory>([
   "BUY",
   "SELL",
   "TRANSFER_IN",
   "TRANSFER_OUT",
   "STOCK_DIVIDEND",
+  "EXCHANGE",
+  "CONTRIBUTION",
+  "INTERNAL_TRANSFER",
+  "REVERSAL",
+  "TERMINATION",
+  "STOCK_SPLIT",
 ]);
 
 function normalizeCurrency(currency: string | null | undefined): string {
@@ -83,22 +89,66 @@ function txDate(tx: ProjectableTransaction): Date | null {
   return tx.settlementDate ?? tx.tradeDate;
 }
 
-function txKey(tx: ProjectableTransaction): string | null {
-  if (!tx.accountKey || !tx.ticker || tx.ticker === "-" || !tx.quantity) return null;
-  const category = tx.txCategory as PositionTxCategory | null;
+function signedQuantityForPosition(tx: ProjectableTransaction): number | null {
+  if (tx.quantity === null || tx.quantity === undefined) return null;
+  if (tx.ticker === "-" || !tx.ticker?.trim()) return null;
+  const q = tx.quantity;
+  if (Math.abs(q) < 1e-9) return null;
+
+  const category = tx.txCategory;
   if (!category || !POSITION_CATEGORIES.has(category)) return null;
+
+  switch (category) {
+    case "BUY":
+    case "TRANSFER_IN":
+    case "STOCK_DIVIDEND":
+      return Math.abs(q);
+    case "SELL":
+    case "TRANSFER_OUT":
+      return -Math.abs(q);
+    case "EXCHANGE":
+    case "CONTRIBUTION":
+    case "INTERNAL_TRANSFER":
+    case "REVERSAL":
+    case "TERMINATION":
+    case "STOCK_SPLIT":
+      return q;
+    default:
+      return null;
+  }
+}
+
+function txKey(tx: ProjectableTransaction): string | null {
+  if (!tx.accountKey) return null;
+  const tickerRaw = tx.ticker?.trim();
+  if (!tickerRaw || tickerRaw === "-") return null;
+  const signed = signedQuantityForPosition(tx);
+  if (signed === null) return null;
+
   const currency = normalizeCurrency(tx.priceDevise ?? tx.currency);
-  const ticker = normalizeTickerForCurrency(tx.ticker, currency);
+  const ticker = normalizeTickerForCurrency(tickerRaw.toUpperCase(), currency);
   return `${tx.accountKey}${KEY_SEPARATOR}${ticker}${KEY_SEPARATOR}${currency}`;
 }
 
-function applyTransaction(state: PositionState, tx: ProjectableTransaction) {
-  const category = tx.txCategory as PositionTxCategory;
-  const rawQuantity = Math.abs(tx.quantity ?? 0);
-  if (rawQuantity <= 0) return;
+function fingerprintInput(tx: ProjectableTransaction) {
+  return {
+    tradeDate: tx.tradeDate,
+    settlementDate: tx.settlementDate,
+    transactionType: tx.transactionType,
+    ticker: tx.ticker,
+    amount: tx.amount,
+    currency: tx.currency,
+    quantity: tx.quantity,
+    price: tx.price,
+    securityName: tx.securityName,
+  };
+}
 
-  const signedQuantity =
-    category === "SELL" || category === "TRANSFER_OUT" ? -rawQuantity : rawQuantity;
+function applyTransaction(state: PositionState, tx: ProjectableTransaction) {
+  const signedQuantity = signedQuantityForPosition(tx);
+  if (signedQuantity === null || signedQuantity === 0) return;
+
+  const rawQuantity = Math.abs(signedQuantity);
   const previousQuantity = state.quantity;
   state.quantity += signedQuantity;
   state.asOf = txDate(tx) ?? state.asOf;
@@ -161,6 +211,21 @@ function buildStateFromTransactions(transactions: ProjectableTransaction[]) {
   }
 
   return { states, dailyEvents };
+}
+
+/** Supprime les doublons strictement identiques (même opération importée sous deux comptes). */
+function dedupeGlobalTransactions(transactions: ProjectableTransaction[]) {
+  const byFp = new Map<string, ProjectableTransaction>();
+  for (const tx of transactions) {
+    const fp = globalTransactionFingerprint(fingerprintInput(tx));
+    if (!byFp.has(fp)) byFp.set(fp, tx);
+  }
+  return [...byFp.values()].toSorted((a, b) => {
+    const da = txDate(a)?.getTime() ?? 0;
+    const db = txDate(b)?.getTime() ?? 0;
+    if (da !== db) return da - db;
+    return a.id.localeCompare(b.id);
+  });
 }
 
 async function accountStateByKey() {
@@ -251,7 +316,7 @@ async function replaceDailyHoldings(
 }
 
 export async function projectHoldingsFromTransactions() {
-  const transactions = await prisma.portfolioTransactionLine.findMany({
+  const raw = await prisma.portfolioTransactionLine.findMany({
     where: {
       accountKey: { not: null },
       ticker: { not: null },
@@ -260,11 +325,13 @@ export async function projectHoldingsFromTransactions() {
     },
     orderBy: [{ settlementDate: "asc" }, { tradeDate: "asc" }, { id: "asc" }],
     select: {
+      id: true,
       accountKey: true,
       accountName: true,
       accountNumber: true,
       settlementDate: true,
       tradeDate: true,
+      transactionType: true,
       txCategory: true,
       ticker: true,
       securityName: true,
@@ -275,6 +342,8 @@ export async function projectHoldingsFromTransactions() {
       amount: true,
     },
   });
+
+  const transactions = dedupeGlobalTransactions(raw as ProjectableTransaction[]);
 
   const { states, dailyEvents } = buildStateFromTransactions(transactions);
   const openStates = [...states.values()].filter((state) => state.quantity > 0.000001);
@@ -310,7 +379,7 @@ export async function projectHoldingsFromTransactions() {
         snapshotPrice: state.lastPrice,
         snapshotValue: state.lastPrice ? state.quantity * state.lastPrice : state.costBasis,
         asOf: state.asOf,
-        sourceImportId: PROJECTED_IMPORT_ID,
+        sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID,
       },
       update: {
         accountName,
@@ -321,7 +390,7 @@ export async function projectHoldingsFromTransactions() {
         snapshotPrice: state.lastPrice,
         snapshotValue: state.lastPrice ? state.quantity * state.lastPrice : state.costBasis,
         asOf: state.asOf,
-        sourceImportId: PROJECTED_IMPORT_ID,
+        sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID,
       },
     });
   }
@@ -330,7 +399,7 @@ export async function projectHoldingsFromTransactions() {
     openStates.map((state) => `${state.accountKey}${KEY_SEPARATOR}${state.ticker}${KEY_SEPARATOR}${state.currency}`),
   );
   const projectedHoldings = await prisma.portfolioHolding.findMany({
-    where: { sourceImportId: PROJECTED_IMPORT_ID },
+    where: { sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID },
     select: { accountKey: true, ticker: true, currency: true },
   });
   const staleProjectedHoldings = projectedHoldings.filter(
@@ -342,7 +411,7 @@ export async function projectHoldingsFromTransactions() {
   if (staleProjectedHoldings.length > 0) {
     await prisma.portfolioHolding.deleteMany({
       where: {
-        sourceImportId: PROJECTED_IMPORT_ID,
+        sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID,
         OR: staleProjectedHoldings.map((holding) => ({
           accountKey: holding.accountKey,
           ticker: holding.ticker,
@@ -356,6 +425,7 @@ export async function projectHoldingsFromTransactions() {
 
   return {
     transactionsConsidered: transactions.length,
+    transactionsRaw: raw.length,
     currentHoldingsProjected: openStates.length,
     dailyRowsProjected,
     fromDate: earliestDate,

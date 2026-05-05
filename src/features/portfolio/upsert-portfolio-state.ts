@@ -14,9 +14,9 @@ export function makeAccountKey(name: string, currency: string, accountNumber?: s
 }
 
 /**
- * Après un import de snapshot (positions / portefeuille), met à jour les tables
- * PortfolioHolding et PortfolioAccountState si la date de référence du fichier
- * est plus récente que ce qui est déjà stocké pour chaque compte/position.
+ * Après un import de snapshot (portefeuille), met à jour uniquement PortfolioAccountState
+ * (totaux / encaisse Disnat pour validation). Les lignes titres à l’écran viennent de
+ * `projectHoldingsFromTransactions`, pas de ce fichier.
  *
  * Idempotent : réimporter le même fichier ne change rien tant que la date ne régresse pas.
  */
@@ -25,7 +25,6 @@ export async function upsertPortfolioStateFromSnapshot(
   importId: string,
   asOf: Date,
 ): Promise<{ holdingsUpserted: number; accountStatesUpserted: number }> {
-  let holdingsUpserted = 0;
   let accountStatesUpserted = 0;
 
   // --- Comptes ---
@@ -70,62 +69,5 @@ export async function upsertPortfolioStateFromSnapshot(
     accountStatesUpserted += 1;
   }
 
-  // --- Positions ---
-  for (const position of snapshot.positions) {
-    const accountKey = makeAccountKey(
-      position.accountName,
-      position.currency,
-      position.accountNumber,
-    );
-    const ticker = position.ticker.toUpperCase();
-    const currency = position.currency.toUpperCase();
-
-    const existing = await prisma.portfolioHolding.findUnique({
-      where: { accountKey_ticker_currency: { accountKey, ticker, currency } },
-    });
-
-    if (existing && existing.asOf >= asOf) {
-      continue;
-    }
-
-    await prisma.portfolioHolding.upsert({
-      where: { accountKey_ticker_currency: { accountKey, ticker, currency } },
-      create: {
-        accountKey,
-        accountName: position.accountName,
-        accountNumber: position.accountNumber ?? null,
-        accountType: position.accountType ?? null,
-        ticker,
-        securityName: position.securityName ?? null,
-        currency,
-        quantity: position.quantity,
-        averageCost: position.averageCost ?? null,
-        snapshotPrice: position.marketPrice ?? null,
-        snapshotValue: position.marketValue,
-        unrealizedGainLoss: position.unrealizedGainLoss ?? null,
-        sector: position.sector ?? null,
-        assetType: position.assetType ?? null,
-        asOf,
-        sourceImportId: importId,
-      },
-      update: {
-        accountName: position.accountName,
-        accountNumber: position.accountNumber ?? null,
-        accountType: position.accountType ?? null,
-        securityName: position.securityName ?? null,
-        quantity: position.quantity,
-        averageCost: position.averageCost ?? null,
-        snapshotPrice: position.marketPrice ?? null,
-        snapshotValue: position.marketValue,
-        unrealizedGainLoss: position.unrealizedGainLoss ?? null,
-        sector: position.sector ?? null,
-        assetType: position.assetType ?? null,
-        asOf,
-        sourceImportId: importId,
-      },
-    });
-    holdingsUpserted += 1;
-  }
-
-  return { holdingsUpserted, accountStatesUpserted };
+  return { holdingsUpserted: 0, accountStatesUpserted };
 }

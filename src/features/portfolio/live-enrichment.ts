@@ -22,6 +22,27 @@ export function indexQuotesByTickerCurrency(
   return map;
 }
 
+const LIVE_VS_REFERENCE_RATIO_MAX = 4;
+const LIVE_VS_REFERENCE_RATIO_MIN = 1 / LIVE_VS_REFERENCE_RATIO_MAX;
+
+function referenceUnitPrice(position: PortfolioPosition): number | null {
+  const fromMarket = position.marketPrice;
+  if (fromMarket !== null && fromMarket > 0 && Number.isFinite(fromMarket)) {
+    return fromMarket;
+  }
+  if (position.quantity > 0 && position.marketValue > 0) {
+    const implied = position.marketValue / position.quantity;
+    return Number.isFinite(implied) && implied > 0 ? implied : null;
+  }
+  return null;
+}
+
+function liveQuoteMatchesReference(livePrice: number, referencePrice: number | null): boolean {
+  if (referencePrice === null || referencePrice <= 0) return true;
+  const ratio = livePrice / referencePrice;
+  return ratio >= LIVE_VS_REFERENCE_RATIO_MIN && ratio <= LIVE_VS_REFERENCE_RATIO_MAX;
+}
+
 export function enrichPositionRow(
   position: PortfolioPosition,
   accountName: string,
@@ -29,7 +50,14 @@ export function enrichPositionRow(
 ): EnrichedPosition {
   const disnatMarketValue = position.marketValue;
   const disnatMarketPrice = position.marketPrice ?? null;
-  const livePrice = quote?.price ?? null;
+  const refUnit = referenceUnitPrice(position);
+  const rawLive = quote?.price ?? null;
+  const livePrice =
+    rawLive !== null &&
+    Number.isFinite(rawLive) &&
+    liveQuoteMatchesReference(rawLive, refUnit)
+      ? rawLive
+      : null;
   const displayPrice = livePrice ?? disnatMarketPrice;
 
   const displayMarketValue =
@@ -45,7 +73,7 @@ export function enrichPositionRow(
     disnatMarketValue,
     disnatMarketPrice,
     quoteFetchedAt: quote?.fetchedAt ?? null,
-    usesLiveQuote: quote != null,
+    usesLiveQuote: livePrice != null,
   };
 }
 

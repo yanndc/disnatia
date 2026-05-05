@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
+import { loadHoldingsForDashboard } from "@/features/portfolio/holdings-display-query";
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
+import { disnatTickerToStooqSymbol, fetchStooqLastClose } from "@/lib/market/stooq-quote";
 import { fetchYahooQuotesBySymbol } from "@/lib/market/yahoo-quote";
 
 export type RefreshLiveQuotesResult = {
@@ -8,6 +10,7 @@ export type RefreshLiveQuotesResult = {
   quotesMissing: number;
   positionsConsidered: number;
   yahooSymbolsRequested: number;
+  stooqFilled: number;
   missingYahooSymbols: string[];
   fetchedAt: string;
   message?: string;
@@ -28,9 +31,7 @@ function uniqueTickerCurrency(
 }
 
 export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuotesResult> {
-  const holdings = await prisma.portfolioHolding.findMany({
-    select: { ticker: true, currency: true },
-  });
+  const holdings = await loadHoldingsForDashboard();
 
   if (holdings.length === 0) {
     return {
@@ -39,9 +40,10 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
       quotesMissing: 0,
       positionsConsidered: 0,
       yahooSymbolsRequested: 0,
+      stooqFilled: 0,
       missingYahooSymbols: [],
       fetchedAt: new Date().toISOString(),
-      message: "Aucune position projetée. Importe des transactions ou un export de positions.",
+      message: "Aucune position à coter. Importe des transactions ou un export portefeuille.",
     };
   }
 
@@ -57,9 +59,22 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
   const missingYahooSymbols = yahooSymbols.filter((symbol) => !prices.has(symbol));
   const now = new Date();
   let quotesUpserted = 0;
+  let stooqFilled = 0;
 
   for (const { ticker, currency, yahoo } of disnatKeyToYahoo.values()) {
-    const price = prices.get(yahoo);
+    let price = prices.get(yahoo);
+    let sourceSymbol = yahoo;
+
+    if (price === undefined) {
+      const stooqSym = disnatTickerToStooqSymbol(ticker, currency);
+      const stooqPrice = await fetchStooqLastClose(stooqSym);
+      if (stooqPrice !== undefined) {
+        price = stooqPrice;
+        sourceSymbol = `stooq:${stooqSym}`;
+        stooqFilled += 1;
+      }
+    }
+
     if (price === undefined) {
       continue;
     }
@@ -73,12 +88,12 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
         currency,
         price,
         fetchedAt: now,
-        yahooSymbol: yahoo,
+        yahooSymbol: sourceSymbol,
       },
       update: {
         price,
         fetchedAt: now,
-        yahooSymbol: yahoo,
+        yahooSymbol: sourceSymbol,
       },
     });
     quotesUpserted += 1;
@@ -90,11 +105,12 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
     quotesMissing: pairs.length - quotesUpserted,
     positionsConsidered: pairs.length,
     yahooSymbolsRequested: yahooSymbols.length,
+    stooqFilled,
     missingYahooSymbols: missingYahooSymbols.slice(0, 12),
     fetchedAt: now.toISOString(),
     message:
       quotesUpserted === 0
-        ? "Aucun prix valide retourné par Yahoo pour ces symboles."
+        ? "Aucun prix valide (Yahoo puis Stooq) pour ces symboles."
         : undefined,
   };
 }

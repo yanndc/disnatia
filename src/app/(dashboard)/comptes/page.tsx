@@ -13,6 +13,16 @@ function sum(vals: number[]) {
   return vals.reduce((t, v) => t + v, 0);
 }
 
+function accountDriftTitresCad(
+  acc: AccountWithStats,
+  usdToCad: number | null,
+): number | null {
+  if (acc.driftTitresVsSnapshot === null) return null;
+  const cur = normalizeCurrency(acc.currency);
+  if (cur === "USD") return usdToCad != null ? acc.driftTitresVsSnapshot * usdToCad : null;
+  return acc.driftTitresVsSnapshot;
+}
+
 export default async function ComptesPage() {
   const accounts: AccountWithStats[] = await getAccountsWithStats().catch(() => []);
 
@@ -68,14 +78,78 @@ export default async function ComptesPage() {
   const consTitres = usdTitresCad != null ? cadTitres + usdTitresCad : null;
   const consTotal = usdTotalCad != null ? cadTotal + usdTotalCad : null;
 
+  const driftParts = accounts
+    .map((a) => ({
+      acc: a,
+      driftCad: accountDriftTitresCad(a, usdToCad),
+    }))
+    .filter((row): row is { acc: AccountWithStats; driftCad: number } => row.driftCad !== null);
+  const driftNetCad = driftParts.length > 0 ? sum(driftParts.map((p) => p.driftCad)) : null;
+  const driftSumAbs =
+    driftParts.length > 0 ? sum(driftParts.map((p) => Math.abs(p.driftCad))) : null;
+  const driftSorted = driftParts.toSorted(
+    (a, b) => Math.abs(b.driftCad) - Math.abs(a.driftCad),
+  );
+  const driftTop = driftSorted[0];
+  const driftTopShareAbs =
+    driftTop && driftSumAbs != null && driftSumAbs > 0
+      ? (Math.abs(driftTop.driftCad) / driftSumAbs) * 100
+      : null;
+  const singleDominant =
+    driftTopShareAbs != null && driftTopShareAbs >= 85 && driftTop != null;
+
   return (
     <div className="space-y-6">
       <section>
         <p className="text-sm text-slate-500">Tableau de bord</p>
         <h2 className="text-2xl font-semibold text-slate-950">Comptes</h2>
         <p className="mt-1 text-sm text-slate-500">
-          {accounts.length} compte{accounts.length > 1 ? "s" : ""} au total
+          {accounts.length} compte{accounts.length > 1 ? "s" : ""} ·{" "}
+          <strong className="font-medium text-slate-700">Écart titres</strong> = reconstruit −
+          fichier.
         </p>
+
+        {driftNetCad !== null && usdToCad != null ? (
+          <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
+            <p>
+              <span className="text-slate-500">Écart titres net (CAD) : </span>
+              <span className="font-semibold tabular-nums text-slate-900">
+                {driftNetCad > 0 ? "+" : ""}
+                {formatCurrency(driftNetCad, "CAD")}
+              </span>
+            </p>
+            {driftTop ? (
+              <p className="mt-1 text-xs text-slate-600">
+                Plus gros écart :{" "}
+                <span className="font-mono text-slate-800">
+                  {driftTop.acc.accountNumber ?? driftTop.acc.accountKey}
+                </span>{" "}
+                ({driftTop.acc.accountType ?? "—"}, {driftTop.acc.currency}) →{" "}
+                <span className="tabular-nums font-medium">
+                  {driftTop.driftCad > 0 ? "+" : ""}
+                  {formatCurrency(driftTop.driftCad, "CAD")}
+                </span>
+                {driftTopShareAbs != null ? (
+                  <>
+                    {" "}
+                    · {formatNumber(driftTopShareAbs, 0)} % des écarts (valeur absolue)
+                  </>
+                ) : null}
+                {singleDominant ? (
+                  <span className="ml-1 font-medium text-amber-800">
+                    — presque tout vient de ce compte.
+                  </span>
+                ) : driftTopShareAbs != null && driftTopShareAbs < 85 ? (
+                  <span className="ml-1 text-slate-500">— plusieurs comptes comptent.</span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+        ) : driftNetCad === null && accounts.some((a) => a.driftTitresVsSnapshot !== null) ? (
+          <p className="mt-2 text-xs text-amber-800">
+            Taux USD→CAD manquant : écart total en CAD non calculable.
+          </p>
+        ) : null}
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -189,7 +263,9 @@ export default async function ComptesPage() {
                     <th className="px-4 py-2">N° compte</th>
                     <th className="px-4 py-2">Devise</th>
                     <th className="px-4 py-2 text-right">Encaisse</th>
-                    <th className="px-4 py-2 text-right">Titres</th>
+                    <th className="px-4 py-2 text-right">Titres (fichier)</th>
+                    <th className="px-4 py-2 text-right">Titres reconstr.</th>
+                    <th className="px-4 py-2 text-right">Écart titres</th>
                     <th className="px-4 py-2 text-right">Total</th>
                     <th className="px-4 py-2 text-right">Transactions</th>
                     <th className="px-4 py-2 text-right">Dernière op.</th>
@@ -226,6 +302,31 @@ export default async function ComptesPage() {
                           usdToCad={usdToCad ?? 1}
                           showCad={isUsd}
                         />
+                        <td className="px-4 py-2 text-right tabular-nums text-slate-700">
+                          {acc.reconstructedMarketValue === null ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            formatCurrency(acc.reconstructedMarketValue, cur)
+                          )}
+                        </td>
+                        <td
+                          className={`px-4 py-2 text-right tabular-nums ${
+                            acc.driftTitresVsSnapshot === null
+                              ? "text-slate-400"
+                              : Math.abs(acc.driftTitresVsSnapshot) > 500
+                                ? "font-medium text-amber-700"
+                                : "text-slate-700"
+                          }`}
+                        >
+                          {acc.driftTitresVsSnapshot === null ? (
+                            "—"
+                          ) : (
+                            <>
+                              {acc.driftTitresVsSnapshot > 0 ? "+" : ""}
+                              {formatCurrency(acc.driftTitresVsSnapshot, cur)}
+                            </>
+                          )}
+                        </td>
                         <AmountCellUsdCad
                           amount={acc.totalValue}
                           currency={cur}

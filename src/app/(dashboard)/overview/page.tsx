@@ -1,13 +1,7 @@
 import Link from "next/link";
-import {
-  BarChart3,
-  CircleDollarSign,
-  Gauge,
-  ShieldCheck,
-  TrendingUp,
-  type LucideIcon,
-} from "lucide-react";
+import { BarChart3, CircleDollarSign, Gauge, ShieldCheck, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CurrencyExposureKpiCard } from "@/features/portfolio/currency-exposure-kpi-card";
 import { PortfolioCharts } from "@/features/portfolio/portfolio-charts";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getPortfolioSummary } from "@/features/portfolio/queries";
@@ -102,13 +96,7 @@ export default async function OverviewPage() {
           value={formatCurrency(summary.totalValue)}
           detail="Positions recalculées + encaisse connue"
         />
-        <KpiCard
-          icon={TrendingUp}
-          label="Répartition CAD / USD"
-          value={summary.currencyExposure
-            .map((item) => `${item.currency} ${formatCurrency(item.value, item.currency)}`)
-            .join(" · ")}
-        />
+        <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
         <KpiCard
           icon={BarChart3}
           label="Titres reconstruits"
@@ -135,6 +123,16 @@ export default async function OverviewPage() {
             <span className={driftIsHigh ? "font-medium text-amber-600" : "text-slate-500"}>
               {summary.driftVsDisnatPct === null ? "Écart non disponible" : formatPercent(summary.driftVsDisnatPct)}
             </span>
+            {summary.usdToCadRate !== null && summary.usdToCadRateDate ? (
+              <span className="text-slate-400">
+                USD→CAD {summary.usdToCadRate.toFixed(4)} (Banque du Canada / Frankfurter,{" "}
+                {summary.usdToCadRateDate.toLocaleDateString("fr-CA")})
+              </span>
+            ) : (
+              <span className="text-amber-600">
+                Taux USD→CAD indisponible : totaux mélangent les devises sans conversion.
+              </span>
+            )}
           </div>
         </div>
       </section>

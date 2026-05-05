@@ -1,5 +1,20 @@
 import { createHash } from "crypto";
 
+/** Même cadre que l’API d’import : identifie deux lignes identiques rattachées à des comptes différents. */
+export const GLOBAL_TRANSACTION_DUPLICATE_SCOPE = "__global_transaction_duplicate_scope__";
+
+export type TxFingerprintInput = {
+  tradeDate?: Date | null;
+  settlementDate?: Date | null;
+  transactionType?: string | null;
+  ticker?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  quantity?: number | null;
+  price?: number | null;
+  securityName?: string | null;
+};
+
 /**
  * Fingerprint déterministe incluant accountKey.
  *
@@ -11,20 +26,7 @@ import { createHash } from "crypto";
  * /imports (cascade supprime les transactions + libère les fingerprints), puis
  * réimporter avec le bon compte.
  */
-export function txFingerprint(
-  accountKey: string,
-  tx: {
-    tradeDate?: Date | null;
-    settlementDate?: Date | null;
-    transactionType?: string | null;
-    ticker?: string | null;
-    amount?: number | null;
-    currency?: string | null;
-    quantity?: number | null;
-    price?: number | null;
-    securityName?: string | null;
-  },
-): string {
+export function txFingerprint(accountKey: string, tx: TxFingerprintInput): string {
   const parts = [
     accountKey,
     tx.tradeDate?.toISOString().slice(0, 10) ?? "",
@@ -38,4 +40,8 @@ export function txFingerprint(
     (tx.securityName ?? "").trim().slice(0, 60),
   ];
   return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 32);
+}
+
+export function globalTransactionFingerprint(tx: TxFingerprintInput): string {
+  return txFingerprint(GLOBAL_TRANSACTION_DUPLICATE_SCOPE, tx);
 }

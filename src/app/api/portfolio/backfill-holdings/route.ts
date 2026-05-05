@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { upsertPortfolioStateFromSnapshot } from "@/features/portfolio/upsert-portfolio-state";
+import { projectHoldingsFromTransactions } from "@/features/portfolio/project-transaction-holdings";
 
 /**
  * POST /api/portfolio/backfill-holdings
- * Migre les données des anciennes tables (portfolio_positions / portfolio_accounts)
- * vers les nouvelles tables synthétisées (portfolio_holdings / portfolio_account_states).
+ * Migre les états de compte (totaux / encaisse) depuis les imports portefeuille.
+ * Les lignes titres courantes viennent de la projection transactions.
  * Idempotent — peut être relancé sans risque.
  */
 export async function POST() {
@@ -20,7 +21,6 @@ export async function POST() {
       return NextResponse.json({ message: "Aucun import avec positions/comptes à migrer.", migrated: 0 });
     }
 
-    let totalHoldings = 0;
     let totalAccounts = 0;
 
     for (const imp of imports) {
@@ -62,15 +62,24 @@ export async function POST() {
       };
 
       const result = await upsertPortfolioStateFromSnapshot(snapshot, imp.id, asOf);
-      totalHoldings += result.holdingsUpserted;
       totalAccounts += result.accountStatesUpserted;
     }
 
+    let projectedCount: { currentHoldingsProjected: number } | null = null;
+    if ((await prisma.portfolioTransactionLine.count()) > 0) {
+      projectedCount = await projectHoldingsFromTransactions();
+    }
+
     return NextResponse.json({
-      message: `Migration terminée : ${totalHoldings} positions, ${totalAccounts} états de compte mis à jour.`,
+      message: `Migration terminée : ${totalAccounts} états de compte mis à jour.${
+        projectedCount
+          ? ` Titres projetés : ${projectedCount.currentHoldingsProjected} lignes.`
+          : " Aucune transaction : projection non exécutée."
+      }`,
       importsProcessed: imports.length,
-      holdingsUpserted: totalHoldings,
+      holdingsUpserted: 0,
       accountStatesUpserted: totalAccounts,
+      projectedHoldings: projectedCount?.currentHoldingsProjected ?? null,
     });
   } catch (err) {
     return NextResponse.json(

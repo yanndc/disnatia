@@ -58,6 +58,7 @@ export function ImportsClient({
   const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
   const [selectedAccountKey, setSelectedAccountKey] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [ownerMap, setOwnerMap] = useState<Map<string, string>>(() => new Map());
   const form = useForm<ImportForm>({
     resolver: zodResolver(importSchema),
   });
@@ -69,7 +70,10 @@ export function ImportsClient({
       .catch(() => {});
   }, []);
 
-  const snapshot = useMemo(() => buildPortfolioSnapshot(rows), [rows]);
+  const snapshot = useMemo(
+    () => buildPortfolioSnapshot(rows, ownerMap),
+    [rows, ownerMap],
+  );
   const isTransactionsFile =
     snapshot.importKind === "TRANSACTIONS" || snapshot.transactions.length > 0;
   const needsAccountSelection = isTransactionsFile;
@@ -88,6 +92,7 @@ export function ImportsClient({
     setMessages([]);
     setDisnatGate(null);
     setSelectedAccountKey("");
+    setOwnerMap(new Map());
 
     if (!selectedFile) {
       return;
@@ -115,10 +120,11 @@ export function ImportsClient({
     setDisnatGate(gate);
     setRows(parsed.rows);
     setHeaders(parsed.headers);
+    setOwnerMap(parsed.ownerMap);
     setMessages([
       ...(gate.ok ? [] : [gate.message]),
       ...parsed.errors.map((error) => `Fichier: ${error.message}`),
-      ...buildPortfolioSnapshot(parsed.rows).warnings,
+      ...buildPortfolioSnapshot(parsed.rows, parsed.ownerMap).warnings,
     ]);
   }
 
@@ -191,11 +197,30 @@ export function ImportsClient({
       }
 
       const msgs = ["Import sauvegardé."];
-      if (payload?.txInserted !== undefined) {
+      const txMode =
+        snapshot.importKind === "TRANSACTIONS" || snapshot.transactions.length > 0;
+      if (txMode && payload?.txInserted !== undefined) {
         if (payload.txSkipped && payload.txSkipped > 0) {
           msgs.push(`${payload.txInserted} transaction${payload.txInserted > 1 ? "s" : ""} ajoutée${payload.txInserted > 1 ? "s" : ""}, ${payload.txSkipped} doublon${payload.txSkipped > 1 ? "s" : ""} ignoré${payload.txSkipped > 1 ? "s" : ""}.`);
         } else {
           msgs.push(`${payload.txInserted} transaction${payload.txInserted > 1 ? "s" : ""} ajoutée${payload.txInserted > 1 ? "s" : ""}.`);
+        }
+      }
+      if (!txMode || snapshot.positions.length > 0 || snapshot.accounts.length > 0) {
+        if (snapshot.positions.length > 0) {
+          msgs.push(
+            `${snapshot.positions.length} position${snapshot.positions.length > 1 ? "s" : ""} enregistrée${snapshot.positions.length > 1 ? "s" : ""}.`,
+          );
+        }
+        if (snapshot.accounts.length > 0 && snapshot.positions.length === 0) {
+          msgs.push(
+            `${snapshot.accounts.length} solde${snapshot.accounts.length > 1 ? "s" : ""} de compte enregistré${snapshot.accounts.length > 1 ? "s" : ""} (export synthèse).`,
+          );
+        }
+        if (snapshot.accounts.length > 0 && snapshot.positions.length > 0) {
+          msgs.push(
+            `${snapshot.accounts.length} ligne${snapshot.accounts.length > 1 ? "s" : ""} de compte / encaisse synchronisée${snapshot.accounts.length > 1 ? "s" : ""}.`,
+          );
         }
       }
       setMessages(msgs);
@@ -263,10 +288,26 @@ export function ImportsClient({
             <span>{headers.length} colonnes détectées</span>
             <span>{rows.length} lignes lues</span>
             <span>type: {snapshot.importKind.toLowerCase()}</span>
-            <span>{snapshot.positions.length} positions normalisées</span>
-            <span>{snapshot.accounts.length} comptes détectés</span>
+            {snapshot.importKind === "PORTFOLIO" ? (
+              <span>
+                {snapshot.accounts.length} ligne{snapshot.accounts.length > 1 ? "s" : ""} de solde
+                (encaisse + titres par compte, sans symboles)
+              </span>
+            ) : (
+              <>
+                <span>{snapshot.positions.length} positions normalisées</span>
+                <span>{snapshot.accounts.length} comptes détectés</span>
+              </>
+            )}
             <span>{snapshot.transactions.length} transactions détectées</span>
           </div>
+          {snapshot.importKind === "PORTFOLIO" ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Ce fichier est une vue synthèse Disnat (encaisse + valeur des titres par compte). Les
+              positions ligne à ligne viennent d&apos;un export « détail des titres » (symboles et
+              qtés).
+            </p>
+          ) : null}
 
           {needsAccountSelection && disnatGate?.ok === true ? (
             <div className="mt-4">

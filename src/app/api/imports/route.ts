@@ -8,12 +8,18 @@ import {
 import { importFileToParseText } from "@/lib/csv/import-file-text";
 import { prisma } from "@/lib/db/prisma";
 import { getImportHistory } from "@/features/portfolio/queries";
-import { projectHoldingsFromTransactions } from "@/features/portfolio/project-transaction-holdings";
+import {
+  PROJECTED_HOLDINGS_SOURCE_ID,
+  projectHoldingsFromTransactions,
+} from "@/features/portfolio/project-transaction-holdings";
 import { refreshLiveQuotesForLatestImport } from "@/features/portfolio/refresh-live-quotes";
 import { upsertPortfolioStateFromSnapshot } from "@/features/portfolio/upsert-portfolio-state";
 import { Prisma } from "@/generated/prisma/client";
 import type { TxCategory } from "@/generated/prisma/enums";
-import { txFingerprint } from "@/lib/csv/tx-fingerprint";
+import {
+  GLOBAL_TRANSACTION_DUPLICATE_SCOPE,
+  txFingerprint,
+} from "@/lib/csv/tx-fingerprint";
 
 export async function GET() {
   try {
@@ -88,6 +94,61 @@ export async function POST(request: Request) {
         { error: "Sélectionnez le compte auquel appartiennent ces transactions." },
         { status: 422 },
       );
+    }
+
+    const incomingGlobalFingerprints = new Set(
+      snapshot.transactions.map((transaction) =>
+        txFingerprint(GLOBAL_TRANSACTION_DUPLICATE_SCOPE, transaction),
+      ),
+    );
+
+    if (incomingGlobalFingerprints.size > 0) {
+      const existingTransactions = await prisma.portfolioTransactionLine.findMany({
+        select: {
+          accountKey: true,
+          tradeDate: true,
+          settlementDate: true,
+          transactionType: true,
+          ticker: true,
+          amount: true,
+          currency: true,
+          quantity: true,
+          price: true,
+          securityName: true,
+        },
+      });
+
+      const matchedAccounts = new Set<string>();
+      const matchedGlobalFingerprints = new Set<string>();
+
+      for (const transaction of existingTransactions) {
+        const globalFingerprint = txFingerprint(
+          GLOBAL_TRANSACTION_DUPLICATE_SCOPE,
+          transaction,
+        );
+        if (!incomingGlobalFingerprints.has(globalFingerprint)) continue;
+
+        matchedGlobalFingerprints.add(globalFingerprint);
+        if (transaction.accountKey) {
+          matchedAccounts.add(transaction.accountKey);
+        }
+      }
+
+      if (matchedGlobalFingerprints.size === incomingGlobalFingerprints.size) {
+        const accountHint =
+          matchedAccounts.size > 0
+            ? ` Comptes déjà associés : ${Array.from(matchedAccounts).join(", ")}.`
+            : "";
+
+        return NextResponse.json(
+          {
+            error:
+              "Ce fichier de transactions semble déjà avoir été importé. Supprime l'import existant si tu veux le réassocier à un autre compte." +
+              accountHint,
+          },
+          { status: 409 },
+        );
+      }
     }
   }
 
@@ -215,21 +276,29 @@ export async function POST(request: Request) {
   const { portfolioImport: savedImport, txInserted, txTotal } = savedResult;
   const txSkipped = txTotal - txInserted;
 
-  // Mise à jour des tables d'état courant synthétisé (PortfolioHolding / PortfolioAccountState)
   if (snapshot.positions.length > 0 || snapshot.accounts.length > 0) {
     const temporal = computeSnapshotTemporalBounds(snapshot);
     const asOf = temporal.dataTo ?? savedImport.importedAt;
-    void upsertPortfolioStateFromSnapshot(snapshot, savedImport.id, asOf).catch(() => {});
-  }
+    await upsertPortfolioStateFromSnapshot(snapshot, savedImport.id, asOf);
 
-  if (snapshot.positions.length > 0) {
-    void refreshLiveQuotesForLatestImport().catch(() => {});
+    await prisma.portfolioHolding.deleteMany({
+      where: { NOT: { sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID } },
+    });
+
+    if ((await prisma.portfolioTransactionLine.count()) > 0) {
+      await projectHoldingsFromTransactions().catch((error) => {
+        console.error("Projection après import portefeuille échouée", error);
+      });
+    }
+
+    await refreshLiveQuotesForLatestImport().catch(() => {});
   }
 
   if (snapshot.transactions.length > 0) {
-    void projectHoldingsFromTransactions().catch((error) => {
+    await projectHoldingsFromTransactions().catch((error) => {
       console.error("Projection des positions depuis transactions échouée", error);
     });
+    await refreshLiveQuotesForLatestImport().catch(() => {});
   }
 
   return NextResponse.json({
