@@ -12,7 +12,32 @@ import {
 } from "@tanstack/react-table";
 import type { EnrichedPosition } from "@/features/portfolio/queries";
 import { Input } from "@/components/ui/input";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
+import { formatAccountNumber, formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
+
+function toDate(value: Date | string | null) {
+  if (!value) return null;
+  return value instanceof Date ? value : new Date(value);
+}
+
+function formatQuoteAge(fetchedAt: Date | string | null) {
+  if (!fetchedAt) return null;
+  const date = toDate(fetchedAt);
+  if (!date || Number.isNaN(date.getTime())) return null;
+
+  const ageMs = Date.now() - date.getTime();
+  const ageMinutes = Math.max(0, Math.round(ageMs / 60_000));
+
+  if (ageMinutes < 60) {
+    return `${ageMinutes} min`;
+  }
+
+  const ageHours = Math.round(ageMinutes / 60);
+  if (ageHours < 48) {
+    return `${ageHours} h`;
+  }
+
+  return `${Math.round(ageHours / 24)} j`;
+}
 
 export function PositionsTable({ positions }: { positions: EnrichedPosition[] }) {
   const [sorting, setSorting] = useState<SortingState>([
@@ -38,14 +63,18 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
       {
         accessorKey: "accountName",
         header: "Compte",
-        cell: ({ row }) => (
-          <div>
-            <p>{row.original.accountName}</p>
-            {row.original.accountNumber ? (
-              <p className="text-xs text-slate-500">#{row.original.accountNumber}</p>
-            ) : null}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const accountNumber = formatAccountNumber(row.original.accountNumber);
+
+          return (
+            <div>
+              <p>{row.original.accountName}</p>
+              {accountNumber ? (
+                <p className="text-xs text-slate-500">#{accountNumber}</p>
+              ) : null}
+            </div>
+          );
+        },
       },
       { accessorKey: "currency", header: "Devise" },
       {
@@ -68,6 +97,25 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
           row.original.displayPrice === null
             ? "-"
             : formatCurrency(row.original.displayPrice, row.original.currency),
+      },
+      {
+        accessorKey: "quoteFetchedAt",
+        header: "Cours",
+        cell: ({ row }) => {
+          const quoteFetchedAt = toDate(row.original.quoteFetchedAt);
+          if (!row.original.usesLiveQuote || !quoteFetchedAt) {
+            return <span className="text-slate-400">Snapshot Disnat</span>;
+          }
+
+          return (
+            <div>
+              <p className="font-medium text-emerald-700">Live Yahoo</p>
+              <p className="text-xs text-slate-500">
+                {quoteFetchedAt.toLocaleString("fr-CA")} · il y a {formatQuoteAge(quoteFetchedAt)}
+              </p>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "displayMarketValue",

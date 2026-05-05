@@ -7,6 +7,7 @@ import {
   type EnrichedPosition,
 } from "./live-enrichment";
 import { makeAccountKey } from "./upsert-portfolio-state";
+import { formatAccountNumber } from "@/lib/utils";
 
 export type { EnrichedPosition };
 
@@ -116,7 +117,7 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
           sector: h.sector ?? null,
           assetType: h.assetType ?? null,
         },
-        `${h.accountName}${h.accountNumber ? ` (${h.accountNumber})` : ""}`,
+        h.accountName,
         quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
       ),
     );
@@ -194,7 +195,7 @@ export async function getPortfolioSummary() {
               sector: h.sector ?? null,
               assetType: h.assetType ?? null,
             },
-            `${h.accountName}${h.accountNumber ? ` (${h.accountNumber})` : ""}`,
+            h.accountName,
             quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
           ),
         )
@@ -237,10 +238,10 @@ export async function getPortfolioSummary() {
 
   const distinctAccountNumbers = [
     ...new Set([
-      ...accountStates.map((a) => a.accountNumber?.trim()).filter(Boolean),
+      ...accountStates.map((a) => formatAccountNumber(a.accountNumber)).filter(Boolean),
       ...(holdings.length > 0
-        ? holdings.map((h) => h.accountNumber?.trim()).filter(Boolean)
-        : mergedImported.map((m) => m.position.accountNumber?.trim()).filter(Boolean)),
+        ? holdings.map((h) => formatAccountNumber(h.accountNumber)).filter(Boolean)
+        : mergedImported.map((m) => formatAccountNumber(m.position.accountNumber)).filter(Boolean)),
     ] as string[]),
   ].slice(0, 24);
 

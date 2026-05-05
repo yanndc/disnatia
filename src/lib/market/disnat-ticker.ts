@@ -12,6 +12,9 @@ export function disnatTickerToYahooSymbol(ticker: string, currency: string): str
   if (hyphen.endsWith("-T")) {
     return `${hyphen.replace(/-T$/, "")}.TO`;
   }
+  if (hyphen.endsWith("-C")) {
+    return `${hyphen.replace(/-C$/, "")}.TO`;
+  }
   if (hyphen.endsWith("-U")) {
     return hyphen.replace(/-U$/, "");
   }

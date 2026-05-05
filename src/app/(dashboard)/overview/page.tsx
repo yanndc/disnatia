@@ -1,4 +1,12 @@
 import Link from "next/link";
+import {
+  BarChart3,
+  CircleDollarSign,
+  Gauge,
+  ShieldCheck,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortfolioCharts } from "@/features/portfolio/portfolio-charts";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
@@ -18,7 +26,7 @@ export default async function OverviewPage() {
       <EmptyState
         title={
           summary?.hasAnyImportsInHistory
-            ? "Transactions importées — portefeuille en attente"
+            ? "Transactions importées - portefeuille en attente"
             : "Aucun portefeuille importé"
         }
         description={
@@ -30,115 +38,106 @@ export default async function OverviewPage() {
     );
   }
 
+  const referenceLabel = summary.referenceAsOf?.toLocaleDateString("fr-CA") ?? "Non définie";
+  const importLabel = summary.importedAt?.toLocaleDateString("fr-CA") ?? "Aucun import";
+  const quotesLabel = summary.quotesAsOf?.toLocaleString("fr-CA") ?? "Cours non actualisés";
+  const quoteCoverageLabel =
+    summary.quoteCoverage.total > 0
+      ? `${summary.quoteCoverage.matched}/${summary.quoteCoverage.total} tickers couverts`
+      : "Aucun cours disponible";
+  const disnatGapValue = summary.totalValue - summary.disnatReferenceTotalValue;
+  const driftIsHigh = summary.driftVsDisnatPct !== null && Math.abs(summary.driftVsDisnatPct) > 5;
+
   return (
-    <div className="space-y-6">
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm text-slate-500">Tableau de bord</p>
-          <h2 className="text-2xl font-semibold text-slate-950">
-            Vue d&apos;ensemble du portefeuille
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            <span className="font-medium text-slate-700">Référence :</span>{" "}
-            {summary.referenceAsOf?.toLocaleDateString("fr-CA") ?? "—"}
-            {summary.importedAt ? (
-              <> · dernier import {summary.importedAt.toLocaleDateString("fr-CA")}</>
-            ) : null}
-            {summary.quotesAsOf ? (
-              <> · cours {summary.quotesAsOf.toLocaleString("fr-CA")}</>
-            ) : null}
-          </p>
-          {summary.transactionsGlobalCount > 0 ? (
-            <p className="mt-1 text-xs text-slate-600">
-              <span className="font-medium text-slate-700">Transactions historiques :</span>{" "}
-              {summary.transactionsGlobalCount} lignes ·{" "}
-              {summary.transactionsGlobalFrom?.toLocaleDateString("fr-CA")} au{" "}
-              {summary.transactionsGlobalTo?.toLocaleDateString("fr-CA")}
+    <div className="space-y-8">
+      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-sm">
+        <div className="relative isolate grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.4fr_0.8fr]">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.28),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.18),transparent_30%)]" />
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-100">
+              <span className="rounded-full bg-white/10 px-3 py-1">Tableau de bord</span>
+              <span className="rounded-full bg-white/10 px-3 py-1">{quoteCoverageLabel}</span>
+            </div>
+            <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+              Vue d&apos;ensemble du portefeuille
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
+              Suivi de la valeur reconstruite depuis les données importées : positions,
+              encaisse, devises et concentration.
             </p>
-          ) : null}
-          {summary.distinctAccountNumbers.length > 0 ? (
-            <p className="mt-1 text-xs text-slate-600">
-              <span className="font-medium text-slate-700">Comptes :</span>{" "}
-              {summary.distinctAccountNumbers.join(", ")}
-            </p>
-          ) : null}
-          {summary.driftVsDisnatPct !== null ? (
-            <p className="mt-1 text-xs text-slate-500">
-              Contrôle qualité : écart cours live vs Disnat :{" "}
-              <span
-                className={
-                  Math.abs(summary.driftVsDisnatPct) > 5 ? "text-amber-600 font-medium" : ""
-                }
-              >
-                {formatPercent(summary.driftVsDisnatPct)}
-              </span>{" "}
-              (valeur Disnat : {formatCurrency(summary.disnatReferenceTotalValue)})
-            </p>
-          ) : null}
+
+            <div className="mt-7 grid gap-3 text-sm sm:grid-cols-3">
+              <InfoPill label="Référence" value={referenceLabel} />
+              <InfoPill label="Dernier import" value={importLabel} />
+              <InfoPill label="Cours" value={quotesLabel} />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm text-slate-300">Valeur reconstruite</p>
+                <p className="mt-2 text-4xl font-semibold">{formatCurrency(summary.totalValue)}</p>
+              </div>
+              <RefreshQuotesButton />
+            </div>
+            <div className="mt-6 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white/10 p-4">
+                <p className="text-xs text-slate-400">Encaisse connue</p>
+                <p className="mt-1 text-xl font-semibold text-white">{formatCurrency(summary.cashValue)}</p>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-4">
+                <p className="text-xs text-slate-400">Titres reconstruits</p>
+                <p className="mt-1 text-xl font-semibold text-white">{formatCurrency(summary.displayPositionsValue)}</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <RefreshQuotesButton />
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Valeur totale combinée" value={formatCurrency(summary.totalValue)} />
-        <KpiCard label="Encaisse combinée" value={formatCurrency(summary.cashValue)} />
         <KpiCard
-          label="Titres (cours affichés)"
-          value={formatCurrency(summary.displayPositionsValue)}
-          detail={[
-            `${summary.positionCount} positions · ${summary.accountCount} comptes`,
-            summary.quoteCoverage.total > 0
-              ? `${summary.quoteCoverage.matched}/${summary.quoteCoverage.total} tickers avec cours`
-              : "Aucun cours — clique Actualiser les cours",
-          ].join(" · ")}
+          icon={CircleDollarSign}
+          label="Valeur reconstruite"
+          value={formatCurrency(summary.totalValue)}
+          detail="Positions recalculées + encaisse connue"
         />
         <KpiCard
-          label="Concentration max"
-          value={formatPercent(summary.maxConcentration)}
-        />
-      </div>
-
-      {summary.ownerBreakdown.length > 1 && (
-        <section>
-          <h3 className="mb-3 text-sm font-semibold text-slate-600 uppercase tracking-wide">
-            Par portefeuille
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {summary.ownerBreakdown.map((ob) => (
-              <Card key={ob.owner}>
-                <CardHeader>
-                  <CardTitle className="text-slate-700 text-base">{ob.owner}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  <p className="text-2xl font-semibold text-slate-950">{formatCurrency(ob.totalValue)}</p>
-                  <p className="text-sm text-slate-500">
-                    Titres {formatCurrency(ob.marketValue)} · Encaisse {formatCurrency(ob.cashValue)}
-                  </p>
-                  <p className="text-xs text-slate-400">{ob.accountCount} compte{ob.accountCount > 1 ? "s" : ""}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <KpiCard
-          label="Variation vs Disnat"
-          value={
-            summary.driftVsDisnatPct === null
-              ? "—"
-              : formatPercent(summary.driftVsDisnatPct)
-          }
-          detail="Écart entre cours live et valeur snapshot Disnat"
-        />
-        <KpiCard
+          icon={TrendingUp}
           label="Répartition CAD / USD"
           value={summary.currencyExposure
             .map((item) => `${item.currency} ${formatCurrency(item.value, item.currency)}`)
             .join(" · ")}
         />
+        <KpiCard
+          icon={BarChart3}
+          label="Titres reconstruits"
+          value={formatCurrency(summary.displayPositionsValue)}
+          detail={[`${summary.positionCount} positions`, quoteCoverageLabel].join(" · ")}
+        />
+        <KpiCard
+          icon={Gauge}
+          label="Concentration max"
+          value={formatPercent(summary.maxConcentration)}
+          detail="Poids de la plus grande position reconstruite"
+        />
       </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 font-medium text-slate-700">
+            <ShieldCheck className="size-4 text-slate-400" />
+            Validation Disnat
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+            <span>Référence fichier : {formatCurrency(summary.disnatReferenceTotalValue)}</span>
+            <span>Écart : {formatCurrency(disnatGapValue)}</span>
+            <span className={driftIsHigh ? "font-medium text-amber-600" : "text-slate-500"}>
+              {summary.driftVsDisnatPct === null ? "Écart non disponible" : formatPercent(summary.driftVsDisnatPct)}
+            </span>
+          </div>
+        </div>
+      </section>
 
       <PortfolioCharts
         currencyExposure={summary.currencyExposure}
@@ -149,24 +148,40 @@ export default async function OverviewPage() {
 }
 
 function KpiCard({
+  icon: Icon,
   label,
   value,
   detail,
 }: {
+  icon: LucideIcon;
   label: string;
   value: string;
   detail?: string;
 }) {
   return (
-    <Card>
+    <Card className="overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md">
       <CardHeader>
-        <CardTitle className="text-slate-500">{label}</CardTitle>
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="text-slate-500">{label}</CardTitle>
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
+            <Icon className="size-5" />
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-semibold text-slate-950">{value}</p>
+        <p className="text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
         {detail ? <p className="mt-1 text-sm text-slate-500">{detail}</p> : null}
       </CardContent>
     </Card>
+  );
+}
+
+function InfoPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="mt-1 font-medium text-white">{value}</p>
+    </div>
   );
 }
 

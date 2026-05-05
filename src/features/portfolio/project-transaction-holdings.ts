@@ -54,6 +54,21 @@ function normalizeCurrency(currency: string | null | undefined): string {
   return raw;
 }
 
+function normalizeTickerForCurrency(ticker: string, currency: string): string {
+  const raw = ticker.trim().toUpperCase();
+  if (currency === "USD") {
+    return raw.replace(/-U$/, "");
+  }
+  if (currency === "CAD" && !raw.endsWith("-C")) {
+    return `${raw}-C`;
+  }
+  return raw;
+}
+
+function isTransferDescription(value: string): boolean {
+  return /\b(TRSF|TRANSFERT|CONV\s*@|ARTICLE\s+146)/i.test(value);
+}
+
 function dateOnlyUtc(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
@@ -73,7 +88,8 @@ function txKey(tx: ProjectableTransaction): string | null {
   const category = tx.txCategory as PositionTxCategory | null;
   if (!category || !POSITION_CATEGORIES.has(category)) return null;
   const currency = normalizeCurrency(tx.priceDevise ?? tx.currency);
-  return `${tx.accountKey}${KEY_SEPARATOR}${tx.ticker.trim().toUpperCase()}${KEY_SEPARATOR}${currency}`;
+  const ticker = normalizeTickerForCurrency(tx.ticker, currency);
+  return `${tx.accountKey}${KEY_SEPARATOR}${ticker}${KEY_SEPARATOR}${currency}`;
 }
 
 function applyTransaction(state: PositionState, tx: ProjectableTransaction) {
@@ -87,7 +103,7 @@ function applyTransaction(state: PositionState, tx: ProjectableTransaction) {
   state.quantity += signedQuantity;
   state.asOf = txDate(tx) ?? state.asOf;
 
-  if (tx.securityName) state.securityName = tx.securityName;
+  if (tx.securityName && !isTransferDescription(tx.securityName)) state.securityName = tx.securityName;
   if (tx.price && Number.isFinite(tx.price)) state.lastPrice = tx.price;
 
   if (signedQuantity > 0) {
@@ -126,7 +142,8 @@ function buildStateFromTransactions(transactions: ProjectableTransaction[]) {
         accountName: tx.accountName,
         accountNumber: tx.accountNumber,
         ticker,
-        securityName: tx.securityName,
+        securityName:
+          tx.securityName && !isTransferDescription(tx.securityName) ? tx.securityName : null,
         currency,
         quantity: 0,
         costBasis: 0,
@@ -146,9 +163,21 @@ function buildStateFromTransactions(transactions: ProjectableTransaction[]) {
   return { states, dailyEvents };
 }
 
+async function accountStateByKey() {
+  const rows = await prisma.portfolioAccountState.findMany({
+    select: {
+      accountKey: true,
+      accountName: true,
+      accountNumber: true,
+    },
+  });
+  return new Map(rows.map((row) => [row.accountKey, row]));
+}
+
 async function replaceDailyHoldings(
   dailyEvents: Map<string, Map<string, PositionState>>,
   fromDate: Date | null,
+  accountsByKey: Awaited<ReturnType<typeof accountStateByKey>>,
 ) {
   await prisma.portfolioDailyHolding.deleteMany({
     where: { source: "transactions" },
@@ -190,12 +219,13 @@ async function replaceDailyHoldings(
     }
 
     for (const state of open.values()) {
+      const account = accountsByKey.get(state.accountKey);
       rows.push({
         id: randomUUID(),
         holdingDate: cursor,
         accountKey: state.accountKey,
-        accountName: state.accountName,
-        accountNumber: state.accountNumber,
+        accountName: account?.accountName ?? state.accountName,
+        accountNumber: account?.accountNumber ?? state.accountNumber,
         ticker: state.ticker,
         securityName: state.securityName,
         currency: state.currency,
@@ -248,6 +278,7 @@ export async function projectHoldingsFromTransactions() {
 
   const { states, dailyEvents } = buildStateFromTransactions(transactions);
   const openStates = [...states.values()].filter((state) => state.quantity > 0.000001);
+  const accountsByKey = await accountStateByKey();
   const datedTransactions = transactions
     .map(txDate)
     .filter((date): date is Date => date !== null);
@@ -255,6 +286,10 @@ export async function projectHoldingsFromTransactions() {
     datedTransactions.toSorted((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
   for (const state of openStates) {
+    const account = accountsByKey.get(state.accountKey);
+    const accountName = account?.accountName ?? state.accountName ?? state.accountKey;
+    const accountNumber = account?.accountNumber ?? state.accountNumber;
+
     await prisma.portfolioHolding.upsert({
       where: {
         accountKey_ticker_currency: {
@@ -265,8 +300,8 @@ export async function projectHoldingsFromTransactions() {
       },
       create: {
         accountKey: state.accountKey,
-        accountName: state.accountName ?? state.accountKey,
-        accountNumber: state.accountNumber,
+        accountName,
+        accountNumber,
         ticker: state.ticker,
         securityName: state.securityName,
         currency: state.currency,
@@ -278,8 +313,8 @@ export async function projectHoldingsFromTransactions() {
         sourceImportId: PROJECTED_IMPORT_ID,
       },
       update: {
-        accountName: state.accountName ?? state.accountKey,
-        accountNumber: state.accountNumber,
+        accountName,
+        accountNumber,
         securityName: state.securityName,
         quantity: state.quantity,
         averageCost: state.quantity > 0 ? state.costBasis / state.quantity : null,
@@ -317,7 +352,7 @@ export async function projectHoldingsFromTransactions() {
     });
   }
 
-  const dailyRowsProjected = await replaceDailyHoldings(dailyEvents, earliestDate);
+  const dailyRowsProjected = await replaceDailyHoldings(dailyEvents, earliestDate, accountsByKey);
 
   return {
     transactionsConsidered: transactions.length,

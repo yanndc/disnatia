@@ -275,7 +275,7 @@ export function ImportsClient({
               </label>
               {knownAccounts.length === 0 ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                  Aucun compte connu. Importez d'abord un fichier portefeuille pour identifier vos
+                  Aucun compte connu. Importez d&apos;abord un fichier portefeuille pour identifier vos
                   comptes.
                 </p>
               ) : (

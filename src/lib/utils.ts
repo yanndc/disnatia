@@ -14,6 +14,18 @@ export function normalizeCurrency(raw?: string | null): string {
   return up;
 }
 
+export function formatAccountNumber(raw?: string | null): string | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .trim()
+    .replace(/^n:/i, "")
+    .replace(/^name:/i, "")
+    .replace(/\s*\|\s*(CAD|USD|US|CAN|CAD\/USD|USD\/CAD)\s*$/i, "")
+    .trim();
+
+  return cleaned || null;
+}
+
 export function formatCurrency(value: number, currency = "CAD") {
   return new Intl.NumberFormat("fr-CA", {
     style: "currency",
