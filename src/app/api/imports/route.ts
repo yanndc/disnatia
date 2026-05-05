@@ -8,9 +8,11 @@ import {
 import { importFileToParseText } from "@/lib/csv/import-file-text";
 import { prisma } from "@/lib/db/prisma";
 import { getImportHistory } from "@/features/portfolio/queries";
+import { projectHoldingsFromTransactions } from "@/features/portfolio/project-transaction-holdings";
 import { refreshLiveQuotesForLatestImport } from "@/features/portfolio/refresh-live-quotes";
 import { upsertPortfolioStateFromSnapshot } from "@/features/portfolio/upsert-portfolio-state";
 import { Prisma } from "@/generated/prisma/client";
+import type { TxCategory } from "@/generated/prisma/enums";
 import { txFingerprint } from "@/lib/csv/tx-fingerprint";
 
 export async function GET() {
@@ -189,7 +191,7 @@ export async function POST(request: Request) {
           tradeDate: transaction.tradeDate,
           settlementDate: transaction.settlementDate,
           transactionType: transaction.transactionType,
-          txCategory: transaction.txCategory ?? null,
+          txCategory: (transaction.txCategory as TxCategory | undefined) ?? null,
           ticker: transaction.ticker,
           securityName: transaction.securityName,
           market: transaction.market ?? null,
@@ -222,6 +224,12 @@ export async function POST(request: Request) {
 
   if (snapshot.positions.length > 0) {
     void refreshLiveQuotesForLatestImport().catch(() => {});
+  }
+
+  if (snapshot.transactions.length > 0) {
+    void projectHoldingsFromTransactions().catch((error) => {
+      console.error("Projection des positions depuis transactions échouée", error);
+    });
   }
 
   return NextResponse.json({

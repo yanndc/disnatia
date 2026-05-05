@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { TX_CATEGORY_LABELS, TX_CATEGORY_COLORS } from "@/lib/csv/tx-category";
-import type { TxCategory } from "@/generated/prisma";
+import type { TxCategory } from "@/generated/prisma/enums";
 import { TransactionDropzone } from "./transaction-dropzone";
 
 type TxRow = {

@@ -142,6 +142,64 @@ model PortfolioLiveQuote {
   @@map("portfolio_live_quotes")
 }
 
+/// Prix historique journalier normalisé par ticker/devise.
+/// Rempli par jobs de marché ; utilisé par les rapports "valeur à telle date".
+model PortfolioDailyPrice {
+  id          String   @id @default(cuid())
+  ticker      String
+  currency    String
+  priceDate   DateTime @db.Date
+  closePrice  Float
+  source      String   @default("yahoo")
+  yahooSymbol String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([ticker, currency, priceDate])
+  @@index([priceDate])
+  @@index([ticker])
+  @@map("portfolio_daily_prices")
+}
+
+/// Quantité détenue par jour, dérivée des transactions.
+/// Cette table évite de rejouer les CSV au rendu des pages.
+model PortfolioDailyHolding {
+  id           String   @id @default(cuid())
+  holdingDate  DateTime @db.Date
+  accountKey   String
+  accountName  String?
+  accountNumber String?
+  ticker       String
+  securityName String?
+  currency     String
+  quantity     Float
+  averageCost  Float?
+  source       String   @default("transactions")
+  updatedAt    DateTime @updatedAt
+
+  @@unique([holdingDate, accountKey, ticker, currency])
+  @@index([holdingDate])
+  @@index([accountKey])
+  @@index([ticker])
+  @@map("portfolio_daily_holdings")
+}
+
+/// Valeur totale journalière du portefeuille, issue des holdings + prix historiques.
+model PortfolioDailyValue {
+  id             String   @id @default(cuid())
+  valueDate      DateTime @db.Date
+  currency       String
+  positionsValue Float    @default(0)
+  cashValue      Float    @default(0)
+  totalValue     Float    @default(0)
+  source         String   @default("projection")
+  updatedAt      DateTime @updatedAt
+
+  @@unique([valueDate, currency])
+  @@index([valueDate])
+  @@map("portfolio_daily_values")
+}
+
 model PortfolioTransactionLine {
   id              String      @id @default(cuid())
   importId        String

@@ -4,7 +4,7 @@
  * donc on normalise avant de comparer.
  */
 
-import type { TxCategory } from "@/generated/prisma";
+import type { TxCategory } from "@/generated/prisma/enums";
 
 /** Normalise une chaîne : minuscules, sans accents, sans ponctuation superflue. */
 function normalizeType(raw: string): string {

@@ -18,15 +18,20 @@ function createPrismaClient(): PrismaClient {
 }
 
 /** Après HMR ou changement de schéma, le singleton peut être une vieille classe sans certains modèles. */
-function hasUsdCadDelegate(client: PrismaClient): boolean {
-  const d = (client as unknown as { usdCadDailyRate?: { findFirst?: unknown } })
-    .usdCadDailyRate;
-  return typeof d?.findFirst === "function";
+function hasExpectedDelegates(client: PrismaClient): boolean {
+  const c = client as unknown as {
+    usdCadDailyRate?: { findFirst?: unknown };
+    portfolioDailyHolding?: { deleteMany?: unknown };
+  };
+  return (
+    typeof c.usdCadDailyRate?.findFirst === "function" &&
+    typeof c.portfolioDailyHolding?.deleteMany === "function"
+  );
 }
 
 function getSingletonPrisma(): PrismaClient {
   const cached = globalForPrisma.prisma;
-  if (cached && hasUsdCadDelegate(cached)) return cached;
+  if (cached && hasExpectedDelegates(cached)) return cached;
 
   if (cached) {
     void cached.$disconnect().catch(() => {});

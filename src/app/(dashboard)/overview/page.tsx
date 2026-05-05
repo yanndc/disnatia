@@ -13,7 +13,7 @@ export default async function OverviewPage() {
   const hasPortfolioData =
     (summary?.positionCount ?? 0) > 0 || (summary?.accountCount ?? 0) > 0;
 
-  if (!hasPortfolioData) {
+  if (!summary || !hasPortfolioData) {
     return (
       <EmptyState
         title={

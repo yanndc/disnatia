@@ -390,6 +390,9 @@ export const ModelName = {
   PortfolioHolding: 'PortfolioHolding',
   PortfolioAccountState: 'PortfolioAccountState',
   PortfolioLiveQuote: 'PortfolioLiveQuote',
+  PortfolioDailyPrice: 'PortfolioDailyPrice',
+  PortfolioDailyHolding: 'PortfolioDailyHolding',
+  PortfolioDailyValue: 'PortfolioDailyValue',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
@@ -409,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "usdCadDailyRate"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "usdCadDailyRate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -857,6 +860,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    PortfolioDailyPrice: {
+      payload: Prisma.$PortfolioDailyPricePayload<ExtArgs>
+      fields: Prisma.PortfolioDailyPriceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioDailyPriceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioDailyPriceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioDailyPriceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioDailyPriceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioDailyPriceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioDailyPriceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioDailyPriceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioDailyPriceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioDailyPriceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>
+        }
+        update: {
+          args: Prisma.PortfolioDailyPriceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioDailyPriceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioDailyPriceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioDailyPriceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioDailyPriceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyPricePayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioDailyPriceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioDailyPrice>
+        }
+        groupBy: {
+          args: Prisma.PortfolioDailyPriceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyPriceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioDailyPriceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyPriceCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioDailyHolding: {
+      payload: Prisma.$PortfolioDailyHoldingPayload<ExtArgs>
+      fields: Prisma.PortfolioDailyHoldingFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioDailyHoldingFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioDailyHoldingFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioDailyHoldingFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioDailyHoldingFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioDailyHoldingFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioDailyHoldingCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioDailyHoldingCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioDailyHoldingCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioDailyHoldingDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>
+        }
+        update: {
+          args: Prisma.PortfolioDailyHoldingUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioDailyHoldingDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioDailyHoldingUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioDailyHoldingUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioDailyHoldingUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyHoldingPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioDailyHoldingAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioDailyHolding>
+        }
+        groupBy: {
+          args: Prisma.PortfolioDailyHoldingGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyHoldingGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioDailyHoldingCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyHoldingCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioDailyValue: {
+      payload: Prisma.$PortfolioDailyValuePayload<ExtArgs>
+      fields: Prisma.PortfolioDailyValueFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioDailyValueFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioDailyValueFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioDailyValueFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioDailyValueFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioDailyValueFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioDailyValueCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioDailyValueCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioDailyValueCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioDailyValueDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>
+        }
+        update: {
+          args: Prisma.PortfolioDailyValueUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioDailyValueDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioDailyValueUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioDailyValueUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioDailyValueUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyValuePayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioDailyValueAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioDailyValue>
+        }
+        groupBy: {
+          args: Prisma.PortfolioDailyValueGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyValueGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioDailyValueCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyValueCountAggregateOutputType> | number
+        }
+      }
+    }
     PortfolioTransactionLine: {
       payload: Prisma.$PortfolioTransactionLinePayload<ExtArgs>
       fields: Prisma.PortfolioTransactionLineFieldRefs
@@ -1299,6 +1524,53 @@ export const PortfolioLiveQuoteScalarFieldEnum = {
 export type PortfolioLiveQuoteScalarFieldEnum = (typeof PortfolioLiveQuoteScalarFieldEnum)[keyof typeof PortfolioLiveQuoteScalarFieldEnum]
 
 
+export const PortfolioDailyPriceScalarFieldEnum = {
+  id: 'id',
+  ticker: 'ticker',
+  currency: 'currency',
+  priceDate: 'priceDate',
+  closePrice: 'closePrice',
+  source: 'source',
+  yahooSymbol: 'yahooSymbol',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyPriceScalarFieldEnum = (typeof PortfolioDailyPriceScalarFieldEnum)[keyof typeof PortfolioDailyPriceScalarFieldEnum]
+
+
+export const PortfolioDailyHoldingScalarFieldEnum = {
+  id: 'id',
+  holdingDate: 'holdingDate',
+  accountKey: 'accountKey',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  ticker: 'ticker',
+  securityName: 'securityName',
+  currency: 'currency',
+  quantity: 'quantity',
+  averageCost: 'averageCost',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyHoldingScalarFieldEnum = (typeof PortfolioDailyHoldingScalarFieldEnum)[keyof typeof PortfolioDailyHoldingScalarFieldEnum]
+
+
+export const PortfolioDailyValueScalarFieldEnum = {
+  id: 'id',
+  valueDate: 'valueDate',
+  currency: 'currency',
+  positionsValue: 'positionsValue',
+  cashValue: 'cashValue',
+  totalValue: 'totalValue',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyValueScalarFieldEnum = (typeof PortfolioDailyValueScalarFieldEnum)[keyof typeof PortfolioDailyValueScalarFieldEnum]
+
+
 export const PortfolioTransactionLineScalarFieldEnum = {
   id: 'id',
   importId: 'importId',
@@ -1655,6 +1927,9 @@ export type GlobalOmitConfig = {
   portfolioHolding?: Prisma.PortfolioHoldingOmit
   portfolioAccountState?: Prisma.PortfolioAccountStateOmit
   portfolioLiveQuote?: Prisma.PortfolioLiveQuoteOmit
+  portfolioDailyPrice?: Prisma.PortfolioDailyPriceOmit
+  portfolioDailyHolding?: Prisma.PortfolioDailyHoldingOmit
+  portfolioDailyValue?: Prisma.PortfolioDailyValueOmit
   portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit

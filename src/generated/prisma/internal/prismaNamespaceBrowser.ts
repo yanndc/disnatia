@@ -57,6 +57,9 @@ export const ModelName = {
   PortfolioHolding: 'PortfolioHolding',
   PortfolioAccountState: 'PortfolioAccountState',
   PortfolioLiveQuote: 'PortfolioLiveQuote',
+  PortfolioDailyPrice: 'PortfolioDailyPrice',
+  PortfolioDailyHolding: 'PortfolioDailyHolding',
+  PortfolioDailyValue: 'PortfolioDailyValue',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
@@ -184,6 +187,53 @@ export const PortfolioLiveQuoteScalarFieldEnum = {
 } as const
 
 export type PortfolioLiveQuoteScalarFieldEnum = (typeof PortfolioLiveQuoteScalarFieldEnum)[keyof typeof PortfolioLiveQuoteScalarFieldEnum]
+
+
+export const PortfolioDailyPriceScalarFieldEnum = {
+  id: 'id',
+  ticker: 'ticker',
+  currency: 'currency',
+  priceDate: 'priceDate',
+  closePrice: 'closePrice',
+  source: 'source',
+  yahooSymbol: 'yahooSymbol',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyPriceScalarFieldEnum = (typeof PortfolioDailyPriceScalarFieldEnum)[keyof typeof PortfolioDailyPriceScalarFieldEnum]
+
+
+export const PortfolioDailyHoldingScalarFieldEnum = {
+  id: 'id',
+  holdingDate: 'holdingDate',
+  accountKey: 'accountKey',
+  accountName: 'accountName',
+  accountNumber: 'accountNumber',
+  ticker: 'ticker',
+  securityName: 'securityName',
+  currency: 'currency',
+  quantity: 'quantity',
+  averageCost: 'averageCost',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyHoldingScalarFieldEnum = (typeof PortfolioDailyHoldingScalarFieldEnum)[keyof typeof PortfolioDailyHoldingScalarFieldEnum]
+
+
+export const PortfolioDailyValueScalarFieldEnum = {
+  id: 'id',
+  valueDate: 'valueDate',
+  currency: 'currency',
+  positionsValue: 'positionsValue',
+  cashValue: 'cashValue',
+  totalValue: 'totalValue',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyValueScalarFieldEnum = (typeof PortfolioDailyValueScalarFieldEnum)[keyof typeof PortfolioDailyValueScalarFieldEnum]
 
 
 export const PortfolioTransactionLineScalarFieldEnum = {

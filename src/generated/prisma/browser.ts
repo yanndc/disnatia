@@ -53,6 +53,23 @@ export type PortfolioAccountState = Prisma.PortfolioAccountStateModel
  */
 export type PortfolioLiveQuote = Prisma.PortfolioLiveQuoteModel
 /**
+ * Model PortfolioDailyPrice
+ * Prix historique journalier normalisé par ticker/devise.
+ * Rempli par jobs de marché ; utilisé par les rapports "valeur à telle date".
+ */
+export type PortfolioDailyPrice = Prisma.PortfolioDailyPriceModel
+/**
+ * Model PortfolioDailyHolding
+ * Quantité détenue par jour, dérivée des transactions.
+ * Cette table évite de rejouer les CSV au rendu des pages.
+ */
+export type PortfolioDailyHolding = Prisma.PortfolioDailyHoldingModel
+/**
+ * Model PortfolioDailyValue
+ * Valeur totale journalière du portefeuille, issue des holdings + prix historiques.
+ */
+export type PortfolioDailyValue = Prisma.PortfolioDailyValueModel
+/**
  * Model PortfolioTransactionLine
  * 
  */
