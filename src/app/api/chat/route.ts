@@ -9,6 +9,10 @@ import {
   getTopPositions,
   simulateRebalance,
 } from "@/features/portfolio/queries";
+import {
+  INSIGHTS_CHAT_MODEL_ID,
+  INSIGHTS_CHAT_SYSTEM_PROMPT,
+} from "@/features/chat/insights-chat-config";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -30,13 +34,8 @@ export async function POST(request: Request) {
   }
 
   const result = streamText({
-    model: openai("gpt-4.1-mini"),
-    system:
-      "Tu es DisnatIA, un assistant sobre pour analyser un portefeuille Disnat canadien. " +
-        "Réponds en français, avec chiffres concrets. Utilise les outils portefeuille avant de donner une réponse factuelle. " +
-        "Les KPI et poids utilisent des cours rafraîchis (stockés) quand disponibles, avec encaisse toujours issue du dernier import; " +
-        "la variation « vs import précédent » compare les totaux fichier Disnat, pas les cours du marché. " +
-        "Ne donne pas de conseil financier personnalisé; présente les risques, hypothèses et limites.",
+    model: openai(INSIGHTS_CHAT_MODEL_ID),
+    system: INSIGHTS_CHAT_SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     stopWhen: stepCountIs(5),
     tools: {

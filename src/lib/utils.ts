@@ -34,6 +34,20 @@ export function formatCurrency(value: number, currency = "CAD") {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+/** Cours et montants détaillés (aligné tableau Disnat). */
+export function formatCurrencyDetailed(
+  value: number,
+  currency = "CAD",
+  maximumFractionDigits = 2,
+) {
+  return new Intl.NumberFormat("fr-CA", {
+    style: "currency",
+    currency: normalizeCurrency(currency),
+    minimumFractionDigits: Math.min(2, maximumFractionDigits),
+    maximumFractionDigits,
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
 export function formatNumber(value: number, maximumFractionDigits = 2) {
   return new Intl.NumberFormat("fr-CA", {
     maximumFractionDigits,

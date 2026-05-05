@@ -126,6 +126,7 @@ export const PortfolioPositionScalarFieldEnum = {
   marketPrice: 'marketPrice',
   marketValue: 'marketValue',
   unrealizedGainLoss: 'unrealizedGainLoss',
+  loanValue: 'loanValue',
   weightPct: 'weightPct',
   sector: 'sector',
   assetType: 'assetType'
@@ -148,6 +149,7 @@ export const PortfolioHoldingScalarFieldEnum = {
   snapshotPrice: 'snapshotPrice',
   snapshotValue: 'snapshotValue',
   unrealizedGainLoss: 'unrealizedGainLoss',
+  loanValue: 'loanValue',
   sector: 'sector',
   assetType: 'assetType',
   asOf: 'asOf',
@@ -182,6 +184,8 @@ export const PortfolioLiveQuoteScalarFieldEnum = {
   ticker: 'ticker',
   currency: 'currency',
   price: 'price',
+  changeAmount: 'changeAmount',
+  previousClose: 'previousClose',
   fetchedAt: 'fetchedAt',
   yahooSymbol: 'yahooSymbol'
 } as const

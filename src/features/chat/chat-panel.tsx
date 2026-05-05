@@ -1,12 +1,17 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type { UIMessage } from "ai";
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  estimateInsightsChatPromptTokens,
+  INSIGHTS_CHAT_CONTEXT_LIMIT_TOKENS,
+  INSIGHTS_CHAT_MODEL_LABEL,
+} from "@/features/chat/insights-chat-config";
 import { cn } from "@/lib/utils";
 
 const suggestedQuestions = [
@@ -25,11 +30,42 @@ export function ChatPanel({
   initialMessages: UIMessage[];
 }) {
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status, error } = useChat({
+  const [resetting, setResetting] = useState(false);
+  const { messages, sendMessage, status, error, setMessages } = useChat({
     id: sessionId,
     messages: initialMessages,
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
+
+  const tokenEstimate = useMemo(() => estimateInsightsChatPromptTokens(messages), [messages]);
+  const contextPct = Math.min(
+    100,
+    Math.round((tokenEstimate.total / INSIGHTS_CHAT_CONTEXT_LIMIT_TOKENS) * 100),
+  );
+  const busy = status !== "ready" && status !== "error";
+
+  async function resetConversation() {
+    if (
+      !confirm(
+        "Vider toute la conversation ? Les messages seront supprimés et le contexte repartira à zéro.",
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    try {
+      const res = await fetch("/api/chat/session", { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error("Échec de la réinitialisation.");
+      }
+      setMessages([]);
+      setInput("");
+    } catch {
+      alert("Impossible de réinitialiser la conversation. Réessaie plus tard.");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,19 +137,51 @@ export function ChatPanel({
             </p>
           ) : null}
 
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1 text-xs text-slate-600">
+                <p>
+                  <span className="font-medium text-slate-800">Modèle :</span>{" "}
+                  {INSIGHTS_CHAT_MODEL_LABEL}
+                </p>
+                <p>
+                  <span className="font-medium text-slate-800">Contexte (estimation) :</span>{" "}
+                  ~{tokenEstimate.total.toLocaleString("fr-CA")} tokens affichés (messages ~
+                  {tokenEstimate.messageTokens.toLocaleString("fr-CA")} + prompt système ~
+                  {tokenEstimate.systemTokens.toLocaleString("fr-CA")}) sur un plafond indicatif ~
+                  {INSIGHTS_CHAT_CONTEXT_LIMIT_TOKENS.toLocaleString("fr-CA")} tokens ({contextPct}
+                  %)
+                </p>
+                <p className="text-slate-500">
+                  La requête réelle inclut aussi les définitions d&apos;outils et les résultats
+                  d&apos;appels ; l&apos;estimation est donc en général <em>inférieure</em> au total
+                  facturé.
+                </p>
+                <p>
+                  <span className="font-medium text-slate-800">Statut :</span>{" "}
+                  {status === "ready" ? "prêt" : status}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0"
+                disabled={busy || resetting}
+                onClick={() => void resetConversation()}
+              >
+                {resetting ? "Réinitialisation…" : "Nouvelle conversation"}
+              </Button>
+            </div>
+          </div>
+
           <form onSubmit={submit} className="mt-4 space-y-3">
             <Textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ex: Quelles sont mes plus grosses positions et mes risques de concentration?"
             />
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                Statut: {status === "ready" ? "prêt" : status}
-              </p>
-              <Button disabled={status !== "ready" && status !== "error"}>
-                Envoyer
-              </Button>
+            <div className="flex items-center justify-end">
+              <Button disabled={busy}>Envoyer</Button>
             </div>
           </form>
         </CardContent>

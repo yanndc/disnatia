@@ -1,8 +1,8 @@
 import type { UIMessage } from "ai";
 import { prisma } from "@/lib/db/prisma";
+import { PORTFOLIO_INSIGHTS_CHAT_SESSION_ID } from "./insights-chat-config";
 
-/** Session unique (app mono-utilisateur V1) — alignée sur `body.id` envoyé par le transport du chat. */
-export const PORTFOLIO_INSIGHTS_CHAT_SESSION_ID = "portfolio-insights-v1";
+export { PORTFOLIO_INSIGHTS_CHAT_SESSION_ID } from "./insights-chat-config";
 
 export async function loadPortfolioInsightsMessages(): Promise<UIMessage[]> {
   const rows = await prisma.chatMessage.findMany({

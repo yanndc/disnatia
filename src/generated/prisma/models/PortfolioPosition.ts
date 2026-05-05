@@ -32,6 +32,7 @@ export type PortfolioPositionAvgAggregateOutputType = {
   marketPrice: number | null
   marketValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
   weightPct: number | null
 }
 
@@ -41,6 +42,7 @@ export type PortfolioPositionSumAggregateOutputType = {
   marketPrice: number | null
   marketValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
   weightPct: number | null
 }
 
@@ -57,6 +59,7 @@ export type PortfolioPositionMinAggregateOutputType = {
   marketPrice: number | null
   marketValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
   weightPct: number | null
   sector: string | null
   assetType: string | null
@@ -75,6 +78,7 @@ export type PortfolioPositionMaxAggregateOutputType = {
   marketPrice: number | null
   marketValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
   weightPct: number | null
   sector: string | null
   assetType: string | null
@@ -93,6 +97,7 @@ export type PortfolioPositionCountAggregateOutputType = {
   marketPrice: number
   marketValue: number
   unrealizedGainLoss: number
+  loanValue: number
   weightPct: number
   sector: number
   assetType: number
@@ -106,6 +111,7 @@ export type PortfolioPositionAvgAggregateInputType = {
   marketPrice?: true
   marketValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   weightPct?: true
 }
 
@@ -115,6 +121,7 @@ export type PortfolioPositionSumAggregateInputType = {
   marketPrice?: true
   marketValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   weightPct?: true
 }
 
@@ -131,6 +138,7 @@ export type PortfolioPositionMinAggregateInputType = {
   marketPrice?: true
   marketValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   weightPct?: true
   sector?: true
   assetType?: true
@@ -149,6 +157,7 @@ export type PortfolioPositionMaxAggregateInputType = {
   marketPrice?: true
   marketValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   weightPct?: true
   sector?: true
   assetType?: true
@@ -167,6 +176,7 @@ export type PortfolioPositionCountAggregateInputType = {
   marketPrice?: true
   marketValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   weightPct?: true
   sector?: true
   assetType?: true
@@ -272,6 +282,7 @@ export type PortfolioPositionGroupByOutputType = {
   marketPrice: number | null
   marketValue: number
   unrealizedGainLoss: number | null
+  loanValue: number | null
   weightPct: number | null
   sector: string | null
   assetType: string | null
@@ -313,6 +324,7 @@ export type PortfolioPositionWhereInput = {
   marketPrice?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   marketValue?: Prisma.FloatFilter<"PortfolioPosition"> | number
   unrealizedGainLoss?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
+  loanValue?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   weightPct?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   sector?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   assetType?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
@@ -333,6 +345,7 @@ export type PortfolioPositionOrderByWithRelationInput = {
   marketPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   marketValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrderInput | Prisma.SortOrder
+  loanValue?: Prisma.SortOrderInput | Prisma.SortOrder
   weightPct?: Prisma.SortOrderInput | Prisma.SortOrder
   sector?: Prisma.SortOrderInput | Prisma.SortOrder
   assetType?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -356,6 +369,7 @@ export type PortfolioPositionWhereUniqueInput = Prisma.AtLeast<{
   marketPrice?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   marketValue?: Prisma.FloatFilter<"PortfolioPosition"> | number
   unrealizedGainLoss?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
+  loanValue?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   weightPct?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   sector?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   assetType?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
@@ -376,6 +390,7 @@ export type PortfolioPositionOrderByWithAggregationInput = {
   marketPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   marketValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrderInput | Prisma.SortOrder
+  loanValue?: Prisma.SortOrderInput | Prisma.SortOrder
   weightPct?: Prisma.SortOrderInput | Prisma.SortOrder
   sector?: Prisma.SortOrderInput | Prisma.SortOrder
   assetType?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -402,6 +417,7 @@ export type PortfolioPositionScalarWhereWithAggregatesInput = {
   marketPrice?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioPosition"> | number | null
   marketValue?: Prisma.FloatWithAggregatesFilter<"PortfolioPosition"> | number
   unrealizedGainLoss?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioPosition"> | number | null
+  loanValue?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioPosition"> | number | null
   weightPct?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioPosition"> | number | null
   sector?: Prisma.StringNullableWithAggregatesFilter<"PortfolioPosition"> | string | null
   assetType?: Prisma.StringNullableWithAggregatesFilter<"PortfolioPosition"> | string | null
@@ -418,6 +434,7 @@ export type PortfolioPositionCreateInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -438,6 +455,7 @@ export type PortfolioPositionUncheckedCreateInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -454,6 +472,7 @@ export type PortfolioPositionUpdateInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -474,6 +493,7 @@ export type PortfolioPositionUncheckedUpdateInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -492,6 +512,7 @@ export type PortfolioPositionCreateManyInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -508,6 +529,7 @@ export type PortfolioPositionUpdateManyMutationInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -526,6 +548,7 @@ export type PortfolioPositionUncheckedUpdateManyInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -554,6 +577,7 @@ export type PortfolioPositionCountOrderByAggregateInput = {
   marketPrice?: Prisma.SortOrder
   marketValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   weightPct?: Prisma.SortOrder
   sector?: Prisma.SortOrder
   assetType?: Prisma.SortOrder
@@ -565,6 +589,7 @@ export type PortfolioPositionAvgOrderByAggregateInput = {
   marketPrice?: Prisma.SortOrder
   marketValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   weightPct?: Prisma.SortOrder
 }
 
@@ -581,6 +606,7 @@ export type PortfolioPositionMaxOrderByAggregateInput = {
   marketPrice?: Prisma.SortOrder
   marketValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   weightPct?: Prisma.SortOrder
   sector?: Prisma.SortOrder
   assetType?: Prisma.SortOrder
@@ -599,6 +625,7 @@ export type PortfolioPositionMinOrderByAggregateInput = {
   marketPrice?: Prisma.SortOrder
   marketValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   weightPct?: Prisma.SortOrder
   sector?: Prisma.SortOrder
   assetType?: Prisma.SortOrder
@@ -610,6 +637,7 @@ export type PortfolioPositionSumOrderByAggregateInput = {
   marketPrice?: Prisma.SortOrder
   marketValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   weightPct?: Prisma.SortOrder
 }
 
@@ -716,6 +744,7 @@ export type PortfolioPositionCreateWithoutImportInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -734,6 +763,7 @@ export type PortfolioPositionUncheckedCreateWithoutImportInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -781,6 +811,7 @@ export type PortfolioPositionScalarWhereInput = {
   marketPrice?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   marketValue?: Prisma.FloatFilter<"PortfolioPosition"> | number
   unrealizedGainLoss?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
+  loanValue?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   weightPct?: Prisma.FloatNullableFilter<"PortfolioPosition"> | number | null
   sector?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
   assetType?: Prisma.StringNullableFilter<"PortfolioPosition"> | string | null
@@ -797,6 +828,7 @@ export type PortfolioPositionCreateWithoutAccountInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -815,6 +847,7 @@ export type PortfolioPositionUncheckedCreateWithoutAccountInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -858,6 +891,7 @@ export type PortfolioPositionCreateManyImportInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -874,6 +908,7 @@ export type PortfolioPositionUpdateWithoutImportInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -892,6 +927,7 @@ export type PortfolioPositionUncheckedUpdateWithoutImportInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -909,6 +945,7 @@ export type PortfolioPositionUncheckedUpdateManyWithoutImportInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -926,6 +963,7 @@ export type PortfolioPositionCreateManyAccountInput = {
   marketPrice?: number | null
   marketValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   weightPct?: number | null
   sector?: string | null
   assetType?: string | null
@@ -942,6 +980,7 @@ export type PortfolioPositionUpdateWithoutAccountInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -960,6 +999,7 @@ export type PortfolioPositionUncheckedUpdateWithoutAccountInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -977,6 +1017,7 @@ export type PortfolioPositionUncheckedUpdateManyWithoutAccountInput = {
   marketPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   marketValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   weightPct?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -997,6 +1038,7 @@ export type PortfolioPositionSelect<ExtArgs extends runtime.Types.Extensions.Int
   marketPrice?: boolean
   marketValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   weightPct?: boolean
   sector?: boolean
   assetType?: boolean
@@ -1017,6 +1059,7 @@ export type PortfolioPositionSelectCreateManyAndReturn<ExtArgs extends runtime.T
   marketPrice?: boolean
   marketValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   weightPct?: boolean
   sector?: boolean
   assetType?: boolean
@@ -1037,6 +1080,7 @@ export type PortfolioPositionSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   marketPrice?: boolean
   marketValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   weightPct?: boolean
   sector?: boolean
   assetType?: boolean
@@ -1057,12 +1101,13 @@ export type PortfolioPositionSelectScalar = {
   marketPrice?: boolean
   marketValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   weightPct?: boolean
   sector?: boolean
   assetType?: boolean
 }
 
-export type PortfolioPositionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountId" | "accountNumber" | "ticker" | "securityName" | "currency" | "quantity" | "averageCost" | "marketPrice" | "marketValue" | "unrealizedGainLoss" | "weightPct" | "sector" | "assetType", ExtArgs["result"]["portfolioPosition"]>
+export type PortfolioPositionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "importId" | "accountId" | "accountNumber" | "ticker" | "securityName" | "currency" | "quantity" | "averageCost" | "marketPrice" | "marketValue" | "unrealizedGainLoss" | "loanValue" | "weightPct" | "sector" | "assetType", ExtArgs["result"]["portfolioPosition"]>
 export type PortfolioPositionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   import?: boolean | Prisma.PortfolioImportDefaultArgs<ExtArgs>
   account?: boolean | Prisma.PortfolioPosition$accountArgs<ExtArgs>
@@ -1095,6 +1140,10 @@ export type $PortfolioPositionPayload<ExtArgs extends runtime.Types.Extensions.I
     marketPrice: number | null
     marketValue: number
     unrealizedGainLoss: number | null
+    /**
+     * * Valeur d'emprunt (marge) si présente dans l'export Disnat
+     */
+    loanValue: number | null
     weightPct: number | null
     sector: string | null
     assetType: string | null
@@ -1535,6 +1584,7 @@ export interface PortfolioPositionFieldRefs {
   readonly marketPrice: Prisma.FieldRef<"PortfolioPosition", 'Float'>
   readonly marketValue: Prisma.FieldRef<"PortfolioPosition", 'Float'>
   readonly unrealizedGainLoss: Prisma.FieldRef<"PortfolioPosition", 'Float'>
+  readonly loanValue: Prisma.FieldRef<"PortfolioPosition", 'Float'>
   readonly weightPct: Prisma.FieldRef<"PortfolioPosition", 'Float'>
   readonly sector: Prisma.FieldRef<"PortfolioPosition", 'String'>
   readonly assetType: Prisma.FieldRef<"PortfolioPosition", 'String'>

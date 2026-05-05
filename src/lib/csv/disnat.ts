@@ -22,6 +22,7 @@ const normalizedPositionSchema = z.object({
   marketPrice: z.number().optional(),
   marketValue: z.number(),
   unrealizedGainLoss: z.number().optional(),
+  loanValue: z.number().optional(),
   sector: z.string().optional(),
   assetType: z.string().optional(),
 });
@@ -65,8 +66,16 @@ const columnAliases = {
     "unrealized gain/loss",
     "gain non realise",
     "profits non realises",
+    "profits non réalisés ($)",
     "profits non réalisés",
     "profits non raliss",
+  ],
+  loanValue: [
+    "valeur d'emprunt",
+    "valeur demprunt",
+    "valeur d emprunt",
+    "loan value",
+    "marge disponible valeur emprunt",
   ],
   cashValue: ["encaisse", "cash", "cash value", "solde"],
   sector: ["secteur", "sector"],
@@ -245,6 +254,7 @@ export function normalizeDisnatRows(
       marketPrice: readMoney(row, columnAliases.marketPrice),
       marketValue,
       unrealizedGainLoss: readMoney(row, columnAliases.unrealizedGainLoss),
+      loanValue: readMoney(row, columnAliases.loanValue),
       sector: readText(row, columnAliases.sector) || undefined,
       assetType: readText(row, columnAliases.assetType) || undefined,
     };

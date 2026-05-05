@@ -28,10 +28,14 @@ export type AggregatePortfolioLiveQuote = {
 
 export type PortfolioLiveQuoteAvgAggregateOutputType = {
   price: number | null
+  changeAmount: number | null
+  previousClose: number | null
 }
 
 export type PortfolioLiveQuoteSumAggregateOutputType = {
   price: number | null
+  changeAmount: number | null
+  previousClose: number | null
 }
 
 export type PortfolioLiveQuoteMinAggregateOutputType = {
@@ -39,6 +43,8 @@ export type PortfolioLiveQuoteMinAggregateOutputType = {
   ticker: string | null
   currency: string | null
   price: number | null
+  changeAmount: number | null
+  previousClose: number | null
   fetchedAt: Date | null
   yahooSymbol: string | null
 }
@@ -48,6 +54,8 @@ export type PortfolioLiveQuoteMaxAggregateOutputType = {
   ticker: string | null
   currency: string | null
   price: number | null
+  changeAmount: number | null
+  previousClose: number | null
   fetchedAt: Date | null
   yahooSymbol: string | null
 }
@@ -57,6 +65,8 @@ export type PortfolioLiveQuoteCountAggregateOutputType = {
   ticker: number
   currency: number
   price: number
+  changeAmount: number
+  previousClose: number
   fetchedAt: number
   yahooSymbol: number
   _all: number
@@ -65,10 +75,14 @@ export type PortfolioLiveQuoteCountAggregateOutputType = {
 
 export type PortfolioLiveQuoteAvgAggregateInputType = {
   price?: true
+  changeAmount?: true
+  previousClose?: true
 }
 
 export type PortfolioLiveQuoteSumAggregateInputType = {
   price?: true
+  changeAmount?: true
+  previousClose?: true
 }
 
 export type PortfolioLiveQuoteMinAggregateInputType = {
@@ -76,6 +90,8 @@ export type PortfolioLiveQuoteMinAggregateInputType = {
   ticker?: true
   currency?: true
   price?: true
+  changeAmount?: true
+  previousClose?: true
   fetchedAt?: true
   yahooSymbol?: true
 }
@@ -85,6 +101,8 @@ export type PortfolioLiveQuoteMaxAggregateInputType = {
   ticker?: true
   currency?: true
   price?: true
+  changeAmount?: true
+  previousClose?: true
   fetchedAt?: true
   yahooSymbol?: true
 }
@@ -94,6 +112,8 @@ export type PortfolioLiveQuoteCountAggregateInputType = {
   ticker?: true
   currency?: true
   price?: true
+  changeAmount?: true
+  previousClose?: true
   fetchedAt?: true
   yahooSymbol?: true
   _all?: true
@@ -190,6 +210,8 @@ export type PortfolioLiveQuoteGroupByOutputType = {
   ticker: string
   currency: string
   price: number
+  changeAmount: number | null
+  previousClose: number | null
   fetchedAt: Date
   yahooSymbol: string | null
   _count: PortfolioLiveQuoteCountAggregateOutputType | null
@@ -222,6 +244,8 @@ export type PortfolioLiveQuoteWhereInput = {
   ticker?: Prisma.StringFilter<"PortfolioLiveQuote"> | string
   currency?: Prisma.StringFilter<"PortfolioLiveQuote"> | string
   price?: Prisma.FloatFilter<"PortfolioLiveQuote"> | number
+  changeAmount?: Prisma.FloatNullableFilter<"PortfolioLiveQuote"> | number | null
+  previousClose?: Prisma.FloatNullableFilter<"PortfolioLiveQuote"> | number | null
   fetchedAt?: Prisma.DateTimeFilter<"PortfolioLiveQuote"> | Date | string
   yahooSymbol?: Prisma.StringNullableFilter<"PortfolioLiveQuote"> | string | null
 }
@@ -231,6 +255,8 @@ export type PortfolioLiveQuoteOrderByWithRelationInput = {
   ticker?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  changeAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  previousClose?: Prisma.SortOrderInput | Prisma.SortOrder
   fetchedAt?: Prisma.SortOrder
   yahooSymbol?: Prisma.SortOrderInput | Prisma.SortOrder
 }
@@ -244,6 +270,8 @@ export type PortfolioLiveQuoteWhereUniqueInput = Prisma.AtLeast<{
   ticker?: Prisma.StringFilter<"PortfolioLiveQuote"> | string
   currency?: Prisma.StringFilter<"PortfolioLiveQuote"> | string
   price?: Prisma.FloatFilter<"PortfolioLiveQuote"> | number
+  changeAmount?: Prisma.FloatNullableFilter<"PortfolioLiveQuote"> | number | null
+  previousClose?: Prisma.FloatNullableFilter<"PortfolioLiveQuote"> | number | null
   fetchedAt?: Prisma.DateTimeFilter<"PortfolioLiveQuote"> | Date | string
   yahooSymbol?: Prisma.StringNullableFilter<"PortfolioLiveQuote"> | string | null
 }, "id" | "ticker_currency">
@@ -253,6 +281,8 @@ export type PortfolioLiveQuoteOrderByWithAggregationInput = {
   ticker?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  changeAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  previousClose?: Prisma.SortOrderInput | Prisma.SortOrder
   fetchedAt?: Prisma.SortOrder
   yahooSymbol?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.PortfolioLiveQuoteCountOrderByAggregateInput
@@ -270,6 +300,8 @@ export type PortfolioLiveQuoteScalarWhereWithAggregatesInput = {
   ticker?: Prisma.StringWithAggregatesFilter<"PortfolioLiveQuote"> | string
   currency?: Prisma.StringWithAggregatesFilter<"PortfolioLiveQuote"> | string
   price?: Prisma.FloatWithAggregatesFilter<"PortfolioLiveQuote"> | number
+  changeAmount?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioLiveQuote"> | number | null
+  previousClose?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioLiveQuote"> | number | null
   fetchedAt?: Prisma.DateTimeWithAggregatesFilter<"PortfolioLiveQuote"> | Date | string
   yahooSymbol?: Prisma.StringNullableWithAggregatesFilter<"PortfolioLiveQuote"> | string | null
 }
@@ -279,6 +311,8 @@ export type PortfolioLiveQuoteCreateInput = {
   ticker: string
   currency: string
   price: number
+  changeAmount?: number | null
+  previousClose?: number | null
   fetchedAt?: Date | string
   yahooSymbol?: string | null
 }
@@ -288,6 +322,8 @@ export type PortfolioLiveQuoteUncheckedCreateInput = {
   ticker: string
   currency: string
   price: number
+  changeAmount?: number | null
+  previousClose?: number | null
   fetchedAt?: Date | string
   yahooSymbol?: string | null
 }
@@ -297,6 +333,8 @@ export type PortfolioLiveQuoteUpdateInput = {
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  changeAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  previousClose?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fetchedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   yahooSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -306,6 +344,8 @@ export type PortfolioLiveQuoteUncheckedUpdateInput = {
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  changeAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  previousClose?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fetchedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   yahooSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -315,6 +355,8 @@ export type PortfolioLiveQuoteCreateManyInput = {
   ticker: string
   currency: string
   price: number
+  changeAmount?: number | null
+  previousClose?: number | null
   fetchedAt?: Date | string
   yahooSymbol?: string | null
 }
@@ -324,6 +366,8 @@ export type PortfolioLiveQuoteUpdateManyMutationInput = {
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  changeAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  previousClose?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fetchedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   yahooSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -333,6 +377,8 @@ export type PortfolioLiveQuoteUncheckedUpdateManyInput = {
   ticker?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   price?: Prisma.FloatFieldUpdateOperationsInput | number
+  changeAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  previousClose?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   fetchedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   yahooSymbol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -347,12 +393,16 @@ export type PortfolioLiveQuoteCountOrderByAggregateInput = {
   ticker?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  changeAmount?: Prisma.SortOrder
+  previousClose?: Prisma.SortOrder
   fetchedAt?: Prisma.SortOrder
   yahooSymbol?: Prisma.SortOrder
 }
 
 export type PortfolioLiveQuoteAvgOrderByAggregateInput = {
   price?: Prisma.SortOrder
+  changeAmount?: Prisma.SortOrder
+  previousClose?: Prisma.SortOrder
 }
 
 export type PortfolioLiveQuoteMaxOrderByAggregateInput = {
@@ -360,6 +410,8 @@ export type PortfolioLiveQuoteMaxOrderByAggregateInput = {
   ticker?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  changeAmount?: Prisma.SortOrder
+  previousClose?: Prisma.SortOrder
   fetchedAt?: Prisma.SortOrder
   yahooSymbol?: Prisma.SortOrder
 }
@@ -369,12 +421,16 @@ export type PortfolioLiveQuoteMinOrderByAggregateInput = {
   ticker?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   price?: Prisma.SortOrder
+  changeAmount?: Prisma.SortOrder
+  previousClose?: Prisma.SortOrder
   fetchedAt?: Prisma.SortOrder
   yahooSymbol?: Prisma.SortOrder
 }
 
 export type PortfolioLiveQuoteSumOrderByAggregateInput = {
   price?: Prisma.SortOrder
+  changeAmount?: Prisma.SortOrder
+  previousClose?: Prisma.SortOrder
 }
 
 
@@ -384,6 +440,8 @@ export type PortfolioLiveQuoteSelect<ExtArgs extends runtime.Types.Extensions.In
   ticker?: boolean
   currency?: boolean
   price?: boolean
+  changeAmount?: boolean
+  previousClose?: boolean
   fetchedAt?: boolean
   yahooSymbol?: boolean
 }, ExtArgs["result"]["portfolioLiveQuote"]>
@@ -393,6 +451,8 @@ export type PortfolioLiveQuoteSelectCreateManyAndReturn<ExtArgs extends runtime.
   ticker?: boolean
   currency?: boolean
   price?: boolean
+  changeAmount?: boolean
+  previousClose?: boolean
   fetchedAt?: boolean
   yahooSymbol?: boolean
 }, ExtArgs["result"]["portfolioLiveQuote"]>
@@ -402,6 +462,8 @@ export type PortfolioLiveQuoteSelectUpdateManyAndReturn<ExtArgs extends runtime.
   ticker?: boolean
   currency?: boolean
   price?: boolean
+  changeAmount?: boolean
+  previousClose?: boolean
   fetchedAt?: boolean
   yahooSymbol?: boolean
 }, ExtArgs["result"]["portfolioLiveQuote"]>
@@ -411,11 +473,13 @@ export type PortfolioLiveQuoteSelectScalar = {
   ticker?: boolean
   currency?: boolean
   price?: boolean
+  changeAmount?: boolean
+  previousClose?: boolean
   fetchedAt?: boolean
   yahooSymbol?: boolean
 }
 
-export type PortfolioLiveQuoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ticker" | "currency" | "price" | "fetchedAt" | "yahooSymbol", ExtArgs["result"]["portfolioLiveQuote"]>
+export type PortfolioLiveQuoteOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ticker" | "currency" | "price" | "changeAmount" | "previousClose" | "fetchedAt" | "yahooSymbol", ExtArgs["result"]["portfolioLiveQuote"]>
 
 export type $PortfolioLiveQuotePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "PortfolioLiveQuote"
@@ -425,6 +489,12 @@ export type $PortfolioLiveQuotePayload<ExtArgs extends runtime.Types.Extensions.
     ticker: string
     currency: string
     price: number
+    /**
+     * Variation nominale de la séance (ex. champ regularMarketChange Yahoo)
+     * @map: colonnes créées via migration SQL (snake_case) sur Supabase
+     */
+    changeAmount: number | null
+    previousClose: number | null
     fetchedAt: Date
     yahooSymbol: string | null
   }, ExtArgs["result"]["portfolioLiveQuote"]>
@@ -854,6 +924,8 @@ export interface PortfolioLiveQuoteFieldRefs {
   readonly ticker: Prisma.FieldRef<"PortfolioLiveQuote", 'String'>
   readonly currency: Prisma.FieldRef<"PortfolioLiveQuote", 'String'>
   readonly price: Prisma.FieldRef<"PortfolioLiveQuote", 'Float'>
+  readonly changeAmount: Prisma.FieldRef<"PortfolioLiveQuote", 'Float'>
+  readonly previousClose: Prisma.FieldRef<"PortfolioLiveQuote", 'Float'>
   readonly fetchedAt: Prisma.FieldRef<"PortfolioLiveQuote", 'DateTime'>
   readonly yahooSymbol: Prisma.FieldRef<"PortfolioLiveQuote", 'String'>
 }

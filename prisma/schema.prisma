@@ -58,6 +58,8 @@ model PortfolioPosition {
   marketPrice        Float?
   marketValue        Float
   unrealizedGainLoss Float?
+  /** Valeur d'emprunt (marge) si présente dans l'export Disnat */
+  loanValue          Float?          @map("loan_value")
   weightPct          Float?
   sector             String?
   assetType          String?
@@ -90,6 +92,7 @@ model PortfolioHolding {
   snapshotPrice      Float?
   snapshotValue      Float
   unrealizedGainLoss Float?
+  loanValue          Float?          @map("loan_value")
   sector             String?
   assetType          String?
   /// Date de référence des données (dataToDate de l'import ou importedAt)
@@ -135,6 +138,10 @@ model PortfolioLiveQuote {
   ticker      String
   currency    String
   price       Float
+  /// Variation nominale de la séance (ex. champ regularMarketChange Yahoo)
+  /// @map: colonnes créées via migration SQL (snake_case) sur Supabase
+  changeAmount   Float?   @map("change_amount")
+  previousClose  Float?   @map("previous_close")
   fetchedAt   DateTime @default(now())
   yahooSymbol String?
 

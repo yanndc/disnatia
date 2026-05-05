@@ -35,6 +35,7 @@ export type PortfolioHoldingAvgAggregateOutputType = {
   snapshotPrice: number | null
   snapshotValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
 }
 
 export type PortfolioHoldingSumAggregateOutputType = {
@@ -43,6 +44,7 @@ export type PortfolioHoldingSumAggregateOutputType = {
   snapshotPrice: number | null
   snapshotValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
 }
 
 export type PortfolioHoldingMinAggregateOutputType = {
@@ -59,6 +61,7 @@ export type PortfolioHoldingMinAggregateOutputType = {
   snapshotPrice: number | null
   snapshotValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
   sector: string | null
   assetType: string | null
   asOf: Date | null
@@ -80,6 +83,7 @@ export type PortfolioHoldingMaxAggregateOutputType = {
   snapshotPrice: number | null
   snapshotValue: number | null
   unrealizedGainLoss: number | null
+  loanValue: number | null
   sector: string | null
   assetType: string | null
   asOf: Date | null
@@ -101,6 +105,7 @@ export type PortfolioHoldingCountAggregateOutputType = {
   snapshotPrice: number
   snapshotValue: number
   unrealizedGainLoss: number
+  loanValue: number
   sector: number
   assetType: number
   asOf: number
@@ -116,6 +121,7 @@ export type PortfolioHoldingAvgAggregateInputType = {
   snapshotPrice?: true
   snapshotValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
 }
 
 export type PortfolioHoldingSumAggregateInputType = {
@@ -124,6 +130,7 @@ export type PortfolioHoldingSumAggregateInputType = {
   snapshotPrice?: true
   snapshotValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
 }
 
 export type PortfolioHoldingMinAggregateInputType = {
@@ -140,6 +147,7 @@ export type PortfolioHoldingMinAggregateInputType = {
   snapshotPrice?: true
   snapshotValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   sector?: true
   assetType?: true
   asOf?: true
@@ -161,6 +169,7 @@ export type PortfolioHoldingMaxAggregateInputType = {
   snapshotPrice?: true
   snapshotValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   sector?: true
   assetType?: true
   asOf?: true
@@ -182,6 +191,7 @@ export type PortfolioHoldingCountAggregateInputType = {
   snapshotPrice?: true
   snapshotValue?: true
   unrealizedGainLoss?: true
+  loanValue?: true
   sector?: true
   assetType?: true
   asOf?: true
@@ -290,6 +300,7 @@ export type PortfolioHoldingGroupByOutputType = {
   snapshotPrice: number | null
   snapshotValue: number
   unrealizedGainLoss: number | null
+  loanValue: number | null
   sector: string | null
   assetType: string | null
   asOf: Date
@@ -334,6 +345,7 @@ export type PortfolioHoldingWhereInput = {
   snapshotPrice?: Prisma.FloatNullableFilter<"PortfolioHolding"> | number | null
   snapshotValue?: Prisma.FloatFilter<"PortfolioHolding"> | number
   unrealizedGainLoss?: Prisma.FloatNullableFilter<"PortfolioHolding"> | number | null
+  loanValue?: Prisma.FloatNullableFilter<"PortfolioHolding"> | number | null
   sector?: Prisma.StringNullableFilter<"PortfolioHolding"> | string | null
   assetType?: Prisma.StringNullableFilter<"PortfolioHolding"> | string | null
   asOf?: Prisma.DateTimeFilter<"PortfolioHolding"> | Date | string
@@ -355,6 +367,7 @@ export type PortfolioHoldingOrderByWithRelationInput = {
   snapshotPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   snapshotValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrderInput | Prisma.SortOrder
+  loanValue?: Prisma.SortOrderInput | Prisma.SortOrder
   sector?: Prisma.SortOrderInput | Prisma.SortOrder
   assetType?: Prisma.SortOrderInput | Prisma.SortOrder
   asOf?: Prisma.SortOrder
@@ -380,6 +393,7 @@ export type PortfolioHoldingWhereUniqueInput = Prisma.AtLeast<{
   snapshotPrice?: Prisma.FloatNullableFilter<"PortfolioHolding"> | number | null
   snapshotValue?: Prisma.FloatFilter<"PortfolioHolding"> | number
   unrealizedGainLoss?: Prisma.FloatNullableFilter<"PortfolioHolding"> | number | null
+  loanValue?: Prisma.FloatNullableFilter<"PortfolioHolding"> | number | null
   sector?: Prisma.StringNullableFilter<"PortfolioHolding"> | string | null
   assetType?: Prisma.StringNullableFilter<"PortfolioHolding"> | string | null
   asOf?: Prisma.DateTimeFilter<"PortfolioHolding"> | Date | string
@@ -401,6 +415,7 @@ export type PortfolioHoldingOrderByWithAggregationInput = {
   snapshotPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   snapshotValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrderInput | Prisma.SortOrder
+  loanValue?: Prisma.SortOrderInput | Prisma.SortOrder
   sector?: Prisma.SortOrderInput | Prisma.SortOrder
   assetType?: Prisma.SortOrderInput | Prisma.SortOrder
   asOf?: Prisma.SortOrder
@@ -430,6 +445,7 @@ export type PortfolioHoldingScalarWhereWithAggregatesInput = {
   snapshotPrice?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioHolding"> | number | null
   snapshotValue?: Prisma.FloatWithAggregatesFilter<"PortfolioHolding"> | number
   unrealizedGainLoss?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioHolding"> | number | null
+  loanValue?: Prisma.FloatNullableWithAggregatesFilter<"PortfolioHolding"> | number | null
   sector?: Prisma.StringNullableWithAggregatesFilter<"PortfolioHolding"> | string | null
   assetType?: Prisma.StringNullableWithAggregatesFilter<"PortfolioHolding"> | string | null
   asOf?: Prisma.DateTimeWithAggregatesFilter<"PortfolioHolding"> | Date | string
@@ -451,6 +467,7 @@ export type PortfolioHoldingCreateInput = {
   snapshotPrice?: number | null
   snapshotValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   sector?: string | null
   assetType?: string | null
   asOf: Date | string
@@ -472,6 +489,7 @@ export type PortfolioHoldingUncheckedCreateInput = {
   snapshotPrice?: number | null
   snapshotValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   sector?: string | null
   assetType?: string | null
   asOf: Date | string
@@ -493,6 +511,7 @@ export type PortfolioHoldingUpdateInput = {
   snapshotPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   snapshotValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   asOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -514,6 +533,7 @@ export type PortfolioHoldingUncheckedUpdateInput = {
   snapshotPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   snapshotValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   asOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -535,6 +555,7 @@ export type PortfolioHoldingCreateManyInput = {
   snapshotPrice?: number | null
   snapshotValue: number
   unrealizedGainLoss?: number | null
+  loanValue?: number | null
   sector?: string | null
   assetType?: string | null
   asOf: Date | string
@@ -556,6 +577,7 @@ export type PortfolioHoldingUpdateManyMutationInput = {
   snapshotPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   snapshotValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   asOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -577,6 +599,7 @@ export type PortfolioHoldingUncheckedUpdateManyInput = {
   snapshotPrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   snapshotValue?: Prisma.FloatFieldUpdateOperationsInput | number
   unrealizedGainLoss?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  loanValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   sector?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   assetType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   asOf?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -604,6 +627,7 @@ export type PortfolioHoldingCountOrderByAggregateInput = {
   snapshotPrice?: Prisma.SortOrder
   snapshotValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   sector?: Prisma.SortOrder
   assetType?: Prisma.SortOrder
   asOf?: Prisma.SortOrder
@@ -617,6 +641,7 @@ export type PortfolioHoldingAvgOrderByAggregateInput = {
   snapshotPrice?: Prisma.SortOrder
   snapshotValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
 }
 
 export type PortfolioHoldingMaxOrderByAggregateInput = {
@@ -633,6 +658,7 @@ export type PortfolioHoldingMaxOrderByAggregateInput = {
   snapshotPrice?: Prisma.SortOrder
   snapshotValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   sector?: Prisma.SortOrder
   assetType?: Prisma.SortOrder
   asOf?: Prisma.SortOrder
@@ -654,6 +680,7 @@ export type PortfolioHoldingMinOrderByAggregateInput = {
   snapshotPrice?: Prisma.SortOrder
   snapshotValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
   sector?: Prisma.SortOrder
   assetType?: Prisma.SortOrder
   asOf?: Prisma.SortOrder
@@ -667,6 +694,7 @@ export type PortfolioHoldingSumOrderByAggregateInput = {
   snapshotPrice?: Prisma.SortOrder
   snapshotValue?: Prisma.SortOrder
   unrealizedGainLoss?: Prisma.SortOrder
+  loanValue?: Prisma.SortOrder
 }
 
 
@@ -685,6 +713,7 @@ export type PortfolioHoldingSelect<ExtArgs extends runtime.Types.Extensions.Inte
   snapshotPrice?: boolean
   snapshotValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   sector?: boolean
   assetType?: boolean
   asOf?: boolean
@@ -706,6 +735,7 @@ export type PortfolioHoldingSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   snapshotPrice?: boolean
   snapshotValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   sector?: boolean
   assetType?: boolean
   asOf?: boolean
@@ -727,6 +757,7 @@ export type PortfolioHoldingSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   snapshotPrice?: boolean
   snapshotValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   sector?: boolean
   assetType?: boolean
   asOf?: boolean
@@ -748,6 +779,7 @@ export type PortfolioHoldingSelectScalar = {
   snapshotPrice?: boolean
   snapshotValue?: boolean
   unrealizedGainLoss?: boolean
+  loanValue?: boolean
   sector?: boolean
   assetType?: boolean
   asOf?: boolean
@@ -755,7 +787,7 @@ export type PortfolioHoldingSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PortfolioHoldingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "accountKey" | "accountName" | "accountNumber" | "accountType" | "ticker" | "securityName" | "currency" | "quantity" | "averageCost" | "snapshotPrice" | "snapshotValue" | "unrealizedGainLoss" | "sector" | "assetType" | "asOf" | "sourceImportId" | "updatedAt", ExtArgs["result"]["portfolioHolding"]>
+export type PortfolioHoldingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "accountKey" | "accountName" | "accountNumber" | "accountType" | "ticker" | "securityName" | "currency" | "quantity" | "averageCost" | "snapshotPrice" | "snapshotValue" | "unrealizedGainLoss" | "loanValue" | "sector" | "assetType" | "asOf" | "sourceImportId" | "updatedAt", ExtArgs["result"]["portfolioHolding"]>
 
 export type $PortfolioHoldingPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "PortfolioHolding"
@@ -777,6 +809,7 @@ export type $PortfolioHoldingPayload<ExtArgs extends runtime.Types.Extensions.In
     snapshotPrice: number | null
     snapshotValue: number
     unrealizedGainLoss: number | null
+    loanValue: number | null
     sector: string | null
     assetType: string | null
     /**
@@ -1221,6 +1254,7 @@ export interface PortfolioHoldingFieldRefs {
   readonly snapshotPrice: Prisma.FieldRef<"PortfolioHolding", 'Float'>
   readonly snapshotValue: Prisma.FieldRef<"PortfolioHolding", 'Float'>
   readonly unrealizedGainLoss: Prisma.FieldRef<"PortfolioHolding", 'Float'>
+  readonly loanValue: Prisma.FieldRef<"PortfolioHolding", 'Float'>
   readonly sector: Prisma.FieldRef<"PortfolioHolding", 'String'>
   readonly assetType: Prisma.FieldRef<"PortfolioHolding", 'String'>
   readonly asOf: Prisma.FieldRef<"PortfolioHolding", 'DateTime'>

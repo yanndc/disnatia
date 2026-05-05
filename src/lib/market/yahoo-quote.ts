@@ -1,6 +1,14 @@
+export type YahooQuotePriceRow = {
+  price: number;
+  changeAmount?: number;
+  previousClose?: number;
+};
+
 type YahooQuoteResult = {
   symbol?: string;
   regularMarketPrice?: number;
+  regularMarketChange?: number;
+  regularMarketPreviousClose?: number;
 };
 
 type YahooChartResult = {
@@ -34,11 +42,28 @@ async function fetchYahooChartPrice(symbol: string): Promise<number | undefined>
   return typeof price === "number" && Number.isFinite(price) ? price : undefined;
 }
 
+function rowFromYahooQuote(row: YahooQuoteResult): YahooQuotePriceRow | null {
+  const price = row.regularMarketPrice;
+  if (typeof price !== "number" || !Number.isFinite(price)) {
+    return null;
+  }
+  const change =
+    typeof row.regularMarketChange === "number" && Number.isFinite(row.regularMarketChange)
+      ? row.regularMarketChange
+      : undefined;
+  const previousClose =
+    typeof row.regularMarketPreviousClose === "number" &&
+    Number.isFinite(row.regularMarketPreviousClose)
+      ? row.regularMarketPreviousClose
+      : undefined;
+  return { price, changeAmount: change, previousClose };
+}
+
 /** Récupère les cours via l’API quote Yahoo (sans clé). Peut échouer côté réseau ou blocage. */
 export async function fetchYahooQuotesBySymbol(
   symbols: string[],
-): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
+): Promise<Map<string, YahooQuotePriceRow>> {
+  const out = new Map<string, YahooQuotePriceRow>();
   const seen = [...new Set(symbols.map((s) => s.trim()).filter(Boolean))];
   const chunkSize = 35;
 
@@ -66,9 +91,10 @@ export async function fetchYahooQuotesBySymbol(
 
     for (const row of data.quoteResponse?.result ?? []) {
       const symbol = row.symbol;
-      const price = row.regularMarketPrice;
-      if (symbol && typeof price === "number" && Number.isFinite(price)) {
-        out.set(symbol, price);
+      if (!symbol) continue;
+      const parsed = rowFromYahooQuote(row);
+      if (parsed) {
+        out.set(symbol, parsed);
       }
     }
   }
@@ -77,7 +103,7 @@ export async function fetchYahooQuotesBySymbol(
     if (out.has(symbol)) continue;
     const price = await fetchYahooChartPrice(symbol);
     if (price !== undefined) {
-      out.set(symbol, price);
+      out.set(symbol, { price });
     }
   }
 

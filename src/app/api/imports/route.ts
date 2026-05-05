@@ -232,6 +232,7 @@ export async function POST(request: Request) {
           marketPrice: position.marketPrice,
           marketValue: position.marketValue,
           unrealizedGainLoss: position.unrealizedGainLoss,
+          loanValue: position.loanValue ?? null,
           weightPct: position.weightPct,
           sector: position.sector,
           assetType: position.assetType,

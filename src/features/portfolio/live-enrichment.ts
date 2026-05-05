@@ -10,6 +10,10 @@ export type EnrichedPosition = PortfolioPosition & {
   disnatMarketPrice: number | null;
   quoteFetchedAt: Date | null;
   usesLiveQuote: boolean;
+  /** Variation ($) par action lorsque le cours live Yahoo inclut regularMarketChange */
+  quoteChangePerShare: number | null;
+  /** Profits du jour ($) estimés si variation disponible */
+  displayDayGainLoss: number | null;
 };
 
 export function indexQuotesByTickerCurrency(
@@ -65,6 +69,19 @@ export function enrichPositionRow(
       ? position.quantity * displayPrice
       : disnatMarketValue;
 
+  const usesLiveQuote = livePrice != null;
+  const rawDelta = quote?.changeAmount ?? null;
+  const quoteChangePerShare =
+    usesLiveQuote &&
+    rawDelta !== null &&
+    Number.isFinite(rawDelta)
+      ? rawDelta
+      : null;
+  const displayDayGainLoss =
+    quoteChangePerShare !== null && position.quantity > 0
+      ? quoteChangePerShare * position.quantity
+      : null;
+
   return {
     ...position,
     accountName,
@@ -73,7 +90,9 @@ export function enrichPositionRow(
     disnatMarketValue,
     disnatMarketPrice,
     quoteFetchedAt: quote?.fetchedAt ?? null,
-    usesLiveQuote: livePrice != null,
+    usesLiveQuote,
+    quoteChangePerShare,
+    displayDayGainLoss,
   };
 }
 

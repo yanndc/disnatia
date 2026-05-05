@@ -19,6 +19,8 @@ export type NormalizedDisnatPosition = {
   marketPrice?: number;
   marketValue: number;
   unrealizedGainLoss?: number;
+  /** Valeur d'emprunt (marge) si la colonne est dans l’export Disnat */
+  loanValue?: number;
   weightPct?: number;
   sector?: string;
   assetType?: string;

@@ -55,26 +55,27 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
   }
 
   const yahooSymbols = [...new Set([...disnatKeyToYahoo.values()].map((v) => v.yahoo))];
-  const prices = await fetchYahooQuotesBySymbol(yahooSymbols);
-  const missingYahooSymbols = yahooSymbols.filter((symbol) => !prices.has(symbol));
+  const quotesByYahoo = await fetchYahooQuotesBySymbol(yahooSymbols);
+  const missingYahooSymbols = yahooSymbols.filter((symbol) => !quotesByYahoo.has(symbol));
   const now = new Date();
   let quotesUpserted = 0;
   let stooqFilled = 0;
 
   for (const { ticker, currency, yahoo } of disnatKeyToYahoo.values()) {
-    let price = prices.get(yahoo);
+    let row = quotesByYahoo.get(yahoo);
     let sourceSymbol = yahoo;
 
-    if (price === undefined) {
+    if (row === undefined) {
       const stooqSym = disnatTickerToStooqSymbol(ticker, currency);
       const stooqPrice = await fetchStooqLastClose(stooqSym);
       if (stooqPrice !== undefined) {
-        price = stooqPrice;
+        row = { price: stooqPrice };
         sourceSymbol = `stooq:${stooqSym}`;
         stooqFilled += 1;
       }
     }
 
+    const price = row?.price;
     if (price === undefined) {
       continue;
     }
@@ -87,11 +88,15 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
         ticker,
         currency,
         price,
+        changeAmount: row?.changeAmount ?? null,
+        previousClose: row?.previousClose ?? null,
         fetchedAt: now,
         yahooSymbol: sourceSymbol,
       },
       update: {
         price,
+        changeAmount: row?.changeAmount ?? null,
+        previousClose: row?.previousClose ?? null,
         fetchedAt: now,
         yahooSymbol: sourceSymbol,
       },
