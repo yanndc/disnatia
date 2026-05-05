@@ -201,7 +201,7 @@ export async function POST(request: Request) {
           amount: transaction.amount,
           fees: transaction.fees,
           rawJson: transaction.rawJson as Prisma.InputJsonValue,
-          fingerprint: txFingerprint(transaction),
+          fingerprint: ak ? txFingerprint(ak, transaction) : null,
         })),
       });
       txInserted = result.count;

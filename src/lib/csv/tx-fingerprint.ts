@@ -1,11 +1,18 @@
 import { createHash } from "crypto";
 
 /**
- * Fingerprint basé sur le contenu de la transaction uniquement (sans accountKey).
- * Cela garantit qu'un même fichier ne peut pas être importé deux fois,
- * même s'il est associé à des comptes différents.
+ * Fingerprint déterministe incluant accountKey.
+ *
+ * accountKey est inclus pour éviter les faux-positifs entre comptes différents
+ * qui peuvent avoir des transactions apparemment identiques (ex. intérêts du
+ * même montant le même jour dans deux comptes USD distincts).
+ *
+ * Pour annuler un import envoyé au mauvais compte : supprimer l'import dans
+ * /imports (cascade supprime les transactions + libère les fingerprints), puis
+ * réimporter avec le bon compte.
  */
 export function txFingerprint(
+  accountKey: string,
   tx: {
     tradeDate?: Date | null;
     settlementDate?: Date | null;
@@ -19,6 +26,7 @@ export function txFingerprint(
   },
 ): string {
   const parts = [
+    accountKey,
     tx.tradeDate?.toISOString().slice(0, 10) ?? "",
     tx.settlementDate?.toISOString().slice(0, 10) ?? "",
     (tx.transactionType ?? "").toLowerCase().trim(),
@@ -27,7 +35,6 @@ export function txFingerprint(
     (tx.currency ?? "").toUpperCase(),
     tx.quantity !== null && tx.quantity !== undefined ? String(tx.quantity) : "",
     tx.price !== null && tx.price !== undefined ? String(Math.round(tx.price * 10000)) : "",
-    // securityName inclus pour différencier les transactions sans ticker (dividendes, frais, etc.)
     (tx.securityName ?? "").trim().slice(0, 60),
   ];
   return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 32);
