@@ -396,6 +396,7 @@ export const ModelName = {
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
+  AgentMemoryEntry: 'AgentMemoryEntry',
   UsdCadDailyRate: 'UsdCadDailyRate'
 } as const
 
@@ -412,7 +413,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "usdCadDailyRate"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "agentMemoryEntry" | "usdCadDailyRate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1304,6 +1305,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AgentMemoryEntry: {
+      payload: Prisma.$AgentMemoryEntryPayload<ExtArgs>
+      fields: Prisma.AgentMemoryEntryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgentMemoryEntryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgentMemoryEntryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+        }
+        findFirst: {
+          args: Prisma.AgentMemoryEntryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgentMemoryEntryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+        }
+        findMany: {
+          args: Prisma.AgentMemoryEntryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>[]
+        }
+        create: {
+          args: Prisma.AgentMemoryEntryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+        }
+        createMany: {
+          args: Prisma.AgentMemoryEntryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgentMemoryEntryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>[]
+        }
+        delete: {
+          args: Prisma.AgentMemoryEntryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+        }
+        update: {
+          args: Prisma.AgentMemoryEntryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+        }
+        deleteMany: {
+          args: Prisma.AgentMemoryEntryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgentMemoryEntryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgentMemoryEntryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>[]
+        }
+        upsert: {
+          args: Prisma.AgentMemoryEntryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+        }
+        aggregate: {
+          args: Prisma.AgentMemoryEntryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgentMemoryEntry>
+        }
+        groupBy: {
+          args: Prisma.AgentMemoryEntryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentMemoryEntryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgentMemoryEntryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentMemoryEntryCountAggregateOutputType> | number
+        }
+      }
+    }
     UsdCadDailyRate: {
       payload: Prisma.$UsdCadDailyRatePayload<ExtArgs>
       fields: Prisma.UsdCadDailyRateFieldRefs
@@ -1624,6 +1699,17 @@ export const ChatMessageScalarFieldEnum = {
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
+export const AgentMemoryEntryScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  content: 'content',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AgentMemoryEntryScalarFieldEnum = (typeof AgentMemoryEntryScalarFieldEnum)[keyof typeof AgentMemoryEntryScalarFieldEnum]
+
+
 export const UsdCadDailyRateScalarFieldEnum = {
   id: 'id',
   rateDate: 'rateDate',
@@ -1937,6 +2023,7 @@ export type GlobalOmitConfig = {
   portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit
+  agentMemoryEntry?: Prisma.AgentMemoryEntryOmit
   usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
 }
 

@@ -47,7 +47,7 @@ export function ChatPanel({
   async function resetConversation() {
     if (
       !confirm(
-        "Vider toute la conversation ? Les messages seront supprimés et le contexte repartira à zéro.",
+        "Vider la conversation avec Berta ? Les messages seront supprimés ; la mémoire persistante (panneau à droite) est conservée.",
       )
     ) {
       return;
@@ -81,7 +81,11 @@ export function ChatPanel({
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <Card className="min-h-[680px]">
         <CardHeader>
-          <CardTitle>Chat IA portefeuille</CardTitle>
+          <CardTitle>Berta</CardTitle>
+          <p className="text-xs text-slate-500">
+            Assistante portefeuille — la mémoire persistante est dans le panneau « Mémoire de Berta » sur cette
+            page.
+          </p>
         </CardHeader>
         <CardContent className="flex min-h-[600px] flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -120,11 +124,12 @@ export function ChatPanel({
               <div className="flex h-full min-h-80 items-center justify-center text-center">
                 <div>
                   <p className="text-lg font-semibold text-slate-950">
-                    Pose une question sur ton portefeuille
+                    Discute avec Berta de ton portefeuille
                   </p>
                   <p className="mt-2 max-w-md text-sm text-slate-500">
-                    Le chat utilise les fonctions serveur pour lire le dernier import,
-                    calculer l&apos;exposition, la concentration et simuler un rééquilibrage.
+                    Berta appelle les fonctions serveur pour lire le dernier import, l&apos;exposition,
+                    la concentration et simuler un rééquilibrage. Demande-lui de mémoriser des faits pour
+                    les prochains échanges.
                   </p>
                 </div>
               </div>

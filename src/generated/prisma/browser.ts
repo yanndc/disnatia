@@ -85,6 +85,11 @@ export type ChatSession = Prisma.ChatSessionModel
  */
 export type ChatMessage = Prisma.ChatMessageModel
 /**
+ * Model AgentMemoryEntry
+ * Faits que l’utilisateur (ou Berta via outils) garde entre les conversations.
+ */
+export type AgentMemoryEntry = Prisma.AgentMemoryEntryModel
+/**
  * Model UsdCadDailyRate
  * *
  *  * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).

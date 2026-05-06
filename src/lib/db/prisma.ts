@@ -3,12 +3,32 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
+  /** Permet de jeter un client créé avant un changement de DATABASE_URL / HMR. */
+  prismaResolvedConnectionString?: string;
 };
 
-function createPrismaClient(): PrismaClient {
+/** En prod on ne met pas le client sur `globalThis` ; un cache module suffit pour éviter un client par proxy-get. */
+let productionPrisma: PrismaClient | undefined;
+let productionPrismaResolvedConnectionString: string | undefined;
+
+/** Adapter runtime : DATABASE_URL puis DIRECT_URL puis LOCAL_DATABASE_URL (le CLI migrate lit DIRECT_URL puis DATABASE_URL dans prisma.config). */
+function resolvePostgresConnectionString(): string {
+  const url =
+    process.env.DATABASE_URL?.trim() ||
+    process.env.DIRECT_URL?.trim() ||
+    process.env.LOCAL_DATABASE_URL?.trim();
+  if (!url) {
+    throw new Error(
+      "Aucune URL Postgres pour Prisma : définissez DATABASE_URL (recommandé) ou DIRECT_URL / LOCAL_DATABASE_URL dans .env.local.",
+    );
+  }
+  return url;
+}
+
+function createPrismaClient(connectionString: string): PrismaClient {
   return new PrismaClient({
     adapter: new PrismaPg({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
     }),
     log:
       process.env.NODE_ENV === "development"
@@ -22,27 +42,70 @@ function hasExpectedDelegates(client: PrismaClient): boolean {
   const c = client as unknown as {
     usdCadDailyRate?: { findFirst?: unknown };
     portfolioDailyHolding?: { deleteMany?: unknown };
+    chatMessage?: { findMany?: unknown };
   };
   return (
     typeof c.usdCadDailyRate?.findFirst === "function" &&
-    typeof c.portfolioDailyHolding?.deleteMany === "function"
+    typeof c.portfolioDailyHolding?.deleteMany === "function" &&
+    typeof c.chatMessage?.findMany === "function"
   );
 }
 
 function getSingletonPrisma(): PrismaClient {
+  const resolvedConn = resolvePostgresConnectionString();
+
+  if (process.env.NODE_ENV === "production") {
+    const cached = productionPrisma;
+    const sameConnection =
+      productionPrismaResolvedConnectionString === resolvedConn;
+    if (cached && sameConnection && hasExpectedDelegates(cached)) {
+      return cached;
+    }
+
+    if (cached) {
+      void cached.$disconnect().catch(() => {});
+      productionPrisma = undefined;
+      productionPrismaResolvedConnectionString = undefined;
+    }
+
+    const client = createPrismaClient(resolvedConn);
+    productionPrisma = client;
+    productionPrismaResolvedConnectionString = resolvedConn;
+    return client;
+  }
+
   const cached = globalForPrisma.prisma;
-  if (cached && hasExpectedDelegates(cached)) return cached;
+
+  const sameConnection =
+    globalForPrisma.prismaResolvedConnectionString === resolvedConn;
+
+  if (cached && sameConnection && hasExpectedDelegates(cached)) {
+    return cached;
+  }
 
   if (cached) {
     void cached.$disconnect().catch(() => {});
     delete globalForPrisma.prisma;
+    delete globalForPrisma.prismaResolvedConnectionString;
   }
 
-  const client = createPrismaClient();
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = client;
-  }
+  const client = createPrismaClient(resolvedConn);
+  globalForPrisma.prisma = client;
+  globalForPrisma.prismaResolvedConnectionString = resolvedConn;
   return client;
 }
 
-export const prisma = getSingletonPrisma();
+/**
+ * Ne pas appeler `getSingletonPrisma()` une seule fois au chargement du module :
+ * après passage local → Supabase (ou HMR), l’ancien adaptateur pg resterait sinon.
+ */
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getSingletonPrisma();
+    const value = Reflect.get(client, prop, receiver);
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});

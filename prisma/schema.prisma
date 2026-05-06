@@ -268,6 +268,17 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+/// Faits que l’utilisateur (ou Berta via outils) garde entre les conversations.
+model AgentMemoryEntry {
+  id        String   @id @default(cuid())
+  title     String?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("agent_memory_entries")
+}
+
 enum TxCategory {
   BUY
   SELL
