@@ -1,5 +1,8 @@
 import dotenv from "dotenv";
 import { defineConfig, env } from "prisma/config";
+import { applyDatabaseEnvOverridesFromEnvLocal } from "./src/lib/db/database-env-bootstrap";
+
+applyDatabaseEnvOverridesFromEnvLocal();
 
 dotenv.config({ path: ".env.local" });
 dotenv.config({ path: ".env" });

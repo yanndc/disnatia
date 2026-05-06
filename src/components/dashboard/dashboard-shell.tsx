@@ -3,7 +3,7 @@ import {
   BarChart3,
   FileUp,
   LayoutDashboard,
-  MessageSquareText,
+  Sparkles,
   Table2,
   Landmark,
   ArrowLeftRight,
@@ -17,7 +17,7 @@ const navigation = [
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/revenus", label: "Revenus", icon: TrendingUp },
   { href: "/imports", label: "Imports", icon: FileUp },
-  { href: "/insights", label: "Insights IA", icon: MessageSquareText },
+  { href: "/insights", label: "Discuter avec Berta", icon: Sparkles },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

@@ -85,10 +85,10 @@ export type ChatSession = Prisma.ChatSessionModel
  */
 export type ChatMessage = Prisma.ChatMessageModel
 /**
- * Model AgentMemoryEntry
- * Faits que l’utilisateur (ou Berta via outils) garde entre les conversations.
+ * Model BertaAgentRules
+ * Règles / instructions utilisateur persistées — prolongent le prompt système de Berta (une ligne par déploiement).
  */
-export type AgentMemoryEntry = Prisma.AgentMemoryEntryModel
+export type BertaAgentRules = Prisma.BertaAgentRulesModel
 /**
  * Model UsdCadDailyRate
  * *

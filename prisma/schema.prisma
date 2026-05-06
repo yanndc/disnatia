@@ -268,15 +268,13 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-/// Faits que l’utilisateur (ou Berta via outils) garde entre les conversations.
-model AgentMemoryEntry {
-  id        String   @id @default(cuid())
-  title     String?
-  content   String
-  createdAt DateTime @default(now())
+/// Règles / instructions utilisateur persistées — prolongent le prompt système de Berta (une ligne par déploiement).
+model BertaAgentRules {
+  id        String   @id @default("default")
+  body      String   @default("")
   updatedAt DateTime @updatedAt
 
-  @@map("agent_memory_entries")
+  @@map("berta_agent_rules")
 }
 
 enum TxCategory {

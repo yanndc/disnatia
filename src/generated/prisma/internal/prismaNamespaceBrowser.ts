@@ -63,7 +63,7 @@ export const ModelName = {
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
-  AgentMemoryEntry: 'AgentMemoryEntry',
+  BertaAgentRules: 'BertaAgentRules',
   UsdCadDailyRate: 'UsdCadDailyRate'
 } as const
 
@@ -290,15 +290,13 @@ export const ChatMessageScalarFieldEnum = {
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
-export const AgentMemoryEntryScalarFieldEnum = {
+export const BertaAgentRulesScalarFieldEnum = {
   id: 'id',
-  title: 'title',
-  content: 'content',
-  createdAt: 'createdAt',
+  body: 'body',
   updatedAt: 'updatedAt'
 } as const
 
-export type AgentMemoryEntryScalarFieldEnum = (typeof AgentMemoryEntryScalarFieldEnum)[keyof typeof AgentMemoryEntryScalarFieldEnum]
+export type BertaAgentRulesScalarFieldEnum = (typeof BertaAgentRulesScalarFieldEnum)[keyof typeof BertaAgentRulesScalarFieldEnum]
 
 
 export const UsdCadDailyRateScalarFieldEnum = {

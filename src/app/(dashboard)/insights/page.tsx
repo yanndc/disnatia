@@ -1,4 +1,4 @@
-import { AgentMemoryPanel } from "@/features/chat/agent-memory-panel";
+import { BertaRulesPanel } from "@/features/chat/berta-rules-panel";
 import { ChatPanel } from "@/features/chat/chat-panel";
 import {
   loadPortfolioInsightsMessages,
@@ -12,10 +12,10 @@ export default async function InsightsPage() {
     <div className="space-y-6">
       <section>
         <p className="text-sm text-slate-500">Analyse assistée</p>
-        <h2 className="text-2xl font-semibold text-slate-950">Insights IA</h2>
+        <h2 className="text-2xl font-semibold text-slate-950">Discuter avec Berta</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Berta répond en langage naturel via les fonctions métier du portefeuille, avec une mémoire
-          persistante que tu peux éditer.
+          Berta s&apos;appuie sur les fonctions métier du portefeuille ; tu peux fixer des règles
+          permanentes dans le panneau de droite.
         </p>
       </section>
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -24,7 +24,7 @@ export default async function InsightsPage() {
           initialMessages={initialMessages}
         />
         <div className="space-y-6 xl:sticky xl:top-4 xl:self-start">
-          <AgentMemoryPanel />
+          <BertaRulesPanel />
         </div>
       </div>
     </div>

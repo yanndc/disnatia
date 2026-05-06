@@ -396,7 +396,7 @@ export const ModelName = {
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
-  AgentMemoryEntry: 'AgentMemoryEntry',
+  BertaAgentRules: 'BertaAgentRules',
   UsdCadDailyRate: 'UsdCadDailyRate'
 } as const
 
@@ -413,7 +413,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "agentMemoryEntry" | "usdCadDailyRate"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1305,77 +1305,77 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    AgentMemoryEntry: {
-      payload: Prisma.$AgentMemoryEntryPayload<ExtArgs>
-      fields: Prisma.AgentMemoryEntryFieldRefs
+    BertaAgentRules: {
+      payload: Prisma.$BertaAgentRulesPayload<ExtArgs>
+      fields: Prisma.BertaAgentRulesFieldRefs
       operations: {
         findUnique: {
-          args: Prisma.AgentMemoryEntryFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload> | null
+          args: Prisma.BertaAgentRulesFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload> | null
         }
         findUniqueOrThrow: {
-          args: Prisma.AgentMemoryEntryFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+          args: Prisma.BertaAgentRulesFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
         }
         findFirst: {
-          args: Prisma.AgentMemoryEntryFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload> | null
+          args: Prisma.BertaAgentRulesFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload> | null
         }
         findFirstOrThrow: {
-          args: Prisma.AgentMemoryEntryFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+          args: Prisma.BertaAgentRulesFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
         }
         findMany: {
-          args: Prisma.AgentMemoryEntryFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>[]
+          args: Prisma.BertaAgentRulesFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>[]
         }
         create: {
-          args: Prisma.AgentMemoryEntryCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+          args: Prisma.BertaAgentRulesCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
         }
         createMany: {
-          args: Prisma.AgentMemoryEntryCreateManyArgs<ExtArgs>
+          args: Prisma.BertaAgentRulesCreateManyArgs<ExtArgs>
           result: BatchPayload
         }
         createManyAndReturn: {
-          args: Prisma.AgentMemoryEntryCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>[]
+          args: Prisma.BertaAgentRulesCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>[]
         }
         delete: {
-          args: Prisma.AgentMemoryEntryDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+          args: Prisma.BertaAgentRulesDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
         }
         update: {
-          args: Prisma.AgentMemoryEntryUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+          args: Prisma.BertaAgentRulesUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
         }
         deleteMany: {
-          args: Prisma.AgentMemoryEntryDeleteManyArgs<ExtArgs>
+          args: Prisma.BertaAgentRulesDeleteManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateMany: {
-          args: Prisma.AgentMemoryEntryUpdateManyArgs<ExtArgs>
+          args: Prisma.BertaAgentRulesUpdateManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateManyAndReturn: {
-          args: Prisma.AgentMemoryEntryUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>[]
+          args: Prisma.BertaAgentRulesUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>[]
         }
         upsert: {
-          args: Prisma.AgentMemoryEntryUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentMemoryEntryPayload>
+          args: Prisma.BertaAgentRulesUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
         }
         aggregate: {
-          args: Prisma.AgentMemoryEntryAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateAgentMemoryEntry>
+          args: Prisma.BertaAgentRulesAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBertaAgentRules>
         }
         groupBy: {
-          args: Prisma.AgentMemoryEntryGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AgentMemoryEntryGroupByOutputType>[]
+          args: Prisma.BertaAgentRulesGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BertaAgentRulesGroupByOutputType>[]
         }
         count: {
-          args: Prisma.AgentMemoryEntryCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AgentMemoryEntryCountAggregateOutputType> | number
+          args: Prisma.BertaAgentRulesCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BertaAgentRulesCountAggregateOutputType> | number
         }
       }
     }
@@ -1699,15 +1699,13 @@ export const ChatMessageScalarFieldEnum = {
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
-export const AgentMemoryEntryScalarFieldEnum = {
+export const BertaAgentRulesScalarFieldEnum = {
   id: 'id',
-  title: 'title',
-  content: 'content',
-  createdAt: 'createdAt',
+  body: 'body',
   updatedAt: 'updatedAt'
 } as const
 
-export type AgentMemoryEntryScalarFieldEnum = (typeof AgentMemoryEntryScalarFieldEnum)[keyof typeof AgentMemoryEntryScalarFieldEnum]
+export type BertaAgentRulesScalarFieldEnum = (typeof BertaAgentRulesScalarFieldEnum)[keyof typeof BertaAgentRulesScalarFieldEnum]
 
 
 export const UsdCadDailyRateScalarFieldEnum = {
@@ -2023,7 +2021,7 @@ export type GlobalOmitConfig = {
   portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit
-  agentMemoryEntry?: Prisma.AgentMemoryEntryOmit
+  bertaAgentRules?: Prisma.BertaAgentRulesOmit
   usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
 }
 

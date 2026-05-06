@@ -10,9 +10,9 @@ import {
   simulateRebalance,
 } from "@/features/portfolio/queries";
 import {
-  formatAgentMemoryForSystemPrompt,
-  sanitizeAgentMemoryInput,
-} from "@/features/chat/agent-memory";
+  getBertaRulesBody,
+  mergeBertaRulesIntoSystemPrompt,
+} from "@/features/chat/berta-agent-rules";
 import {
   INSIGHTS_CHAT_MODEL_ID,
   INSIGHTS_CHAT_SYSTEM_PROMPT,
@@ -37,8 +37,8 @@ export async function POST(request: Request) {
     await persistMessage(sessionId, "user", extractText(latestUserMessage));
   }
 
-  const memorySection = await formatAgentMemoryForSystemPrompt();
-  const systemPrompt = `${INSIGHTS_CHAT_SYSTEM_PROMPT}\n\n${memorySection}`;
+  const customRules = await getBertaRulesBody();
+  const systemPrompt = mergeBertaRulesIntoSystemPrompt(INSIGHTS_CHAT_SYSTEM_PROMPT, customRules);
 
   const result = streamText({
     model: openai(INSIGHTS_CHAT_MODEL_ID),
@@ -85,71 +85,6 @@ export async function POST(request: Request) {
           toTicker: string;
           amountCad: number;
         }) => simulateRebalance(input),
-      },
-      sauvegarderMemoire: {
-        description:
-          "Enregistre un fait dans la mémoire persistante de Berta pour les prochains échanges.",
-        inputSchema: z.object({
-          content: z.string().min(1).max(8000),
-          title: z.string().max(200).optional(),
-        }),
-        execute: async (input: { content: string; title?: string }) => {
-          try {
-            const { title, content } = sanitizeAgentMemoryInput(input.content, input.title);
-            const row = await prisma.agentMemoryEntry.create({
-              data: { title, content },
-            });
-            return { ok: true as const, id: row.id };
-          } catch (e) {
-            const message = e instanceof Error ? e.message : "Erreur lors de l'enregistrement.";
-            return { ok: false as const, error: message };
-          }
-        },
-      },
-      supprimerMemoire: {
-        description: "Supprime une entrée de la mémoire persistante. Utilise l'identifiant affiché dans le bloc mémoire.",
-        inputSchema: z.object({ id: z.string().min(1) }),
-        execute: async ({ id }: { id: string }) => {
-          try {
-            await prisma.agentMemoryEntry.delete({ where: { id } });
-            return { ok: true as const };
-          } catch {
-            return { ok: false as const, error: "Entrée introuvable." };
-          }
-        },
-      },
-      mettreAJourMemoire: {
-        description:
-          "Met à jour une entrée de mémoire existante (titre et/ou contenu). L'id est celui du bloc mémoire.",
-        inputSchema: z.object({
-          id: z.string().min(1),
-          content: z.string().min(1).max(8000).optional(),
-          title: z.union([z.string().max(200), z.null()]).optional(),
-        }),
-        execute: async (input: {
-          id: string;
-          content?: string;
-          title?: string | null;
-        }) => {
-          const existing = await prisma.agentMemoryEntry.findUnique({ where: { id: input.id } });
-          if (!existing) {
-            return { ok: false as const, error: "Entrée introuvable." };
-          }
-          try {
-            const mergedTitle =
-              input.title === undefined ? existing.title : input.title === null ? null : input.title;
-            const mergedContent = input.content ?? existing.content;
-            const { title, content } = sanitizeAgentMemoryInput(mergedContent, mergedTitle);
-            await prisma.agentMemoryEntry.update({
-              where: { id: input.id },
-              data: { title, content },
-            });
-            return { ok: true as const };
-          } catch (e) {
-            const message = e instanceof Error ? e.message : "Erreur lors de la mise à jour.";
-            return { ok: false as const, error: message };
-          }
-        },
       },
     },
     onFinish: async (event) => {
