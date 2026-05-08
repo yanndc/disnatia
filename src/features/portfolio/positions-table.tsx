@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { EnrichedPosition } from "@/features/portfolio/queries";
+import type { EnrichedPosition } from "@/features/portfolio/live-enrichment";
+import { PositionTransactionsModal } from "@/features/portfolio/position-transactions-modal";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   formatAccountNumber,
@@ -186,6 +188,7 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
   const [sortKey, setSortKey] = useState<SortKey>("displayMarketValue");
   const [sortDesc, setSortDesc] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [txModalPosition, setTxModalPosition] = useState<EnrichedPosition | null>(null);
 
   const filtered = useMemo(() => {
     const q = globalFilter.trim().toLowerCase();
@@ -283,6 +286,9 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                 <tr>
                   {th("accountName", "Compte")}
                   {th("ticker", "Symbole")}
+                  <th className="whitespace-nowrap px-3 py-3 font-medium" scope="col">
+                    Opérations
+                  </th>
                   {th("securityName", "Nom")}
                   {th("assetType", "Classe")}
                   {th("quantity", "Quantité")}
@@ -330,6 +336,20 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                             </p>
                           ) : null}
                         </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        {p.accountKey ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="h-8 whitespace-nowrap px-2 text-xs"
+                            onClick={() => setTxModalPosition(p)}
+                          >
+                            Voir
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="max-w-[220px] px-3 py-3 text-slate-700">
                         <p className="line-clamp-2">{p.securityName || "—"}</p>
@@ -418,6 +438,11 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
           </div>
         </div>
       ))}
+      <PositionTransactionsModal
+        position={txModalPosition}
+        open={txModalPosition !== null}
+        onClose={() => setTxModalPosition(null)}
+      />
     </div>
   );
 }

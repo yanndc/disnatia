@@ -2,6 +2,8 @@ import type { PortfolioLiveQuote, PortfolioPosition } from "@/generated/prisma/c
 
 export type EnrichedPosition = PortfolioPosition & {
   accountName: string;
+  /** Clé compte Disnat (alignée sur les transactions importées). */
+  accountKey: string;
   /** Cours affiché : quote live si dispo, sinon import */
   displayPrice: number | null;
   /** Valeur affichée : qty × displayPrice si possible, sinon valeur import */
@@ -48,7 +50,7 @@ function liveQuoteMatchesReference(livePrice: number, referencePrice: number | n
 }
 
 export function enrichPositionRow(
-  position: PortfolioPosition,
+  position: PortfolioPosition & { accountKey?: string },
   accountName: string,
   quote: PortfolioLiveQuote | undefined,
 ): EnrichedPosition {
@@ -85,6 +87,7 @@ export function enrichPositionRow(
   return {
     ...position,
     accountName,
+    accountKey: position.accountKey ?? "",
     displayPrice,
     displayMarketValue,
     disnatMarketValue,

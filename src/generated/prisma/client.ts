@@ -68,7 +68,8 @@ export type PortfolioHolding = Prisma.PortfolioHoldingModel
  * Model PortfolioAccountState
  * *
  *  * État courant synthétisé des comptes — une ligne par (compte + devise).
- *  * Encaisse, valeur titres et total issus du dernier snapshot connu pour ce compte.
+ *  * Champs `cashValue`, `marketValue`, `totalValue` : dernier snapshot **import portefeuille** ;
+ *  * ils servent de référence de réconciliation avec Disnat (vérité fichier au `asOf`), pas de reconstruction depuis les opérations.
  */
 export type PortfolioAccountState = Prisma.PortfolioAccountStateModel
 /**

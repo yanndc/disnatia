@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getAccountsWithStats } from "@/features/portfolio/queries";
 import { getLatestUsdCadRate } from "@/lib/fx/latest-usd-cad-rate";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
+import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { formatCurrency, formatNumber, normalizeCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,13 @@ function accountDriftTitresCad(
   const cur = normalizeCurrency(acc.currency);
   if (cur === "USD") return usdToCad != null ? acc.driftTitresVsSnapshot * usdToCad : null;
   return acc.driftTitresVsSnapshot;
+}
+
+/** Titre de carte : propriétaire réel, sinon une ligne par devise pour éviter un seul bloc géant. */
+function ownerSectionTitle(acc: AccountWithStats): string {
+  const named = sanitizePortfolioOwner(acc.owner);
+  if (named) return named;
+  return `Propriétaire inconnu (${normalizeCurrency(acc.currency)})`;
 }
 
 export default async function ComptesPage() {
@@ -50,13 +59,17 @@ export default async function ComptesPage() {
   const fx = await getLatestUsdCadRate();
   const usdToCad = fx?.usdToCad ?? null;
 
-  // Grouper par propriétaire
+  // Grouper par propriétaire (sans nom → une carte par devise)
   const byOwner = new Map<string, AccountWithStats[]>();
   for (const acc of accounts) {
-    const owner = acc.owner ?? "Propriétaire inconnu";
-    if (!byOwner.has(owner)) byOwner.set(owner, []);
-    byOwner.get(owner)!.push(acc);
+    const section = ownerSectionTitle(acc);
+    if (!byOwner.has(section)) byOwner.set(section, []);
+    byOwner.get(section)!.push(acc);
   }
+
+  const ownerSectionsSorted = [...byOwner.entries()].sort(([a], [b]) =>
+    a.localeCompare(b, "fr-CA"),
+  );
 
   const cadAccounts = accounts.filter((a) => normalizeCurrency(a.currency) === "CAD");
   const usdAccounts = accounts.filter((a) => normalizeCurrency(a.currency) === "USD");
@@ -101,13 +114,18 @@ export default async function ComptesPage() {
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm text-slate-500">Tableau de bord</p>
-        <h2 className="text-2xl font-semibold text-slate-950">Comptes</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {accounts.length} compte{accounts.length > 1 ? "s" : ""} ·{" "}
-          <strong className="font-medium text-slate-700">Écart titres</strong> = reconstruit −
-          fichier.
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm text-slate-500">Tableau de bord</p>
+            <h2 className="text-2xl font-semibold text-slate-950">Comptes</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {accounts.length} compte{accounts.length > 1 ? "s" : ""} ·{" "}
+              <strong className="font-medium text-slate-700">Écart titres</strong> = titres
+              projetés depuis les opérations (+ cours) − valeur titres du fichier portefeuille Disnat.
+            </p>
+          </div>
+          <RefreshQuotesButton />
+        </div>
 
         {driftNetCad !== null && usdToCad != null ? (
           <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
@@ -174,7 +192,12 @@ export default async function ComptesPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
                   <th className="pb-2 pr-3 font-medium" />
-                  <th className="pb-2 px-2 text-right font-medium">Encaisse</th>
+                  <th
+                    className="pb-2 px-2 text-right font-medium"
+                    title="Référence import portefeuille"
+                  >
+                    Encaisse (réf.)
+                  </th>
                   <th className="pb-2 px-2 text-right font-medium">Titres</th>
                   <th className="pb-2 pl-2 text-right font-medium">Total</th>
                 </tr>
@@ -249,7 +272,7 @@ export default async function ComptesPage() {
         </div>
       </section>
 
-      {Array.from(byOwner.entries()).map(([owner, ownerAccounts]) => (
+      {ownerSectionsSorted.map(([owner, ownerAccounts]) => (
         <Card key={owner}>
           <CardHeader>
             <CardTitle className="text-base">{owner}</CardTitle>
@@ -262,7 +285,9 @@ export default async function ComptesPage() {
                     <th className="px-4 py-2">Type</th>
                     <th className="px-4 py-2">N° compte</th>
                     <th className="px-4 py-2">Devise</th>
-                    <th className="px-4 py-2 text-right">Encaisse</th>
+                    <th className="px-4 py-2 text-right" title="Dernier import portefeuille — référence réconciliation">
+                      Encaisse (réf.)
+                    </th>
                     <th className="px-4 py-2 text-right">Titres (fichier)</th>
                     <th className="px-4 py-2 text-right">Titres reconstr.</th>
                     <th className="px-4 py-2 text-right">Écart titres</th>

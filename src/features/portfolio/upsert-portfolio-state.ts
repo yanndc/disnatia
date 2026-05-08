@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import type { PortfolioSnapshotInput } from "@/types/portfolio";
 
 /**
@@ -14,11 +15,17 @@ export function makeAccountKey(name: string, currency: string, accountNumber?: s
 }
 
 /**
- * Après un import de snapshot (portefeuille), met à jour uniquement PortfolioAccountState
- * (totaux / encaisse Disnat pour validation). Les lignes titres à l’écran viennent de
- * `projectHoldingsFromTransactions`, pas de ce fichier.
+ * Après un import de snapshot **portefeuille** Disnat, met à jour `PortfolioAccountState`.
  *
- * Idempotent : réimporter le même fichier ne change rien tant que la date ne régresse pas.
+ * **Réconciliation (référence « vérité fichier » au `asOf` du snapshot)** : pour chaque compte,
+ * les champs `cashValue`, `marketValue` et `totalValue` lus dans le fichier sont enregistrés
+ * tels quels et font foi pour comparer l’app à Disnat (écarts), jusqu’au prochain import
+ * portefeuille plus récent pour ce compte. Ils ne sont pas recalculés à partir des transactions.
+ *
+ * Les **titres ligne à ligne** affichés dans l’app viennent uniquement de
+ * `projectHoldingsFromTransactions` + cours marché, pas des lignes d’avoirs du CSV.
+ *
+ * Idempotent : une donnée déjà connue avec un `asOf` plus récent n’est pas écrasée.
  */
 export async function upsertPortfolioStateFromSnapshot(
   snapshot: PortfolioSnapshotInput,
@@ -29,6 +36,11 @@ export async function upsertPortfolioStateFromSnapshot(
 
   // --- Comptes ---
   for (const account of snapshot.accounts) {
+    const num = account.accountNumber?.replace(/\s/g, "").trim();
+    if (!num) {
+      continue;
+    }
+
     const accountKey = makeAccountKey(account.accountName, account.currency, account.accountNumber);
 
     const existing = await prisma.portfolioAccountState.findUnique({
@@ -39,6 +51,16 @@ export async function upsertPortfolioStateFromSnapshot(
       continue; // donnée déjà plus récente → on ne touche pas
     }
 
+    const trimmedOwner = sanitizePortfolioOwner(account.owner);
+    const owner =
+      trimmedOwner && trimmedOwner.length > 0 ? trimmedOwner : (sanitizePortfolioOwner(existing?.owner) ?? null);
+
+    const preserveCash =
+      snapshot.snapshotIncludesCashFromPortfolioExport !== true && existing != null;
+    const cashValue = preserveCash ? existing.cashValue : account.cashValue;
+    const marketValue = account.marketValue;
+    const totalValue = cashValue + marketValue;
+
     await prisma.portfolioAccountState.upsert({
       where: { accountKey_currency: { accountKey, currency: account.currency.toUpperCase() } },
       create: {
@@ -46,11 +68,11 @@ export async function upsertPortfolioStateFromSnapshot(
         accountName: account.accountName,
         accountNumber: account.accountNumber ?? null,
         accountType: account.accountType ?? null,
-        owner: account.owner ?? null,
+        owner,
         currency: account.currency.toUpperCase(),
-        cashValue: account.cashValue,
-        marketValue: account.marketValue,
-        totalValue: account.totalValue,
+        cashValue,
+        marketValue,
+        totalValue,
         asOf,
         sourceImportId: importId,
       },
@@ -58,10 +80,10 @@ export async function upsertPortfolioStateFromSnapshot(
         accountName: account.accountName,
         accountNumber: account.accountNumber ?? null,
         accountType: account.accountType ?? null,
-        owner: account.owner ?? null,
-        cashValue: account.cashValue,
-        marketValue: account.marketValue,
-        totalValue: account.totalValue,
+        owner,
+        cashValue,
+        marketValue,
+        totalValue,
         asOf,
         sourceImportId: importId,
       },

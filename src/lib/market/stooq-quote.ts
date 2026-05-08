@@ -3,10 +3,14 @@
  * Complète Yahoo lorsque le symbole ne répond pas.
  */
 
+import { canonicalDisnatStemForQuotes } from "@/lib/market/disnat-ticker";
+
 export function disnatTickerToStooqSymbol(ticker: string, currency: string): string {
   const u = ticker.trim().toUpperCase();
   const cc = currency.trim().toUpperCase();
   let base = u.replace(/-C$/i, "").replace(/-U$/i, "").replace(/-T$/i, "");
+  base = base.replace(/\.TO$/i, "");
+  base = canonicalDisnatStemForQuotes(base.replace(/\./g, "-"));
   base = base.replace(/\./g, "-").toLowerCase();
   if (cc === "USD" || u.endsWith("-U")) {
     return `${base}.us`;

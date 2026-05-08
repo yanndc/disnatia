@@ -21,8 +21,12 @@ export function PortfolioCompositionKpiCard({
   detail?: string;
 }) {
   const data: Slice[] = [
-    { name: "Titres (reconstruit)", value: Math.max(0, positionsValue), key: "positions" },
-    { name: "Encaisse", value: Math.max(0, cashValue), key: "cash" },
+    { name: "Titres", value: Math.max(0, positionsValue), key: "positions" },
+    {
+      name: "Encaisse (réf. réconciliation)",
+      value: Math.max(0, cashValue),
+      key: "cash",
+    },
   ];
   const total = data.reduce((s, d) => s + d.value, 0);
   const rows =
@@ -38,7 +42,7 @@ export function PortfolioCompositionKpiCard({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-slate-500">Valeur reconstruite</CardTitle>
+            <CardTitle className="text-slate-500">Valeur du portefeuille</CardTitle>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 tabular-nums">
               {formatCurrency(totalValue, "CAD")}
             </p>

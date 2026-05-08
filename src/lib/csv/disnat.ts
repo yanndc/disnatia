@@ -1,6 +1,8 @@
 import Papa from "papaparse";
 import { z } from "zod";
 import { categorizeTxType } from "@/lib/csv/tx-category";
+import { normalizeDisnatTickerForPortfolio } from "@/lib/market/disnat-ticker";
+import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import type {
   CsvImportKind,
   NormalizedDisnatAccount,
@@ -28,8 +30,9 @@ const normalizedPositionSchema = z.object({
 });
 
 const columnAliases = {
-  accountName: ["nom", "compte", "account", "account name", "nom du compte"],
-  accountType: ["type de compte", "account type", "nom"],
+  /** Éviter « nom » et « compte » seuls : sur les exports titres, « Nom » est souvent le libellé du titre. */
+  accountName: ["nom du compte", "account name", "designation du compte", "portfolio name", "account"],
+  accountType: ["type de compte", "account type"],
   accountNumber: [
     "compte",
     "numero de compte",
@@ -58,6 +61,8 @@ const columnAliases = {
     "valeur au marche",
     "valeur au marché",
     "valeur au march",
+    "valeur au marche $",
+    "valeur au marché $",
     "valeur des titres",
   ],
   totalValue: ["valeur totale", "total value"],
@@ -193,14 +198,12 @@ export function normalizeDisnatRows(
   const positions: NormalizedDisnatPosition[] = [];
   const transactions: NormalizedDisnatTransaction[] = [];
   const cashByAccount = new Map<string, NormalizedDisnatAccount>();
+  let snapshotIncludesCashFromPortfolioExport = false;
   const importKind = detectImportKind(Object.keys(rows[0] ?? {}), rows);
 
   rows.forEach((row, index) => {
     const ticker = readText(row, columnAliases.ticker);
-    const accountName =
-      readText(row, columnAliases.accountName) ||
-      readText(row, ["nom", "name"]) ||
-      "Compte Disnat";
+    const accountName = readText(row, columnAliases.accountName) || "Compte Disnat";
     const accountNumber = readText(row, columnAliases.accountNumber) || undefined;
     const currency = inferCurrency(row);
     const marketValue = readMoney(row, columnAliases.marketValue);
@@ -218,8 +221,14 @@ export function normalizeDisnatRows(
     }
 
     if (!ticker && (cashValue !== undefined || marketValue !== undefined || totalValue !== undefined)) {
-      const acctNum = accountNumber?.toUpperCase();
-      const owner = (acctNum && ownerMap?.get(acctNum)) || undefined;
+      if (!hasDisnatAccountNumber(accountNumber)) {
+        warnings.push(
+          `Ligne ${index + 2}: ligne sans numéro de compte (total consolidé ou export récap.) — ignorée pour les états par compte.`,
+        );
+        return;
+      }
+      const owner = resolveOwnerFromMap(ownerMap, accountNumber);
+      snapshotIncludesCashFromPortfolioExport = true;
       upsertAccount(cashByAccount, {
         accountName,
         accountNumber,
@@ -242,12 +251,26 @@ export function normalizeDisnatRows(
       return;
     }
 
+    const rawSecurityName = readText(row, columnAliases.securityName) || undefined;
+    let rowAccountType = readText(row, columnAliases.accountType) || undefined;
+    /*
+     * Sur exports Disnat, « Nom » sert au titre ; l’ancien alias « nom » sur accountType
+     * recopiait le nom de l’action dans le type de compte et cassait l’agrégation (upsertAccount).
+     */
+    if (
+      rowAccountType &&
+      rawSecurityName &&
+      rowAccountType.trim().toLowerCase() === rawSecurityName.trim().toLowerCase()
+    ) {
+      rowAccountType = undefined;
+    }
+
     const candidate = {
       accountName,
       accountNumber,
-      accountType: readText(row, columnAliases.accountType) || undefined,
-      ticker: ticker.toUpperCase(),
-      securityName: readText(row, columnAliases.securityName) || undefined,
+      accountType: rowAccountType,
+      ticker: normalizeDisnatTickerForPortfolio(ticker.toUpperCase(), currency),
+      securityName: rawSecurityName,
       currency,
       quantity: readMoney(row, columnAliases.quantity) ?? 0,
       averageCost: readMoney(row, columnAliases.averageCost),
@@ -265,11 +288,20 @@ export function normalizeDisnatRows(
       return;
     }
 
+    const owner = resolveOwnerFromMap(ownerMap, accountNumber);
     positions.push(parsed.data);
+    if (!hasDisnatAccountNumber(parsed.data.accountNumber)) {
+      warnings.push(
+        `Ligne ${index + 2}: ${parsed.data.ticker} sans numéro de compte — titre conservé pour l’import mais pas d’agrégation encaisse/totaux.`,
+      );
+      return;
+    }
     upsertAccount(cashByAccount, {
       accountName,
       accountNumber: parsed.data.accountNumber,
-      accountType: parsed.data.accountType,
+      /* Ne pas reprendre le type depuis une ligne titre (souvent confondu avec le nom de valeur). */
+      accountType: undefined,
+      owner,
       currency,
       cashValue: 0,
       marketValue,
@@ -281,6 +313,12 @@ export function normalizeDisnatRows(
     (sum, position) => sum + position.marketValue,
     0,
   );
+
+  if (!snapshotIncludesCashFromPortfolioExport && positions.length > 0 && cashByAccount.size > 0) {
+    warnings.push(
+      "Export sans encaisse par compte (détail des titres) : les encaisses déjà en base sont conservées. Importe la vue portefeuille avec encaisse pour les mettre à jour.",
+    );
+  }
 
   return {
     importKind,
@@ -295,6 +333,7 @@ export function normalizeDisnatRows(
     })),
     transactions,
     warnings,
+    snapshotIncludesCashFromPortfolioExport,
   };
 }
 
@@ -326,6 +365,10 @@ export function computeSnapshotTemporalBounds(snapshot: PortfolioSnapshotInput):
     dataFrom: new Date(Math.min(...times)),
     dataTo: new Date(Math.max(...times)),
   };
+}
+
+function hasDisnatAccountNumber(accountNumber?: string | null): boolean {
+  return Boolean(accountNumber?.replace(/\s/g, "").length);
 }
 
 function accountMergeKey(name: string, currency: string, accountNumber?: string) {
@@ -366,6 +409,30 @@ function readText(
   return typeof value === "string" ? value.trim() : String(value ?? "").trim();
 }
 
+/** Normalise une chaîne monétaire (fr-ca, en-us, sortie Excel CSV) en nombre décimal JS. */
+function normalizeMoneyString(raw: string): string {
+  let s = raw.replace(/\s/g, "").replace(/\$/g, "").replace(/CAD|USD/gi, "");
+  const paren = s.match(/^\(([^)]+)\)$/);
+  if (paren) s = `-${paren[1]}`;
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+  if (hasComma && hasDot) {
+    const lastComma = s.lastIndexOf(",");
+    const lastDot = s.lastIndexOf(".");
+    if (lastDot > lastComma) {
+      // US / Excel : 19,418.92
+      return s.replace(/,/g, "");
+    }
+    // Europe : 19.418,92
+    return s.replace(/\./g, "").replace(",", ".");
+  }
+  if (hasComma) {
+    return s.replace(",", ".");
+  }
+  return s;
+}
+
 function readMoney(
   row: ParsedDisnatRow,
   aliases: readonly string[],
@@ -375,13 +442,7 @@ function readMoney(
     return undefined;
   }
 
-  const normalized = String(raw)
-    .replace(/\s/g, "")
-    .replace(/\$/g, "")
-    .replace(/CAD|USD/gi, "")
-    .replace(/\(([^)]+)\)/, "-$1")
-    .replace(/,/g, ".");
-
+  const normalized = normalizeMoneyString(String(raw));
   const value = Number.parseFloat(normalized);
   return Number.isFinite(value) ? value : undefined;
 }
@@ -403,6 +464,10 @@ function normalizeTransaction(
   const rawMarket = readText(row, columnAliases.market);
   const rawAssetClass = readText(row, columnAliases.assetClass);
   const rawPriceDevise = readText(row, columnAliases.priceDevise);
+  const accountCurrency = readText(row, columnAliases.currency)?.toUpperCase() || "CAD";
+  const priceDeviseNorm =
+    rawPriceDevise && rawPriceDevise !== "-" ? rawPriceDevise.toUpperCase() : undefined;
+  const currencyForTicker = priceDeviseNorm ?? accountCurrency;
 
   return {
     accountName: readText(row, columnAliases.accountName) || undefined,
@@ -411,11 +476,13 @@ function normalizeTransaction(
     settlementDate,
     transactionType,
     txCategory: categorizeTxType(transactionType),
-    ticker: ticker ? ticker.toUpperCase() : undefined,
+    ticker: ticker
+      ? normalizeDisnatTickerForPortfolio(ticker.toUpperCase(), currencyForTicker)
+      : undefined,
     securityName: securityName || undefined,
     market: rawMarket && rawMarket !== "-" ? rawMarket : undefined,
-    currency: readText(row, columnAliases.currency)?.toUpperCase() || "CAD",
-    priceDevise: rawPriceDevise && rawPriceDevise !== "-" ? rawPriceDevise.toUpperCase() : undefined,
+    currency: accountCurrency,
+    priceDevise: priceDeviseNorm,
     assetClass: rawAssetClass && rawAssetClass !== "-" ? rawAssetClass : undefined,
     quantity: readMoney(row, columnAliases.quantity),
     price: readMoney(row, columnAliases.marketPrice),
@@ -586,46 +653,130 @@ function detectImportKind(
 }
 
 /**
- * Extrait une map accountNumber → propriétaire depuis les sections
- * d'en-tête du CSV portefeuille Disnat (ex. "YANN DE CHAMPLAIN").
- * Une ligne est considérée comme un en-tête de propriétaire si :
- *  - elle ne contient pas le délimiteur (ou contient 1 seul champ)
- *  - elle est tout en majuscules + espaces/tirets/apostrophes
- *  - elle a plus de 4 caractères
- *  - elle n'est pas une ligne générique connue ("Portefeuille", "Total des actifs…")
+ * Numéro de compte normalisé pour ownerMap / réconciliation (sans espaces, majuscules).
+ */
+function normalizedAccountNumberKey(accountNumber?: string | null): string | undefined {
+  const k = accountNumber?.replace(/\s/g, "").toUpperCase();
+  return k && k.length >= 4 ? k : undefined;
+}
+
+function resolveOwnerFromMap(
+  ownerMap: Map<string, string> | undefined,
+  accountNumber?: string | null,
+): string | undefined {
+  const key = normalizedAccountNumberKey(accountNumber);
+  const raw = (key && ownerMap?.get(key)) || undefined;
+  const cleaned = sanitizePortfolioOwner(raw);
+  return cleaned ?? undefined;
+}
+
+/**
+ * Extrait une map accountNumber → propriétaire depuis les sections du CSV portefeuille Disnat.
+ * Utilise Papa Parse (comme le reste du fichier) pour respecter les guillemets ; détecte la colonne
+ * « Compte » depuis la ligne d’en-tête ; accepte un nom de propriétaire en MAJUSCULES ou en casse mixte.
  */
 export function extractOwnerMap(fileText: string, delimiter: string): Map<string, string> {
   const ownerMap = new Map<string, string>();
-  const lines = fileText
-    .replace(/^\uFEFF/, "")
-    .split(/\r\n|\n|\r/)
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const normalizedAcctHeaders = new Set(
+    columnAliases.accountNumber.map((a) => normalizeHeader(String(a))),
+  );
 
-  const ignorePatterns = /^(portefeuille|total des actifs|vue d'ensemble|nom|en date du|taux de change)/i;
-  const ownerPattern = /^[A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇŒÆ][A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇŒÆ\s\-']+$/;
+  const ignorePatterns =
+    /^(portefeuille|total des actifs|vue d['\u2019]ensemble|nom|en date du|taux de change)/i;
+
+  function findAccountColumnIndex(cells: string[]): number | null {
+    const normalized = cells.map((c) => normalizeHeader(String(c ?? "")));
+    for (let i = 0; i < normalized.length; i++) {
+      const h = normalized[i];
+      if (h && normalizedAcctHeaders.has(h)) return i;
+    }
+    return null;
+  }
+
+  function looksLikePortfolioHeaderRow(cells: string[]): boolean {
+    const acctIdx = findAccountColumnIndex(cells);
+    if (acctIdx === null) return false;
+    const joined = cells.join(" ").toLowerCase();
+    return (
+      /\b(symbole|ticker)\b/u.test(joined) ||
+      /\b(valeur des titres|valeur marchande|valeur au marche|valeur au marché|market value)\b/u.test(
+        joined,
+      ) ||
+      /\b(encaisse|cash)\b/u.test(joined) ||
+      /\b(devise|currency)\b/u.test(joined)
+    );
+  }
+
+  function looksLikeOwnerSectionRow(firstCell: string, cells: string[]): boolean {
+    const value = firstCell.trim();
+    if (!value || value.length < 5 || ignorePatterns.test(value)) return false;
+    if (/^(ACTIONS|OPÉRATIONS|OPERATIONS)\s+(CAD|USD)\s*$/i.test(value)) return false;
+    if (/^(REER|CELI|RESP|TFSA|FNCR|NON[- ]?ENR\.?)\b/i.test(value)) return false;
+
+    const norm = normalizeHeader(value);
+    if (
+      norm === "nom" ||
+      norm === "symbole" ||
+      norm === "devise" ||
+      normalizedAcctHeaders.has(norm)
+    ) {
+      return false;
+    }
+
+    const trailingNonEmpty = cells.slice(1).filter((c) => String(c ?? "").trim()).length;
+    if (trailingNonEmpty > 3) return false;
+
+    const legacyAllCaps =
+      /^[A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇŒÆ][A-ZÀÂÄÉÈÊËÎÏÔÙÛÜÇŒÆ\s\-']+$/.test(value);
+
+    const titledPerson =
+      /^[\p{L}][\p{L}\s\-'.]{3,}$/u.test(value) &&
+      /\s/.test(value) &&
+      value.split(/\s+/).filter((t) => t.replace(/\./g, "").length >= 2).length >= 2;
+
+    return legacyAllCaps || titledPerson;
+  }
+
+  const preprocessed = preprocessDisnatCsvText(fileText);
+  const parsed = Papa.parse<string[]>(preprocessed, {
+    delimiter,
+    header: false,
+    skipEmptyLines: false,
+  });
 
   let currentOwner: string | null = null;
+  let accountColumnIdx: number | null = null;
 
-  for (const line of lines) {
-    const cells = line.split(delimiter);
-    const isSingleCell = cells.length === 1;
-    const value = cells[0].trim();
+  for (const row of parsed.data) {
+    const cells = row.map((c) => String(c ?? "").trim());
+    if (cells.every((c) => !c)) continue;
 
-    if (isSingleCell && ownerPattern.test(value) && value.length > 4 && !ignorePatterns.test(value)) {
-      currentOwner = value;
+    const sectionHead = (cells[0] ?? "").trim();
+    if (/^(ACTIONS|OPÉRATIONS|OPERATIONS)\s+(CAD|USD)\s*$/i.test(sectionHead)) {
+      currentOwner = null;
       continue;
     }
 
-    // Ligne de données avec no de compte en position 2 (colonne "Compte")
-    if (currentOwner && cells.length >= 3) {
-      const accountNumber = cells[2]?.trim().toUpperCase();
+    if (looksLikePortfolioHeaderRow(cells)) {
+      accountColumnIdx = findAccountColumnIndex(cells);
+      continue;
+    }
+
+    if (looksLikeOwnerSectionRow(cells[0] ?? "", cells)) {
+      currentOwner = (cells[0] ?? "").trim();
+      continue;
+    }
+
+    if (currentOwner !== null && accountColumnIdx !== null && cells.length > accountColumnIdx) {
+      const rawAcct = cells[accountColumnIdx] ?? "";
+      const accountNumber = normalizedAccountNumberKey(rawAcct);
+      const effectiveOwner = sanitizePortfolioOwner(currentOwner);
       if (
+        effectiveOwner &&
         accountNumber &&
-        accountNumber.length >= 4 &&
-        !/^(total|ensemble|encaisse|vue|nom|devise)/i.test(accountNumber)
+        !/^(total|ensemble|encaisse|vue|nom|devise|symbole)$/i.test(accountNumber)
       ) {
-        ownerMap.set(accountNumber, currentOwner);
+        ownerMap.set(accountNumber, effectiveOwner);
       }
     }
   }

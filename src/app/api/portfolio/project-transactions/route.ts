@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { projectHoldingsFromTransactions } from "@/features/portfolio/project-transaction-holdings";
 
 /**
@@ -8,6 +9,8 @@ import { projectHoldingsFromTransactions } from "@/features/portfolio/project-tr
 export async function POST() {
   try {
     const result = await projectHoldingsFromTransactions();
+    revalidatePath("/positions");
+    revalidatePath("/");
     return NextResponse.json({
       message: `Projection terminée : ${result.currentHoldingsProjected} positions courantes, ${result.dailyRowsProjected} lignes journalières.`,
       ...result,

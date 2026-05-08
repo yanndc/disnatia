@@ -69,4 +69,9 @@ export type PortfolioSnapshotInput = {
   positions: NormalizedDisnatPosition[];
   transactions: NormalizedDisnatTransaction[];
   warnings: string[];
+  /**
+   * True si le CSV contenait des lignes récap portefeuille avec encaisse / totaux par compte
+   * (pas seulement des lignes « détail titres » sans encaisse).
+   */
+  snapshotIncludesCashFromPortfolioExport: boolean;
 };

@@ -7,16 +7,15 @@ type HoldingOrder = Prisma.PortfolioHoldingOrderByWithRelationInput;
 const defaultOrder: HoldingOrder[] = [{ snapshotValue: "desc" }];
 
 /**
- * Lignes titres affichées : projection (transactions) uniquement dès qu’il existe un historique ;
- * sinon tous les holdings (base sans transactions).
+ * Lignes titres sur tout le site (positions, vue d’ensemble, expositions…) : **uniquement**
+ * la projection issue des transactions (`projectHoldingsFromTransactions`) enrichie des cours web.
+ *
+ * Les exports CSV « portefeuille » Disnat ne servent pas à remplir cette liste : ils alimentent
+ * `portfolio_account_states` (comptes, propriétaires, totaux de référence) et les écarts de validation.
  */
 export async function loadHoldingsForDashboard() {
-  const txCount = await prisma.portfolioTransactionLine.count();
-  if (txCount > 0) {
-    return prisma.portfolioHolding.findMany({
-      where: { sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID },
-      orderBy: defaultOrder,
-    });
-  }
-  return prisma.portfolioHolding.findMany({ orderBy: defaultOrder });
+  return prisma.portfolioHolding.findMany({
+    where: { sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID },
+    orderBy: defaultOrder,
+  });
 }

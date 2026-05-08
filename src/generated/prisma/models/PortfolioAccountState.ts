@@ -16,7 +16,8 @@ import type * as Prisma from "../internal/prismaNamespace"
  * Model PortfolioAccountState
  * *
  *  * État courant synthétisé des comptes — une ligne par (compte + devise).
- *  * Encaisse, valeur titres et total issus du dernier snapshot connu pour ce compte.
+ *  * Champs `cashValue`, `marketValue`, `totalValue` : dernier snapshot **import portefeuille** ;
+ *  * ils servent de référence de réconciliation avec Disnat (vérité fichier au `asOf`), pas de reconstruction depuis les opérations.
  */
 export type PortfolioAccountStateModel = runtime.Types.Result.DefaultSelection<Prisma.$PortfolioAccountStatePayload>
 
@@ -627,6 +628,9 @@ export type $PortfolioAccountStatePayload<ExtArgs extends runtime.Types.Extensio
      */
     owner: string | null
     currency: string
+    /**
+     * Encaisse selon le dernier export portefeuille accepté — référence de réconciliation.
+     */
     cashValue: number
     marketValue: number
     totalValue: number

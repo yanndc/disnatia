@@ -21,13 +21,13 @@ export default async function OverviewPage() {
       <EmptyState
         title={
           summary?.hasAnyImportsInHistory
-            ? "Transactions importées - portefeuille en attente"
+            ? "Données incomplètes pour la vue d’ensemble"
             : "Aucun portefeuille importé"
         }
         description={
           summary?.hasAnyImportsInHistory
-            ? "Des transactions ont été importées mais le portefeuille n'est pas encore reconstitué. Importe d'abord le fichier CSV « Portefeuille » de Disnat pour identifier tes comptes, puis associe les fichiers Historique.xlsx à chaque compte."
-            : "Commence par importer le fichier CSV « Portefeuille » exporté depuis Disnat. Il identifiera tes comptes (CELI, REER, CRI…). Tu pourras ensuite ajouter les fichiers d'historique de transactions."
+            ? "Les comptes ou les opérations sont partiels : importe le CSV portefeuille Disnat pour les comptes et propriétaires, puis l’historique des transactions pour alimenter les titres affichés ici."
+            : "Commence par importer le fichier CSV « Portefeuille » exporté depuis Disnat pour identifier tes comptes (CELI, REER, CRI…). Ensuite, importe les fichiers d’historique d’opérations pour chaque compte afin de remplir les positions."
         }
       />
     );
@@ -40,6 +40,16 @@ export default async function OverviewPage() {
     summary.quoteCoverage.total > 0
       ? `${summary.quoteCoverage.matched}/${summary.quoteCoverage.total} tickers couverts`
       : "Aucun cours disponible";
+  const disnatRecoLabel = summary.disnatReconciliationAsOf
+    ? summary.disnatReconciliationAsOf.toLocaleDateString("fr-CA")
+    : null;
+  const compositionDetail = [
+    `${summary.positionCount} lignes titres (projection opérations)`,
+    quoteCoverageLabel,
+    disnatRecoLabel
+      ? `Encaisse = réf. réconciliation Disnat (état fichier au ${disnatRecoLabel})`
+      : "Encaisse = réf. réconciliation (import portefeuille)",
+  ].join(" · ");
   const disnatGapValue = summary.totalValue - summary.disnatReferenceTotalValue;
   const driftIsHigh = summary.driftVsDisnatPct !== null && Math.abs(summary.driftVsDisnatPct) > 5;
 
@@ -57,8 +67,11 @@ export default async function OverviewPage() {
               Vue d&apos;ensemble du portefeuille
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
-              Suivi de la valeur reconstruite depuis les données importées : positions,
-              encaisse, devises et principaux titres.
+              Titres : calcul à partir des opérations importées et des cours du marché.
+              L&apos;encaisse et les totaux compte issus du fichier portefeuille Disnat sont la{" "}
+              <strong className="font-medium text-slate-200">référence de réconciliation</strong> au
+              regard du fichier (date d&apos;état par compte) — elles ne sont pas recalculées depuis les
+              opérations.
             </p>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -78,11 +91,7 @@ export default async function OverviewPage() {
           totalValue={summary.totalValue}
           positionsValue={summary.displayPositionsValue}
           cashValue={summary.cashValue}
-          detail={[
-            `${summary.positionCount} positions`,
-            quoteCoverageLabel,
-            "Positions recalculées + encaisse connue",
-          ].join(" · ")}
+          detail={compositionDetail}
         />
         <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
         <TopPositionsKpiCard topPositions={summary.topPositions} totalValue={summary.totalValue} />
@@ -95,7 +104,10 @@ export default async function OverviewPage() {
             Validation Disnat
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-            <span>Référence fichier : {formatCurrency(summary.disnatReferenceTotalValue)}</span>
+            <span>
+              Référence fichier : {formatCurrency(summary.disnatReferenceTotalValue)}
+              {disnatRecoLabel ? ` · état comptes au ${disnatRecoLabel}` : null}
+            </span>
             <span>Écart : {formatCurrency(disnatGapValue)}</span>
             <span className={driftIsHigh ? "font-medium text-amber-600" : "text-slate-500"}>
               {summary.driftVsDisnatPct === null ? "Écart non disponible" : formatPercent(summary.driftVsDisnatPct)}

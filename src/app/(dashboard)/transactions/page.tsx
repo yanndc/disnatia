@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TransactionsClient } from "@/features/transactions/transactions-client";
 import { getTransactions, getAccountsWithStats } from "@/features/portfolio/queries";
+import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,13 @@ export default async function TransactionsPage({
     getAccountsWithStats().catch(() => []),
   ]);
 
-  const owners = [...new Set(accounts.map((a) => a.owner).filter(Boolean) as string[])].sort();
+  const owners = [
+    ...new Set(
+      accounts
+        .map((a) => sanitizePortfolioOwner(a.owner))
+        .filter(Boolean) as string[],
+    ),
+  ].sort();
 
   return (
     <div className="space-y-6">
@@ -43,7 +50,7 @@ export default async function TransactionsPage({
             total={total}
             accounts={accounts.map((a) => ({
               accountKey: a.accountKey,
-              owner: a.owner ?? undefined,
+              owner: sanitizePortfolioOwner(a.owner) ?? undefined,
               label:
                 [a.accountType, a.accountNumber, a.currency].filter(Boolean).join(" · ") ||
                 a.accountName,

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getIncomeByYear, getAccountsWithStats } from "@/features/portfolio/queries";
 
 export const dynamic = "force-dynamic";
@@ -52,12 +53,15 @@ export default async function RevenusPage() {
 
   return (
     <div className="space-y-6">
-      <section>
-        <p className="text-sm text-slate-500">Tableau de bord</p>
-        <h2 className="text-2xl font-semibold text-slate-950">Revenus</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Dividendes, intérêts et retenues d&apos;impôt extraits de l&apos;historique
-        </p>
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-slate-500">Tableau de bord</p>
+          <h2 className="text-2xl font-semibold text-slate-950">Revenus</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Dividendes, intérêts et retenues d&apos;impôt extraits de l&apos;historique
+          </p>
+        </div>
+        <RefreshQuotesButton />
       </section>
 
       {/* Totaux globaux */}

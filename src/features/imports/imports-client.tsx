@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Upload } from "lucide-react";
+import { RefreshCw, Upload } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,22 @@ const importSchema = z.object({
 
 type ImportForm = z.infer<typeof importSchema>;
 
+/** Plage d’années civiles couverte par les dates d’opération du fichier (min / max). L’horodatage d’import est affiché à part, sans répéter son année ici. */
+function dataYearsInFileLabel(dataFromIso: string | null, dataToIso: string | null): string {
+  if (!dataFromIso && !dataToIso) {
+    return "—";
+  }
+  const yFrom = dataFromIso ? new Date(dataFromIso).getFullYear() : null;
+  const yTo = dataToIso ? new Date(dataToIso).getFullYear() : null;
+  if (yFrom !== null && yTo !== null) {
+    return yFrom === yTo ? `${yFrom}` : `${yFrom}–${yTo}`;
+  }
+  if (yFrom !== null) {
+    return `≥${yFrom}`;
+  }
+  return `≤${yTo}`;
+}
+
 export function ImportsClient({
   initialImports,
 }: {
@@ -39,11 +55,14 @@ export function ImportsClient({
     id: string;
     sourceFileName: string;
     importedAt: string;
+    dataFromDate: string | null;
+    dataToDate: string | null;
     rawRowCount: number;
     status: string;
     importType: string;
     notes: string | null;
     _count: { positions: number; accounts: number; transactions: number };
+    linkedAccountKeys: string[];
   }[];
 }) {
   const [file, setFile] = useState<File | null>(null);
@@ -52,12 +71,15 @@ export function ImportsClient({
   const [messages, setMessages] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [imports, setImports] = useState(initialImports);
+  const [historyAccountKey, setHistoryAccountKey] = useState("");
   const [disnatGate, setDisnatGate] = useState<
     { ok: true } | { ok: false; message: string } | null
   >(null);
   const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
   const [selectedAccountKey, setSelectedAccountKey] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [backfillBusy, setBackfillBusy] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
   const [ownerMap, setOwnerMap] = useState<Map<string, string>>(() => new Map());
   const form = useForm<ImportForm>({
     resolver: zodResolver(importSchema),
@@ -74,6 +96,11 @@ export function ImportsClient({
     () => buildPortfolioSnapshot(rows, ownerMap),
     [rows, ownerMap],
   );
+
+  const importHistoryRows = useMemo(() => {
+    if (!historyAccountKey) return imports;
+    return imports.filter((i) => (i.linkedAccountKeys ?? []).includes(historyAccountKey));
+  }, [imports, historyAccountKey]);
   const isTransactionsFile =
     snapshot.importKind === "TRANSACTIONS" || snapshot.transactions.length > 0;
   const needsAccountSelection = isTransactionsFile;
@@ -126,6 +153,32 @@ export function ImportsClient({
       ...parsed.errors.map((error) => `Fichier: ${error.message}`),
       ...buildPortfolioSnapshot(parsed.rows, parsed.ownerMap).warnings,
     ]);
+  }
+
+  async function runBackfillHoldings() {
+    setBackfillBusy(true);
+    setBackfillResult(null);
+    try {
+      const response = await fetch("/api/portfolio/backfill-holdings", { method: "POST" });
+      type BackfillJson = { message?: string; error?: string };
+      let payload: BackfillJson = {};
+      try {
+        payload = (await response.json()) as BackfillJson;
+      } catch {
+        payload = {};
+      }
+      if (!response.ok) {
+        setBackfillResult(payload.error ?? `Échec (${response.status}).`);
+        return;
+      }
+      setBackfillResult(payload.message ?? "Recalcul terminé.");
+    } catch (cause) {
+      setBackfillResult(
+        cause instanceof Error ? cause.message : "Erreur réseau.",
+      );
+    } finally {
+      setBackfillBusy(false);
+    }
   }
 
   async function deleteImport(id: string) {
@@ -220,6 +273,11 @@ export function ImportsClient({
         if (snapshot.accounts.length > 0 && snapshot.positions.length > 0) {
           msgs.push(
             `${snapshot.accounts.length} ligne${snapshot.accounts.length > 1 ? "s" : ""} de compte / encaisse synchronisée${snapshot.accounts.length > 1 ? "s" : ""}.`,
+          );
+        }
+        if (snapshot.accounts.length > 0) {
+          msgs.push(
+            "Réconciliation : encaisse et totaux de ce fichier font foi pour comparer à Disnat (non recalculés depuis les opérations).",
           );
         }
       }
@@ -358,6 +416,35 @@ export function ImportsClient({
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Recalcul portefeuille</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-slate-600">
+            Resynchronise les totaux / encaisse des comptes à partir des imports portefeuille déjà
+            enregistrés, puis rejoue la projection des titres à partir de l&apos;historique de
+            transactions. Opération idempotente, utile après un changement de logique ou pour corriger
+            des symboles hérités.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={backfillBusy}
+            onClick={() => void runBackfillHoldings()}
+            className="gap-2"
+          >
+            <RefreshCw className={`size-4 ${backfillBusy ? "animate-spin" : ""}`} />
+            {backfillBusy ? "Recalcul…" : "Lancer le recalcul (backfill)"}
+          </Button>
+          {backfillResult ? (
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+              {backfillResult}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Preview des 20 premières lignes</CardTitle>
         </CardHeader>
         <CardContent>
@@ -398,18 +485,40 @@ export function ImportsClient({
           <CardTitle>Historique des imports</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 pb-3 pt-1">
+            <span className="text-xs text-slate-500">Filtrer</span>
+            <select
+              aria-label="Filtrer l’historique par compte"
+              className="rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
+              value={historyAccountKey}
+              onChange={(e) => setHistoryAccountKey(e.target.value)}
+            >
+              <option value="">Tous les comptes</option>
+              {knownAccounts.map((a) => {
+                const label =
+                  [a.accountType, a.accountNumber, a.currency].filter(Boolean).join(" · ") ||
+                  a.accountName;
+                return (
+                  <option key={a.accountKey} value={a.accountKey}>
+                    {label}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
           <div className="divide-y divide-slate-100">
-            {imports.map((item) => (
+            {importHistoryRows.map((item) => {
+              const dataYearsLabel = dataYearsInFileLabel(item.dataFromDate, item.dataToDate);
+              return (
               <div key={item.id} className="flex items-center justify-between py-3">
                 <div>
                   <p className="text-sm font-medium text-slate-950">
                     {item.sourceFileName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(item.importedAt).toLocaleString("fr-CA")} ·{" "}
-                    {item.importType.toLowerCase()} · {item.rawRowCount} lignes ·{" "}
-                    {item._count.positions} positions ·{" "}
-                    {item._count.transactions} transactions
+                    Import : {new Date(item.importedAt).toLocaleString("fr-CA")} · Fichier :{" "}
+                    {dataYearsLabel} · {item.importType.toLowerCase()} · {item.rawRowCount} lignes ·{" "}
+                    {item._count.positions} positions · {item._count.transactions} transactions
                   </p>
                   {item.notes ? (
                     <p className="mt-0.5 text-xs text-slate-400">{item.notes.split("\n")[0]}</p>
@@ -429,10 +538,15 @@ export function ImportsClient({
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
             {imports.length === 0 ? (
               <p className="py-8 text-center text-sm text-slate-500">
                 Aucun import sauvegardé.
+              </p>
+            ) : importHistoryRows.length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-500">
+                Aucun import pour ce compte.
               </p>
             ) : null}
           </div>

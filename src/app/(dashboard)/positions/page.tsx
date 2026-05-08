@@ -18,8 +18,8 @@ export default async function PositionsPage() {
           <p className="text-sm text-slate-500">Positions</p>
           <h2 className="text-2xl font-semibold text-slate-950">Détail</h2>
           <p className="mt-1 text-sm text-slate-500">
-            État courant synthétisé à partir de tous les imports. Prix affichés = cours live (Yahoo)
-            si disponible, sinon snapshot Disnat.
+            Lignes titre recalculées à partir des <strong>opérations importées</strong> (pas à partir
+            du CSV portefeuille). Prix affichés = cours marché si disponible, sinon base de projection.
           </p>
           {summary && summary.positionCount > 0 ? (
             <p className="mt-1 text-xs text-slate-600">
@@ -35,17 +35,16 @@ export default async function PositionsPage() {
       summary?.hasAnyImportsInHistory &&
       summary.accountCount > 0 ? (
         <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
-          <p className="font-medium">Données de compte reçues, mais pas encore d’inventaire titre par titre</p>
+          <p className="font-medium">Comptes connus, mais aucune position projetée</p>
           <p className="mt-2 leading-relaxed">
-            Import typique : tableau « Portefeuille » Disnat avec colonnes du type Nom, Encaisse, Valeur des
-            titres (somme globale du compte), sans ligne par symbole. L’application enregistre les comptes
-            ainsi, mais ne peut pas deviner tes positions tant qu’aucun fichier ne liste un{" "}
-            <strong>ticker ou symbole</strong>, une quantité et une valeur par titre.
+            Cette grille affiche uniquement les titres issus de l’<strong>historique des transactions</strong>{" "}
+            Disnat (import avec compte sélectionné). Le fichier « portefeuille » sert à créer les comptes et
+            les totaux de référence, pas à remplir la liste des symboles.
           </p>
           <p className="mt-2 leading-relaxed text-sky-900">
-            Exporte depuis Disnat un fichier <strong>détaillé des avoirs ou positions</strong> (avec symbole
-            par ligne), puis importe-le ici ; sinon cette page restera vide même si la page Comptes est
-            remplie.
+            Va sur <strong>Imports</strong>, charge l’export d’activité / opérations pour chaque compte, puis
+            vérifie que la projection s’exécute (ou relance une importation portefeuille si besoin pour
+            déclencher la mise à jour).
           </p>
         </div>
       ) : null}
@@ -54,9 +53,8 @@ export default async function PositionsPage() {
       summary?.hasAnyImportsInHistory &&
       summary.accountCount === 0 ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          Les imports enregistrés ne contiennent pas de lignes titres (symbole + valeur marchande). Les
-          exports d’<strong>historique de transactions</strong> seuls ne remplissent pas cette page non
-          plus. Importe un export Disnat qui liste les positions ou avoirs détaillés par titre.
+          Imports enregistrés sans état de compte exploitable. Importe d&apos;abord un CSV « portefeuille »
+          Disnat pour créer les comptes, puis l&apos;historique des opérations pour afficher les positions.
         </div>
       ) : null}
 

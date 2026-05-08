@@ -59,6 +59,8 @@ export async function POST() {
           sector: p.sector ?? undefined,
           assetType: p.assetType ?? undefined,
         })),
+        snapshotIncludesCashFromPortfolioExport:
+          imp.importType === "PORTFOLIO" || imp.importType === "MIXED",
       };
 
       const result = await upsertPortfolioStateFromSnapshot(snapshot, imp.id, asOf);

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   buildPortfolioSnapshot,
@@ -75,6 +76,30 @@ export async function POST(request: Request) {
   }
 
   const snapshot = buildPortfolioSnapshot(parsed.rows, parsed.ownerMap);
+  const fileSha = createHash("sha256").update(fileText).digest("hex");
+  const fileShaTag = `fileSha:${fileSha}`;
+
+  /** Portefeuille sans opérations : évite une 2ᵉ ligne de journal pour le même fichier binaire. */
+  if (
+    snapshot.transactions.length === 0 &&
+    (snapshot.positions.length > 0 || snapshot.accounts.length > 0)
+  ) {
+    const duplicatePortfolio = await prisma.portfolioImport.findFirst({
+      where: { notes: { contains: fileShaTag } },
+      orderBy: { importedAt: "desc" },
+      select: { id: true, importedAt: true },
+    });
+    if (duplicatePortfolio) {
+      return NextResponse.json(
+        {
+          error:
+            "Ce fichier portefeuille a déjà été importé (contenu identique). Supprime l’entrée dans l’historique si tu dois la réenregistrer.",
+          duplicateImportId: duplicatePortfolio.id,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   // Pour un fichier de transactions, un compte doit être sélectionné
   if (snapshot.importKind === "TRANSACTIONS" || snapshot.transactions.length > 0) {
@@ -179,9 +204,10 @@ export async function POST(request: Request) {
         notes: [
         accountLabel ? `Compte : ${String(accountLabel)}` : null,
         snapshot.warnings.length > 0 ? snapshot.warnings.join("\n") : null,
+        fileShaTag,
       ]
         .filter(Boolean)
-        .join("\n") || null,
+        .join("\n") || fileShaTag,
         dataFromDate: temporal.dataFrom ?? undefined,
         dataToDate: temporal.dataTo ?? undefined,
       },
@@ -276,6 +302,17 @@ export async function POST(request: Request) {
 
   const { portfolioImport: savedImport, txInserted, txTotal } = savedResult;
   const txSkipped = txTotal - txInserted;
+
+  if (snapshot.transactions.length > 0 && txInserted === 0) {
+    await prisma.portfolioImport.delete({ where: { id: savedImport.id } });
+    return NextResponse.json(
+      {
+        error:
+          "Aucune nouvelle transaction : tout était déjà importé (ou doublons ignorés). La ligne de journal n’a pas été créée.",
+      },
+      { status: 409 },
+    );
+  }
 
   if (snapshot.positions.length > 0 || snapshot.accounts.length > 0) {
     const temporal = computeSnapshotTemporalBounds(snapshot);
