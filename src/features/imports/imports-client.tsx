@@ -14,6 +14,10 @@ import {
 } from "@/lib/csv/disnat";
 import { importFileToParseText } from "@/lib/csv/import-file-text";
 import type { ParsedDisnatRow } from "@/types/portfolio";
+import {
+  ExternalAccountsPanel,
+  type ExternalAccountDto,
+} from "@/features/imports/external-accounts-panel";
 
 type KnownAccount = {
   accountKey: string;
@@ -50,6 +54,7 @@ function dataYearsInFileLabel(dataFromIso: string | null, dataToIso: string | nu
 
 export function ImportsClient({
   initialImports,
+  initialExternalAccounts,
 }: {
   initialImports: {
     id: string;
@@ -64,6 +69,7 @@ export function ImportsClient({
     _count: { positions: number; accounts: number; transactions: number };
     linkedAccountKeys: string[];
   }[];
+  initialExternalAccounts: ExternalAccountDto[];
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ParsedDisnatRow[]>([]);
@@ -298,6 +304,8 @@ export function ImportsClient({
 
   return (
     <div className="space-y-6">
+      <ExternalAccountsPanel initialAccounts={initialExternalAccounts} />
+
       <section>
         <p className="text-sm text-slate-500">Import Disnat (CSV ou Excel)</p>
         <h2 className="text-2xl font-semibold text-slate-950">Imports</h2>

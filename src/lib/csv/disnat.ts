@@ -1,7 +1,7 @@
 import Papa from "papaparse";
 import { z } from "zod";
 import { categorizeTxType } from "@/lib/csv/tx-category";
-import { normalizeDisnatTickerForPortfolio } from "@/lib/market/disnat-ticker";
+import { normalizeDisnatTickerForPortfolio, standardizeDisnatTickerMarketDots } from "@/lib/market/disnat-ticker";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import type {
   CsvImportKind,
@@ -498,11 +498,14 @@ function inferCurrency(row: ParsedDisnatRow) {
     return explicitCurrency.toUpperCase();
   }
 
-  const ticker = readText(row, columnAliases.ticker)?.toUpperCase();
-  if (ticker?.endsWith("-U")) {
+  const tickerRaw = readText(row, columnAliases.ticker);
+  const tickerStd = tickerRaw
+    ? standardizeDisnatTickerMarketDots(tickerRaw.toUpperCase())
+    : null;
+  if (tickerStd?.endsWith("-U")) {
     return "USD";
   }
-  if (ticker?.endsWith("-C")) {
+  if (tickerStd?.endsWith("-C")) {
     return "CAD";
   }
 

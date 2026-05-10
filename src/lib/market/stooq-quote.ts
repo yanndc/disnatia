@@ -3,19 +3,42 @@
  * Complète Yahoo lorsque le symbole ne répond pas.
  */
 
-import { canonicalDisnatStemForQuotes } from "@/lib/market/disnat-ticker";
+import {
+  canonicalDisnatStemForQuotes,
+  stripDisnatListingDenominationHyphens,
+  stripTrailingCanadianDenominationHyphens,
+  standardizeDisnatTickerMarketDots,
+} from "@/lib/market/disnat-ticker";
+
+/** Repli Stooq : certains stems `.to` n’existent pas pour des titres NEO (ex. HISA → `hisa.ne`). */
+const STOOQ_SYMBOL_OVERRIDES: Record<string, string> = {
+  "hisa.to": "hisa.ne",
+};
 
 export function disnatTickerToStooqSymbol(ticker: string, currency: string): string {
-  const u = ticker.trim().toUpperCase();
+  const u = standardizeDisnatTickerMarketDots(ticker).toUpperCase();
   const cc = currency.trim().toUpperCase();
-  let base = u.replace(/-C$/i, "").replace(/-U$/i, "").replace(/-T$/i, "");
-  base = base.replace(/\.TO$/i, "");
-  base = canonicalDisnatStemForQuotes(base.replace(/\./g, "-"));
-  base = base.replace(/\./g, "-").toLowerCase();
-  if (cc === "USD" || u.endsWith("-U")) {
+
+  let h = u.replace(/\./g, "-").replace(/-TO$/i, "");
+  const listedUsd = cc === "USD" || /-U$/i.test(h);
+  if (listedUsd) {
+    while (/-U$/i.test(h) && h.length > 2) {
+      h = h.slice(0, -2);
+    }
+  } else {
+    h = stripTrailingCanadianDenominationHyphens(h);
+  }
+  h = stripDisnatListingDenominationHyphens(h);
+
+  const base = canonicalDisnatStemForQuotes(h.replace(/\./g, "-"))
+    .replace(/\./g, "-")
+    .toLowerCase();
+
+  if (listedUsd) {
     return `${base}.us`;
   }
-  return `${base}.to`;
+  const primary = `${base}.to`;
+  return STOOQ_SYMBOL_OVERRIDES[primary] ?? primary;
 }
 
 /** Dernière clôture : parse la dernière ligne du CSV renvoyé par Stooq. */

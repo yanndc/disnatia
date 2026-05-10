@@ -8,6 +8,7 @@ import { categorizeTxType } from "@/lib/csv/tx-category";
 import {
   extractDisnatStemForPositionAggregation,
   normalizeDisnatTickerForPortfolio,
+  standardizeDisnatTickerMarketDots,
 } from "@/lib/market/disnat-ticker";
 import type { TxCategory } from "@/generated/prisma/enums";
 
@@ -153,7 +154,7 @@ function signedQuantityForPosition(tx: ProjectableTransaction): number | null {
  * (ex. achat `AMZN-U` puis transfert libellé `AMZN`), d’où des positions fantômes si on lit seulement priceDevise.
  */
 function inferListingCurrencyHintFromRow(tx: ProjectableTransaction): "USD" | "CAD" | null {
-  const raw = tx.ticker?.trim().toUpperCase() ?? "";
+  const raw = standardizeDisnatTickerMarketDots(tx.ticker?.trim().toUpperCase() ?? "").trim();
   if (!raw || raw === "-") return null;
   if (raw.endsWith("-U")) return "USD";
   if (raw.endsWith("-C")) return "CAD";
@@ -200,7 +201,8 @@ function buildStemListingPreferences(transactions: ProjectableTransaction[]): Ma
     if (!tx.accountKey) continue;
     const tr = tx.ticker?.trim();
     if (!tr || tr === "-") continue;
-    if (!tr.toUpperCase().endsWith("-C")) continue;
+    const trStd = standardizeDisnatTickerMarketDots(tr.trim().toUpperCase());
+    if (!trStd.endsWith("-C")) continue;
     if (normalizeCurrency(tx.currency) !== "CAD") continue;
     const stem = extractDisnatStemForPositionAggregation(tr);
     const key = `${tx.accountKey}${KEY_SEPARATOR}${stem}`;
@@ -222,7 +224,7 @@ function listingCurrencyForPosition(
 
   const stem = extractDisnatStemForPositionAggregation(tr);
   const mapKey = `${acctKey}${KEY_SEPARATOR}${stem}`;
-  const raw = tr.toUpperCase();
+  const raw = standardizeDisnatTickerMarketDots(tr.toUpperCase());
   /* TSX (-C) sur compte CAD : ne pas suivre un stem figé en USD par une autre opération. */
   if (raw.endsWith("-C") && normalizeCurrency(tx.currency) === "CAD") {
     return "CAD";

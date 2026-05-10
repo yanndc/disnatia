@@ -16,8 +16,8 @@ import type * as Prisma from "../internal/prismaNamespace"
  * Model UsdCadDailyRate
  * *
  *  * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).
- *  * Alimenté via Frankfurter (données publiques) ; les jours sans cotation (fins de semaine)
- *  * sont complétés en reportant le dernier cours connu.
+ *  * Alimenté via la série FXUSDCAD de la Banque du Canada ; les jours sans publication
+ *  * (fins de semaine, fériés) sont complétés en reportant le dernier cours connu.
  */
 export type UsdCadDailyRateModel = runtime.Types.Result.DefaultSelection<Prisma.$UsdCadDailyRatePayload>
 

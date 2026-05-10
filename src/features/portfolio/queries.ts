@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
 import {
   enrichPositionRow,
@@ -36,6 +37,32 @@ function positionDisplayValueCad(
   return usdToCad !== null
     ? toCadEquivalent(p.displayMarketValue, p.currency, usdToCad)
     : p.displayMarketValue;
+}
+
+/**
+ * Agrège toutes les lignes du même titre (plusieurs comptes) : valeur totale en CAD équivalent,
+ * puis poids vs valeur totale du portefeuille (titres + encaisse).
+ */
+function buildAggregatedTickerRows(
+  enrichedPositions: EnrichedPosition[],
+  usdToCad: number | null,
+  totalPortfolioValue: number,
+): { ticker: string; marketValue: number; weightPct: number }[] {
+  const byTicker = new Map<string, number>();
+  for (const p of enrichedPositions) {
+    const key = p.ticker.trim().toUpperCase();
+    if (!key) continue;
+    const add = positionDisplayValueCad(p, usdToCad);
+    byTicker.set(key, (byTicker.get(key) ?? 0) + add);
+  }
+  const denom = totalPortfolioValue > 0 ? totalPortfolioValue : 0;
+  return [...byTicker.entries()]
+    .map(([ticker, marketValue]) => ({
+      ticker,
+      marketValue,
+      weightPct: denom > 0 ? (marketValue / denom) * 100 : 0,
+    }))
+    .toSorted((a, b) => b.marketValue - a.marketValue);
 }
 
 /**
@@ -119,7 +146,7 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
 
 /** Résumé du tableau de bord, basé sur l'état synthétisé. */
 export async function getPortfolioSummary() {
-  const [holdings, accountStates, anyImportCount, txGlobal] = await Promise.all([
+  const [holdings, accountStates, anyImportCount, txGlobal, externalAccounts] = await Promise.all([
     loadHoldingsForDashboard(),
     prisma.portfolioAccountState.findMany(),
     prisma.portfolioImport.count(),
@@ -128,9 +155,17 @@ export async function getPortfolioSummary() {
       _max: { tradeDate: true },
       _count: { _all: true },
     }),
+    listExternalAccountsWithLatest(),
   ]);
 
-  if (holdings.length === 0 && accountStates.length === 0) {
+  const externalWithValue = externalAccounts.filter((a) => a.latestSnapshot !== null);
+  const externalAccountsCount = externalWithValue.length;
+
+  if (
+    holdings.length === 0 &&
+    accountStates.length === 0 &&
+    externalAccountsCount === 0
+  ) {
     return { ...emptySummary(), hasAnyImportsInHistory: anyImportCount > 0 };
   }
 
@@ -164,7 +199,14 @@ export async function getPortfolioSummary() {
   );
 
   const holdingAsOfSource = holdings.map((h) => h.asOf);
-  const allAsOf = [...accountStates.map((a) => a.asOf), ...holdingAsOfSource];
+  const externalAsOf = externalWithValue
+    .map((a) => a.latestSnapshot!.asOfDate)
+    .filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()));
+  const allAsOf = [
+    ...accountStates.map((a) => a.asOf),
+    ...holdingAsOfSource,
+    ...externalAsOf,
+  ];
   const referenceAsOf =
     allAsOf.length > 0 ? new Date(Math.max(...allAsOf.map((d) => d.getTime()))) : null;
   const snapshotDataFrom =
@@ -186,6 +228,16 @@ export async function getPortfolioSummary() {
   const displayPositionsValue = sum(
     enrichedPositions.map((p) => positionDisplayValueCad(p, usdToCad)),
   );
+
+  const externalTotalCad =
+    usdToCad !== null
+      ? sum(
+          externalWithValue.map((a) =>
+            toCadEquivalent(a.latestSnapshot!.totalValue, a.currency, usdToCad),
+          ),
+        )
+      : sum(externalWithValue.map((a) => a.latestSnapshot!.totalValue));
+
   const disnatPositionsValue = sum(
     enrichedPositions.map((p) =>
       usdToCad !== null
@@ -193,11 +245,12 @@ export async function getPortfolioSummary() {
         : p.disnatMarketValue,
     ),
   );
-  const totalValue = displayPositionsValue + cashValue;
+  const totalValue = displayPositionsValue + cashValue + externalTotalCad;
+  const disnatLiveTotalValue = displayPositionsValue + cashValue;
 
   const driftVsDisnatPct =
     disnatReferenceTotalValue > 0
-      ? ((totalValue - disnatReferenceTotalValue) / disnatReferenceTotalValue) * 100
+      ? ((disnatLiveTotalValue - disnatReferenceTotalValue) / disnatReferenceTotalValue) * 100
       : null;
 
   const quotesAsOf =
@@ -213,36 +266,61 @@ export async function getPortfolioSummary() {
     ] as string[]),
   ].slice(0, 24);
 
-  const ownerBreakdown = Object.entries(
-    accountStates.reduce(
-      (acc, a) => {
-        const owner = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
-        if (!acc[owner]) acc[owner] = { totalValue: 0, cashValue: 0, marketValue: 0, accountCount: 0 };
-        if (usdToCad !== null) {
-          acc[owner].totalValue += toCadEquivalent(a.totalValue, a.currency, usdToCad);
-          acc[owner].cashValue += toCadEquivalent(a.cashValue, a.currency, usdToCad);
-          acc[owner].marketValue += toCadEquivalent(a.marketValue, a.currency, usdToCad);
-        } else {
-          acc[owner].totalValue += a.totalValue;
-          acc[owner].cashValue += a.cashValue;
-          acc[owner].marketValue += a.marketValue;
-        }
-        acc[owner].accountCount++;
-        return acc;
-      },
-      {} as Record<string, { totalValue: number; cashValue: number; marketValue: number; accountCount: number }>,
-    ),
-  ).map(([owner, data]) => ({ owner, ...data }));
+  const ownerBreakdownMap = accountStates.reduce(
+    (acc, a) => {
+      const owner = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
+      if (!acc[owner]) acc[owner] = { totalValue: 0, cashValue: 0, marketValue: 0, accountCount: 0 };
+      if (usdToCad !== null) {
+        acc[owner].totalValue += toCadEquivalent(a.totalValue, a.currency, usdToCad);
+        acc[owner].cashValue += toCadEquivalent(a.cashValue, a.currency, usdToCad);
+        acc[owner].marketValue += toCadEquivalent(a.marketValue, a.currency, usdToCad);
+      } else {
+        acc[owner].totalValue += a.totalValue;
+        acc[owner].cashValue += a.cashValue;
+        acc[owner].marketValue += a.marketValue;
+      }
+      acc[owner].accountCount++;
+      return acc;
+    },
+    {} as Record<string, { totalValue: number; cashValue: number; marketValue: number; accountCount: number }>,
+  );
 
-  const topPositions = enrichedPositions
-    .toSorted((a, b) => positionDisplayValueCad(b, usdToCad) - positionDisplayValueCad(a, usdToCad))
-    .slice(0, 8)
-    .map((p) => ({
-      ticker: p.ticker,
-      marketValue: positionDisplayValueCad(p, usdToCad),
-    }));
+  for (const a of externalWithValue) {
+    const owner = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
+    if (!ownerBreakdownMap[owner]) {
+      ownerBreakdownMap[owner] = {
+        totalValue: 0,
+        cashValue: 0,
+        marketValue: 0,
+        accountCount: 0,
+      };
+    }
+    const v = a.latestSnapshot!.totalValue;
+    const add = usdToCad !== null ? toCadEquivalent(v, a.currency, usdToCad) : v;
+    ownerBreakdownMap[owner].totalValue += add;
+    ownerBreakdownMap[owner].marketValue += add;
+    ownerBreakdownMap[owner].accountCount++;
+  }
 
-  const maxConcentration = Math.max(0, ...enrichedPositions.map((p) => p.weightPct ?? 0));
+  const ownerBreakdown = Object.entries(ownerBreakdownMap).map(([owner, data]) => ({
+    owner,
+    ...data,
+  }));
+
+  const aggregatedRows = buildAggregatedTickerRows(
+    enrichedPositions,
+    usdToCad,
+    totalValue,
+  );
+  const topPositions = aggregatedRows.slice(0, 8).map(({ ticker, marketValue }) => ({
+    ticker,
+    marketValue,
+  }));
+
+  const maxConcentration =
+    aggregatedRows.length > 0
+      ? Math.max(0, ...aggregatedRows.map((r) => r.weightPct))
+      : 0;
 
   const disnatReconciliationAsOf =
     accountStates.length > 0
@@ -267,7 +345,23 @@ export async function getPortfolioSummary() {
     totalValue,
     disnatReferenceTotalValue,
     displayPositionsValue,
+    disnatLiveTotalValue,
     disnatPositionsValue,
+    externalTotalCad,
+    externalAccountsCount,
+    externalAccountsBrief: externalWithValue.map((a) => ({
+      id: a.id,
+      displayLabel: a.displayLabel,
+      owner: a.owner,
+      provider: a.provider,
+      currency: a.currency,
+      valueNative: a.latestSnapshot!.totalValue,
+      valueCad:
+        usdToCad !== null
+          ? toCadEquivalent(a.latestSnapshot!.totalValue, a.currency, usdToCad)
+          : a.latestSnapshot!.totalValue,
+      asOf: a.latestSnapshot!.asOfDate,
+    })),
     driftVsDisnatPct,
     quoteCoverage: { matched: matchedQuotes, total: enrichedPositions.length },
     quotesAsOf,
@@ -277,6 +371,7 @@ export async function getPortfolioSummary() {
     currencyExposure: buildCurrencyExposure(enrichedPositions, accountStates),
     topPositions,
     maxConcentration,
+    aggregatedTickerExposure: aggregatedRows,
     variationVsPrevious: null as number | null,
     variationPctVsPrevious: null as number | null,
     hasAnyImportsInHistory: anyImportCount > 0,
@@ -293,8 +388,8 @@ export async function getPortfolioSummary() {
 // ---------------------------------------------------------------------------
 
 export async function getTopPositions(limit = 5) {
-  const positions = await getAllPositions();
-  return positions.slice(0, limit);
+  const summary = await getPortfolioSummary();
+  return summary.topPositions.slice(0, Math.max(1, limit));
 }
 
 export async function getCurrencyExposure() {
@@ -306,20 +401,32 @@ export async function getCurrencyExposure() {
 }
 
 export async function getConcentrationRisk() {
-  const positions = await getAllPositions();
-  const concentrated = positions.filter((p) => (p.weightPct ?? 0) >= 10);
-  const topWeight = positions[0]?.weightPct ?? 0;
+  const summary = await getPortfolioSummary();
+  if (
+    summary.positionCount === 0 &&
+    summary.accountCount === 0 &&
+    summary.externalAccountsCount === 0
+  ) {
+    return {
+      topWeight: 0,
+      concentratedPositions: [] as { ticker: string; marketValue: number; weightPct: number }[],
+      note: "Portefeuille vide.",
+    };
+  }
+  const rows = summary.aggregatedTickerExposure;
+  const concentrated = rows.filter((r) => r.weightPct >= 10);
+  const topWeight = rows[0]?.weightPct ?? summary.maxConcentration;
   return {
     topWeight,
-    concentratedPositions: concentrated.map((p) => ({
-      ticker: p.ticker,
-      marketValue: p.displayMarketValue,
-      weightPct: p.weightPct ?? 0,
+    concentratedPositions: concentrated.map((r) => ({
+      ticker: r.ticker,
+      marketValue: r.marketValue,
+      weightPct: r.weightPct,
     })),
     note:
       concentrated.length > 0
-        ? "Au moins une position dépasse 10% du portefeuille."
-        : "Aucune position ne dépasse 10%.",
+        ? "Au moins un titre (somme de tous les comptes) dépasse 10% du portefeuille."
+        : "Aucun titre agrégé ne dépasse 10%.",
   };
 }
 
@@ -684,8 +791,21 @@ function emptySummary() {
     distinctAccountNumbers: [] as string[],
     totalValue: 0,
     disnatReferenceTotalValue: 0,
+    disnatLiveTotalValue: 0,
     displayPositionsValue: 0,
     disnatPositionsValue: 0,
+    externalTotalCad: 0,
+    externalAccountsCount: 0,
+    externalAccountsBrief: [] as {
+      id: string;
+      displayLabel: string;
+      owner: string | null;
+      provider: string;
+      currency: string;
+      valueNative: number;
+      valueCad: number;
+      asOf: Date;
+    }[],
     driftVsDisnatPct: null as number | null,
     quoteCoverage: { matched: 0, total: 0 },
     quotesAsOf: null as Date | null,
@@ -696,6 +816,7 @@ function emptySummary() {
     currencyExposure: [] as { currency: string; value: number }[],
     topPositions: [] as { ticker: string; marketValue: number }[],
     maxConcentration: 0,
+    aggregatedTickerExposure: [] as { ticker: string; marketValue: number; weightPct: number }[],
     variationVsPrevious: null as number | null,
     variationPctVsPrevious: null as number | null,
     hasAnyImportsInHistory: false,

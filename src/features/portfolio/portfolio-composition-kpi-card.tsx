@@ -13,13 +13,17 @@ export function PortfolioCompositionKpiCard({
   totalValue,
   positionsValue,
   cashValue,
+  externalValueCad = 0,
   detail,
 }: {
   totalValue: number;
   positionsValue: number;
   cashValue: number;
+  /** Valeur des comptes hors Disnat (déjà convertie en CAD si taux dispo). */
+  externalValueCad?: number;
   detail?: string;
 }) {
+  const ext = Math.max(0, externalValueCad);
   const data: Slice[] = [
     { name: "Titres", value: Math.max(0, positionsValue), key: "positions" },
     {
@@ -27,7 +31,20 @@ export function PortfolioCompositionKpiCard({
       value: Math.max(0, cashValue),
       key: "cash",
     },
+    ...(ext > 0
+      ? ([
+          {
+            name: "Comptes externes (snapshots)",
+            value: ext,
+            key: "external",
+          },
+        ] as Slice[])
+      : []),
   ];
+  const SLICES =
+    ext > 0
+      ? [...SLICE_COLORS, "#8b5cf6"]
+      : SLICE_COLORS;
   const total = data.reduce((s, d) => s + d.value, 0);
   const rows =
     total > 0
@@ -67,7 +84,7 @@ export function PortfolioCompositionKpiCard({
                     paddingAngle={2}
                   >
                     {data.map((entry, index) => (
-                      <Cell key={entry.key} fill={SLICE_COLORS[index % SLICE_COLORS.length]} />
+                      <Cell key={entry.key} fill={SLICES[index % SLICES.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -90,7 +107,7 @@ export function PortfolioCompositionKpiCard({
                 <li key={row.key} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                   <span
                     className="mt-1.5 size-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: SLICE_COLORS[index % SLICE_COLORS.length] }}
+                    style={{ backgroundColor: SLICES[index % SLICES.length] }}
                   />
                   <span className="font-semibold text-slate-950">{row.name}</span>
                   <span className="ml-auto text-right tabular-nums text-slate-700">

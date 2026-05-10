@@ -14,7 +14,9 @@ export default async function OverviewPage() {
   const summary = await getPortfolioSummary().catch(() => null);
 
   const hasPortfolioData =
-    (summary?.positionCount ?? 0) > 0 || (summary?.accountCount ?? 0) > 0;
+    (summary?.positionCount ?? 0) > 0 ||
+    (summary?.accountCount ?? 0) > 0 ||
+    (summary?.externalAccountsCount ?? 0) > 0;
 
   if (!summary || !hasPortfolioData) {
     return (
@@ -49,8 +51,13 @@ export default async function OverviewPage() {
     disnatRecoLabel
       ? `Encaisse = réf. réconciliation Disnat (état fichier au ${disnatRecoLabel})`
       : "Encaisse = réf. réconciliation (import portefeuille)",
-  ].join(" · ");
-  const disnatGapValue = summary.totalValue - summary.disnatReferenceTotalValue;
+    summary.externalAccountsCount > 0
+      ? `${summary.externalAccountsCount} compte${summary.externalAccountsCount > 1 ? "s" : ""} externe${summary.externalAccountsCount > 1 ? "s" : ""} (valeurs saisies)`
+      : null,
+  ]
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .join(" · ");
+  const disnatGapValue = summary.disnatLiveTotalValue - summary.disnatReferenceTotalValue;
   const driftIsHigh = summary.driftVsDisnatPct !== null && Math.abs(summary.driftVsDisnatPct) > 5;
 
   return (
@@ -91,6 +98,7 @@ export default async function OverviewPage() {
           totalValue={summary.totalValue}
           positionsValue={summary.displayPositionsValue}
           cashValue={summary.cashValue}
+          externalValueCad={summary.externalTotalCad}
           detail={compositionDetail}
         />
         <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
@@ -114,7 +122,7 @@ export default async function OverviewPage() {
             </span>
             {summary.usdToCadRate !== null && summary.usdToCadRateDate ? (
               <span className="text-slate-400">
-                USD→CAD {summary.usdToCadRate.toFixed(4)} (Banque du Canada / Frankfurter,{" "}
+                USD→CAD {summary.usdToCadRate.toFixed(4)} (Banque du Canada FXUSDCAD,{" "}
                 {summary.usdToCadRateDate.toLocaleDateString("fr-CA")})
               </span>
             ) : (

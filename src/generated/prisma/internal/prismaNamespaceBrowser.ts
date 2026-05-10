@@ -64,7 +64,9 @@ export const ModelName = {
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
   BertaAgentRules: 'BertaAgentRules',
-  UsdCadDailyRate: 'UsdCadDailyRate'
+  UsdCadDailyRate: 'UsdCadDailyRate',
+  ExternalPortfolioAccount: 'ExternalPortfolioAccount',
+  ExternalAccountSnapshot: 'ExternalAccountSnapshot'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -309,6 +311,34 @@ export const UsdCadDailyRateScalarFieldEnum = {
 } as const
 
 export type UsdCadDailyRateScalarFieldEnum = (typeof UsdCadDailyRateScalarFieldEnum)[keyof typeof UsdCadDailyRateScalarFieldEnum]
+
+
+export const ExternalPortfolioAccountScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  displayLabel: 'displayLabel',
+  owner: 'owner',
+  accountKey: 'accountKey',
+  currency: 'currency',
+  portalUrl: 'portalUrl',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ExternalPortfolioAccountScalarFieldEnum = (typeof ExternalPortfolioAccountScalarFieldEnum)[keyof typeof ExternalPortfolioAccountScalarFieldEnum]
+
+
+export const ExternalAccountSnapshotScalarFieldEnum = {
+  id: 'id',
+  externalAccountId: 'externalAccountId',
+  asOfDate: 'asOfDate',
+  totalValue: 'totalValue',
+  notes: 'notes',
+  createdAt: 'createdAt'
+} as const
+
+export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
 
 
 export const SortOrder = {

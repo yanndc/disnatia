@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
+import { listExternalAccountsWithLatest } from "@/features/portfolio/external-accounts-queries";
 import { getAccountsWithStats } from "@/features/portfolio/queries";
 import { getLatestUsdCadRate } from "@/lib/fx/latest-usd-cad-rate";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
+import { EXTERNAL_ACCOUNT_PROVIDERS } from "@/lib/portfolio/external-account-providers";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { formatCurrency, formatNumber, normalizeCurrency } from "@/lib/utils";
 
@@ -32,17 +35,269 @@ function ownerSectionTitle(acc: AccountWithStats): string {
   return `Propriétaire inconnu (${normalizeCurrency(acc.currency)})`;
 }
 
-export default async function ComptesPage() {
-  const accounts: AccountWithStats[] = await getAccountsWithStats().catch(() => []);
+/** Agrège les comptes d’un même propriétaire pour une devise (lignes récap type Disnat). */
+function aggregateByCurrency(accounts: AccountWithStats[], currency: "CAD" | "USD") {
+  const subset = accounts.filter((a) => normalizeCurrency(a.currency) === currency);
+  let reconMissing = false;
+  let driftMissing = false;
+  let reconSum = 0;
+  let driftSum = 0;
+  for (const a of subset) {
+    if (a.reconstructedMarketValue === null) reconMissing = true;
+    else reconSum += a.reconstructedMarketValue;
+    if (a.driftTitresVsSnapshot === null) driftMissing = true;
+    else driftSum += a.driftTitresVsSnapshot;
+  }
+  return {
+    subset,
+    cash: sum(subset.map((a) => a.cashValue)),
+    market: sum(subset.map((a) => a.marketValue)),
+    total: sum(subset.map((a) => a.totalValue)),
+    reconstructedMarketValue: reconMissing ? null : reconSum,
+    driftTitresVsSnapshot: driftMissing ? null : driftSum,
+    txCount: sum(subset.map((a) => a.txCount)),
+    lastTxDate: subset.reduce<Date | null>((latest, a) => {
+      const d = a.lastTxDate;
+      if (!d) return latest;
+      if (!latest || d.getTime() > latest.getTime()) return d;
+      return latest;
+    }, null),
+  };
+}
 
-  if (accounts.length === 0) {
+function ownerDriftNetCad(
+  accounts: AccountWithStats[],
+  usdToCad: number | null,
+): number | null {
+  const parts = accounts
+    .map((a) => accountDriftTitresCad(a, usdToCad))
+    .filter((v): v is number => v !== null);
+  return parts.length > 0 ? sum(parts) : null;
+}
+
+function ownerConsolidatedCad(
+  accounts: AccountWithStats[],
+  usdToCad: number | null,
+): {
+  encaisse: number | null;
+  titresFichier: number | null;
+  titresRecon: number | null;
+  total: number | null;
+} {
+  if (usdToCad == null) {
+    return {
+      encaisse: null,
+      titresFichier: null,
+      titresRecon: null,
+      total: null,
+    };
+  }
+  let reconMissing = false;
+  let enc = 0;
+  let mkt = 0;
+  let tot = 0;
+  let recon = 0;
+  for (const a of accounts) {
+    const cur = normalizeCurrency(a.currency);
+    const mult = cur === "USD" ? usdToCad : 1;
+    enc += a.cashValue * mult;
+    mkt += a.marketValue * mult;
+    tot += a.totalValue * mult;
+    if (a.reconstructedMarketValue === null) reconMissing = true;
+    else recon += a.reconstructedMarketValue * mult;
+  }
+  return {
+    encaisse: enc,
+    titresFichier: mkt,
+    titresRecon: reconMissing ? null : recon,
+    total: tot,
+  };
+}
+
+function driftCellClass(drift: number | null) {
+  if (drift === null) return "text-slate-400";
+  return Math.abs(drift) > 500 ? "font-medium text-amber-700" : "text-slate-700";
+}
+
+/** Pied de tableau par personne : sous-totaux CAD / USD (style synthèse Disnat) + total équivalent CAD si pertinent. */
+function OwnerAccountsTableFooter({
+  ownerAccounts,
+  usdToCad,
+}: {
+  ownerAccounts: AccountWithStats[];
+  usdToCad: number | null;
+}) {
+  const cadAgg = aggregateByCurrency(ownerAccounts, "CAD");
+  const usdAgg = aggregateByCurrency(ownerAccounts, "USD");
+  const hasCad = cadAgg.subset.length > 0;
+  const hasUsd = usdAgg.subset.length > 0;
+  const showSplit = hasCad && hasUsd;
+  const cons = ownerConsolidatedCad(ownerAccounts, usdToCad);
+  const driftNetCad = ownerDriftNetCad(ownerAccounts, usdToCad);
+  const rowMuted = "border-t border-slate-200 bg-slate-50/90 font-medium text-slate-900";
+  const rowTotal =
+    "border-t-2 border-slate-300 bg-white/80 font-semibold text-slate-950";
+
+  function subtotalRow(
+    label: string,
+    agg: ReturnType<typeof aggregateByCurrency>,
+    currency: "CAD" | "USD",
+  ) {
+    if (agg.subset.length === 0) return null;
+    const cur = currency;
+    const isUsd = cur === "USD" && usdToCad != null;
+    const rate = usdToCad ?? 1;
+    return (
+      <tr key={`sub-${currency}`} className={rowMuted}>
+        <td className="px-4 py-2 text-slate-800">{label}</td>
+        <td className="px-4 py-2 font-mono text-slate-400">—</td>
+        <td className="px-4 py-2">
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+            {currency}
+          </span>
+        </td>
+        <AmountCellUsdCad
+          amount={agg.cash}
+          currency={cur}
+          isUsd={isUsd}
+          usdToCad={rate}
+          showCad={isUsd}
+        />
+        <AmountCellUsdCad
+          amount={agg.market}
+          currency={cur}
+          isUsd={isUsd}
+          usdToCad={rate}
+          showCad={isUsd}
+        />
+        <td className="px-4 py-2 text-right tabular-nums text-slate-700">
+          {agg.reconstructedMarketValue === null ? (
+            <span className="text-slate-400">—</span>
+          ) : (
+            formatCurrency(agg.reconstructedMarketValue, cur)
+          )}
+        </td>
+        <td className={`px-4 py-2 text-right tabular-nums ${driftCellClass(agg.driftTitresVsSnapshot)}`}>
+          {agg.driftTitresVsSnapshot === null ? (
+            "—"
+          ) : (
+            <>
+              {agg.driftTitresVsSnapshot > 0 ? "+" : ""}
+              {formatCurrency(agg.driftTitresVsSnapshot, cur)}
+            </>
+          )}
+        </td>
+        <AmountCellUsdCad
+          amount={agg.total}
+          currency={cur}
+          isUsd={isUsd}
+          usdToCad={rate}
+          showCad={isUsd}
+          emphasize
+        />
+        <td className="px-4 py-2 text-right tabular-nums text-slate-600">{agg.txCount}</td>
+        <td className="px-4 py-2 text-right text-xs text-slate-500">
+          {agg.lastTxDate ? agg.lastTxDate.toLocaleDateString("fr-CA") : "—"}
+        </td>
+      </tr>
+    );
+  }
+
+  const rows: ReactNode[] = [];
+
+  if (showSplit) {
+    const rowCad = subtotalRow("Sous-total · comptes CAD", cadAgg, "CAD");
+    const rowUsd = subtotalRow("Sous-total · comptes USD", usdAgg, "USD");
+    if (rowCad) rows.push(rowCad);
+    if (rowUsd) rows.push(rowUsd);
+    if (usdToCad != null && cons.encaisse != null) {
+      rows.push(
+        <tr key="consolidated" className={rowTotal}>
+          <td className="px-4 py-2">
+            Total portefeuille
+            <span className="mt-0.5 block text-xs font-normal text-slate-500">
+              équivalent CAD (taux du jour)
+            </span>
+          </td>
+          <td className="px-4 py-2 font-mono text-slate-400">—</td>
+          <td className="px-4 py-2">
+            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+              CAD
+            </span>
+          </td>
+          <td className="px-4 py-2 text-right tabular-nums font-semibold text-slate-950">
+            {formatCurrency(cons.encaisse, "CAD")}
+          </td>
+          <td className="px-4 py-2 text-right tabular-nums font-semibold text-slate-950">
+            {formatCurrency(cons.titresFichier!, "CAD")}
+          </td>
+          <td className="px-4 py-2 text-right tabular-nums">
+            {cons.titresRecon === null ? (
+              <span className="text-slate-400">—</span>
+            ) : (
+              formatCurrency(cons.titresRecon, "CAD")
+            )}
+          </td>
+          <td
+            className={`px-4 py-2 text-right tabular-nums ${driftCellClass(driftNetCad)}`}
+          >
+            {driftNetCad === null ? (
+              "—"
+            ) : (
+              <>
+                {driftNetCad > 0 ? "+" : ""}
+                {formatCurrency(driftNetCad, "CAD")}
+              </>
+            )}
+          </td>
+          <td className="px-4 py-2 text-right tabular-nums text-base font-semibold text-slate-950">
+            {formatCurrency(cons.total!, "CAD")}
+          </td>
+          <td className="px-4 py-2 text-right tabular-nums text-slate-600">
+            {sum(ownerAccounts.map((a) => a.txCount))}
+          </td>
+          <td className="px-4 py-2 text-right text-xs text-slate-500">
+            {ownerAccounts.reduce<Date | null>((latest, a) => {
+              const d = a.lastTxDate;
+              if (!d) return latest;
+              if (!latest || d.getTime() > latest.getTime()) return d;
+              return latest;
+            }, null)?.toLocaleDateString("fr-CA") ?? "—"}
+          </td>
+        </tr>,
+      );
+    }
+  } else if (hasCad) {
+    const row = subtotalRow("Total (CAD)", cadAgg, "CAD");
+    if (row) rows.push(row);
+  } else if (hasUsd) {
+    const row = subtotalRow("Total (USD)", usdAgg, "USD");
+    if (row) rows.push(row);
+  }
+
+  if (rows.length === 0) return null;
+
+  return <tfoot>{rows}</tfoot>;
+}
+
+export default async function ComptesPage() {
+  const [accounts, externalAccounts] = await Promise.all([
+    getAccountsWithStats().catch(() => []),
+    listExternalAccountsWithLatest().catch(() => []),
+  ]);
+
+  if (accounts.length === 0 && externalAccounts.length === 0) {
     return (
       <Card>
         <CardContent className="flex min-h-80 flex-col items-center justify-center text-center">
           <h2 className="text-xl font-semibold text-slate-950">Aucun compte connu</h2>
           <p className="mt-2 max-w-md text-sm text-slate-500">
             Importez d&apos;abord le fichier CSV Portefeuille depuis Disnat pour identifier vos
-            comptes (CELI, REER, CRI…).
+            comptes (CELI, REER, CRI…), ou ajoutez un{" "}
+            <Link href="/imports" className="underline-offset-2 hover:underline">
+              compte externe
+            </Link>{" "}
+            (REER collectif, autre assureur) avec des snapshots manuels.
           </p>
           <Link
             href="/imports"
@@ -52,6 +307,96 @@ export default async function ComptesPage() {
           </Link>
         </CardContent>
       </Card>
+    );
+  }
+
+  const externalAccountsSection =
+    externalAccounts.length > 0 ? (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Comptes hors Disnat</CardTitle>
+          <p className="text-sm text-slate-500">
+            Snapshots de valeur saisis sur la page{" "}
+            <Link href="/imports" className="text-violet-700 underline-offset-2 hover:underline">
+              Imports
+            </Link>
+            .
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-4 py-2">Libellé</th>
+                  <th className="px-4 py-2">Propriétaire</th>
+                  <th className="px-4 py-2">Source</th>
+                  <th className="px-4 py-2">Devise</th>
+                  <th className="px-4 py-2 text-right">Solde (snapshot)</th>
+                  <th className="px-4 py-2 text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {externalAccounts.map((ex) => (
+                  <tr key={ex.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2 font-medium text-slate-800">{ex.displayLabel}</td>
+                    <td className="px-4 py-2 text-slate-700">
+                      {ex.owner?.trim()
+                        ? (sanitizePortfolioOwner(ex.owner) ?? ex.owner.trim())
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-slate-600">
+                      {EXTERNAL_ACCOUNT_PROVIDERS.find((p) => p.id === ex.provider)?.label ??
+                        ex.provider}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {ex.currency}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums font-medium">
+                      {ex.latestSnapshot
+                        ? formatCurrency(ex.latestSnapshot.totalValue, ex.currency)
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right text-xs text-slate-500">
+                      {ex.latestSnapshot
+                        ? ex.latestSnapshot.asOfDate.toLocaleDateString("fr-CA")
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+            Pas de synchronisation automatique avec l&apos;assureur — chaque point correspond à une
+            valeur lue sur ton espace sécurisé.
+          </p>
+        </CardContent>
+      </Card>
+    ) : null;
+
+  if (accounts.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex min-h-40 flex-col items-center justify-center py-8 text-center">
+            <h2 className="text-lg font-semibold text-slate-950">Comptes Disnat</h2>
+            <p className="mt-2 max-w-md text-sm text-slate-500">
+              Importe le CSV portefeuille Disnat pour voir le détail encaisse / titres / écarts par
+              compte.
+            </p>
+            <Link
+              href="/imports"
+              className="mt-4 rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Vers les imports
+            </Link>
+          </CardContent>
+        </Card>
+        {externalAccountsSection}
+      </div>
     );
   }
 
@@ -381,11 +726,16 @@ export default async function ComptesPage() {
                     );
                   })}
                 </tbody>
+                <OwnerAccountsTableFooter
+                  ownerAccounts={ownerAccounts}
+                  usdToCad={usdToCad}
+                />
               </table>
             </div>
           </CardContent>
         </Card>
       ))}
+      {externalAccountsSection}
     </div>
   );
 }

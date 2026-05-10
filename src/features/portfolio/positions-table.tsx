@@ -6,6 +6,7 @@ import { PositionTransactionsModal } from "@/features/portfolio/position-transac
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  cn,
   formatAccountNumber,
   formatCurrencyDetailed,
   formatNumber,
@@ -86,6 +87,23 @@ function unrealizedPct(p: EnrichedPosition): number | null {
   return (u / cost) * 100;
 }
 
+/** Libellé affiché dans la colonne compte : sans le mot « Compte » (souvent présent dans l’export Disnat). */
+function positionAccountDisplayLabel(raw: string): string {
+  const cleaned = raw
+    .replace(/\bcompte\b/giu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.length > 0 ? cleaned : "—";
+}
+
+function positionAccountFilterKey(p: EnrichedPosition): string {
+  return p.accountKey ? p.accountKey : `name:${p.accountName}`;
+}
+
+function positionAssetClassValue(p: EnrichedPosition): string {
+  return (p.assetType ?? p.sector ?? "").trim();
+}
+
 function sortPositions(
   rows: EnrichedPosition[],
   sortKey: SortKey,
@@ -110,7 +128,7 @@ function sortPositions(
 function rowSortValue(p: EnrichedPosition, key: SortKey): string | number | null {
   switch (key) {
     case "accountName":
-      return p.accountName;
+      return positionAccountDisplayLabel(p.accountName);
     case "ticker":
       return p.ticker;
     case "securityName":
@@ -184,16 +202,59 @@ function currencyGroupOrder(a: string, b: string) {
   return ca.localeCompare(cb, "fr");
 }
 
+const filterSelectClass =
+  "h-9 shrink-0 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800 outline-none transition-colors focus:border-slate-400";
+
 export function PositionsTable({ positions }: { positions: EnrichedPosition[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("displayMarketValue");
   const [sortDesc, setSortDesc] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [filterCurrency, setFilterCurrency] = useState<string>("");
+  const [filterAccountKey, setFilterAccountKey] = useState<string>("");
+  const [filterQuoteMode, setFilterQuoteMode] = useState<"" | "live" | "snapshot">(
+    "",
+  );
+  const [filterAssetClass, setFilterAssetClass] = useState<string>("");
   const [txModalPosition, setTxModalPosition] = useState<EnrichedPosition | null>(null);
+
+  const filterOptions = useMemo(() => {
+    const curs = new Set<string>();
+    const accountEntries = new Map<string, string>();
+    const assets = new Set<string>();
+    for (const p of positions) {
+      curs.add(normalizeCurrency(p.currency));
+      const k = positionAccountFilterKey(p);
+      if (!accountEntries.has(k)) {
+        const name = positionAccountDisplayLabel(p.accountName);
+        const num = formatAccountNumber(p.accountNumber);
+        accountEntries.set(k, num ? `${name} · ${num}` : name);
+      }
+      const a = positionAssetClassValue(p);
+      if (a) assets.add(a);
+    }
+    const currenciesSorted = [...curs].sort((a, b) => currencyGroupOrder(a, b));
+    const accountsSorted = [...accountEntries.entries()].sort(([, la], [, lb]) =>
+      la.localeCompare(lb, "fr"),
+    );
+    const assetsSorted = [...assets].sort((a, b) => a.localeCompare(b, "fr"));
+    return { currenciesSorted, accountsSorted, assetsSorted };
+  }, [positions]);
 
   const filtered = useMemo(() => {
     const q = globalFilter.trim().toLowerCase();
-    if (!q) return positions;
     return positions.filter((p) => {
+      if (filterCurrency && normalizeCurrency(p.currency) !== filterCurrency) {
+        return false;
+      }
+      if (filterAccountKey && positionAccountFilterKey(p) !== filterAccountKey) {
+        return false;
+      }
+      if (filterQuoteMode === "live" && !p.usesLiveQuote) return false;
+      if (filterQuoteMode === "snapshot" && p.usesLiveQuote) return false;
+      if (filterAssetClass && positionAssetClassValue(p) !== filterAssetClass) {
+        return false;
+      }
+      if (!q) return true;
       const hay = [
         p.ticker,
         p.securityName,
@@ -207,7 +268,14 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [positions, globalFilter]);
+  }, [
+    positions,
+    globalFilter,
+    filterCurrency,
+    filterAccountKey,
+    filterQuoteMode,
+    filterAssetClass,
+  ]);
 
   const grouped = useMemo(() => {
     const byCur = new Map<string, EnrichedPosition[]>();
@@ -243,7 +311,10 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
   const th = (key: SortKey, label: string, className = "") => (
     <th
       key={key}
-      className={`cursor-pointer whitespace-nowrap px-3 py-3 font-medium ${className}`}
+      className={cn(
+        "cursor-pointer whitespace-nowrap px-1 py-1 font-medium",
+        className,
+      )}
       onClick={() => toggleSort(key)}
       scope="col"
     >
@@ -256,14 +327,67 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <Input
-          value={globalFilter}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-          placeholder="Rechercher ticker, nom, compte…"
-          className="md:max-w-md"
-        />
-        <p className="text-sm text-slate-500">
+      <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Input
+            value={globalFilter}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            placeholder="Rechercher ticker, nom, compte…"
+            className="h-9 min-w-[12rem] flex-1 sm:max-w-xs"
+          />
+          <select
+            aria-label="Filtrer par devise"
+            className={cn(filterSelectClass, "min-w-[7rem]")}
+            value={filterCurrency}
+            onChange={(e) => setFilterCurrency(e.target.value)}
+          >
+            <option value="">Toutes devises</option>
+            {filterOptions.currenciesSorted.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Filtrer par compte"
+            className={cn(filterSelectClass, "min-w-[10rem] max-w-[16rem]")}
+            value={filterAccountKey}
+            onChange={(e) => setFilterAccountKey(e.target.value)}
+          >
+            <option value="">Tous les comptes</option>
+            {filterOptions.accountsSorted.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Filtrer par source de cours"
+            className={cn(filterSelectClass, "min-w-[9rem]")}
+            value={filterQuoteMode}
+            onChange={(e) =>
+              setFilterQuoteMode(e.target.value as "" | "live" | "snapshot")
+            }
+          >
+            <option value="">Tous les cours</option>
+            <option value="live">Cours live</option>
+            <option value="snapshot">Snapshot Disnat</option>
+          </select>
+          <select
+            aria-label="Filtrer par classe d’actif"
+            className={cn(filterSelectClass, "min-w-[9rem] max-w-[14rem]")}
+            value={filterAssetClass}
+            onChange={(e) => setFilterAssetClass(e.target.value)}
+          >
+            <option value="">Toutes les classes</option>
+            {filterOptions.assetsSorted.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="shrink-0 text-sm text-slate-500">
           {filteredCount} position{filteredCount !== 1 ? "s" : ""} affichée
           {filteredCount !== 1 ? "s" : ""}
         </p>
@@ -286,7 +410,7 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                 <tr>
                   {th("accountName", "Compte")}
                   {th("ticker", "Symbole")}
-                  <th className="whitespace-nowrap px-3 py-3 font-medium" scope="col">
+                  <th className="whitespace-nowrap px-1 py-1 font-medium" scope="col">
                     Opérations
                   </th>
                   {th("securityName", "Nom")}
@@ -317,9 +441,11 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50">
-                      <td className="px-3 py-3 text-slate-700">
+                      <td className="px-1 py-1 text-slate-700">
                         <div>
-                          <p className="font-medium">{p.accountName}</p>
+                          <p className="font-medium">
+                            {positionAccountDisplayLabel(p.accountName)}
+                          </p>
                           {formatAccountNumber(p.accountNumber) ? (
                             <p className="text-xs text-slate-500">
                               {formatAccountNumber(p.accountNumber)}
@@ -327,7 +453,7 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-1 py-1">
                         <div>
                           <p className="font-semibold text-emerald-700">{p.ticker}</p>
                           {p.usesLiveQuote ? (
@@ -337,12 +463,12 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-1 py-1">
                         {p.accountKey ? (
                           <Button
                             type="button"
                             variant="secondary"
-                            className="h-8 whitespace-nowrap px-2 text-xs"
+                            className="h-7 whitespace-nowrap px-2 text-xs"
                             onClick={() => setTxModalPosition(p)}
                           >
                             Voir
@@ -351,16 +477,16 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                           <span className="text-xs text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="max-w-[220px] px-3 py-3 text-slate-700">
+                      <td className="max-w-[220px] px-1 py-1 text-slate-700">
                         <p className="line-clamp-2">{p.securityName || "—"}</p>
                       </td>
-                      <td className="max-w-[160px] px-3 py-3 text-xs text-slate-600">
+                      <td className="max-w-[160px] px-1 py-1 text-xs text-slate-600">
                         {assetLabel || "—"}
                       </td>
-                      <td className="px-3 py-3 text-slate-700 tabular-nums">
+                      <td className="px-1 py-1 text-slate-700 tabular-nums">
                         {formatNumber(p.quantity, 4)}
                       </td>
-                      <td className="px-3 py-3 text-slate-700 tabular-nums">
+                      <td className="px-1 py-1 text-slate-700 tabular-nums">
                         {p.averageCost !== null &&
                         Number.isFinite(p.averageCost) ? (
                           formatCurrencyDetailed(p.averageCost, cur, 2)
@@ -368,14 +494,14 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-slate-700 tabular-nums">
+                      <td className="px-1 py-1 text-slate-700 tabular-nums">
                         {tc !== null ? (
                           formatCurrencyDetailed(tc, cur, 2)
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-1 py-1">
                         <div className="tabular-nums text-slate-700">
                           {p.displayPrice !== null &&
                           Number.isFinite(p.displayPrice) ? (
@@ -390,35 +516,35 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                           </p>
                         </div>
                       </td>
-                      <td className="px-3 py-3 tabular-nums">
+                      <td className="px-1 py-1 tabular-nums">
                         <SignedCurrencyDetail
                           value={p.quoteChangePerShare}
                           currency={cur}
                         />
                       </td>
-                      <td className="px-3 py-3 tabular-nums">
+                      <td className="px-1 py-1 tabular-nums">
                         <SignedCurrencyDetail
                           value={p.displayDayGainLoss}
                           currency={cur}
                         />
                       </td>
-                      <td className="px-3 py-3 font-medium text-slate-900 tabular-nums">
+                      <td className="px-1 py-1 font-medium text-slate-900 tabular-nums">
                         {formatCurrencyDetailed(p.displayMarketValue, cur, 2)}
                       </td>
-                      <td className="px-3 py-3 text-slate-700 tabular-nums">
+                      <td className="px-1 py-1 text-slate-700 tabular-nums">
                         {p.loanValue !== null && Number.isFinite(p.loanValue) ? (
                           formatCurrencyDetailed(p.loanValue, cur, 2)
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 tabular-nums">
+                      <td className="px-1 py-1 tabular-nums">
                         <SignedCurrencyDetail value={uDollar} currency={cur} />
                       </td>
-                      <td className="px-3 py-3 tabular-nums">
+                      <td className="px-1 py-1 tabular-nums">
                         <SignedPercent value={uPct} />
                       </td>
-                      <td className="px-3 py-3 text-slate-700 tabular-nums">
+                      <td className="px-1 py-1 text-slate-700 tabular-nums">
                         {p.weightPct === null ? (
                           "—"
                         ) : (

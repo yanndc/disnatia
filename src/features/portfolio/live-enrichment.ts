@@ -43,10 +43,24 @@ function referenceUnitPrice(position: PortfolioPosition): number | null {
   return null;
 }
 
-function liveQuoteMatchesReference(livePrice: number, referencePrice: number | null): boolean {
+function liveQuoteMatchesReference(
+  livePrice: number,
+  referencePrice: number | null,
+  quotePreviousClose: number | null | undefined,
+): boolean {
   if (referencePrice === null || referencePrice <= 0) return true;
   const ratio = livePrice / referencePrice;
-  return ratio >= LIVE_VS_REFERENCE_RATIO_MIN && ratio <= LIVE_VS_REFERENCE_RATIO_MAX;
+  if (ratio >= LIVE_VS_REFERENCE_RATIO_MIN && ratio <= LIVE_VS_REFERENCE_RATIO_MAX) return true;
+  /* Dernier prix Disnat souvent désuet (projection) : si Yahoo est cohérent avec la clôture précédente, faire confiance au live. */
+  if (
+    quotePreviousClose != null &&
+    quotePreviousClose > 0 &&
+    Number.isFinite(quotePreviousClose)
+  ) {
+    const vsPrev = livePrice / quotePreviousClose;
+    if (vsPrev >= 0.92 && vsPrev <= 1.08) return true;
+  }
+  return false;
 }
 
 export function enrichPositionRow(
@@ -61,7 +75,7 @@ export function enrichPositionRow(
   const livePrice =
     rawLive !== null &&
     Number.isFinite(rawLive) &&
-    liveQuoteMatchesReference(rawLive, refUnit)
+    liveQuoteMatchesReference(rawLive, refUnit, quote?.previousClose)
       ? rawLive
       : null;
   const displayPrice = livePrice ?? disnatMarketPrice;

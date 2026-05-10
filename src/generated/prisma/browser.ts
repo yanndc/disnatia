@@ -94,7 +94,19 @@ export type BertaAgentRules = Prisma.BertaAgentRulesModel
  * Model UsdCadDailyRate
  * *
  *  * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).
- *  * Alimenté via Frankfurter (données publiques) ; les jours sans cotation (fins de semaine)
- *  * sont complétés en reportant le dernier cours connu.
+ *  * Alimenté via la série FXUSDCAD de la Banque du Canada ; les jours sans publication
+ *  * (fins de semaine, fériés) sont complétés en reportant le dernier cours connu.
  */
 export type UsdCadDailyRate = Prisma.UsdCadDailyRateModel
+/**
+ * Model ExternalPortfolioAccount
+ * *
+ *  * Compte hors Disnat (ex. REER collectif assureur). Pas d’API publique :
+ *  * l’utilisateur saisit des snapshots de valeur périodiques depuis l’espace participant.
+ */
+export type ExternalPortfolioAccount = Prisma.ExternalPortfolioAccountModel
+/**
+ * Model ExternalAccountSnapshot
+ * 
+ */
+export type ExternalAccountSnapshot = Prisma.ExternalAccountSnapshotModel

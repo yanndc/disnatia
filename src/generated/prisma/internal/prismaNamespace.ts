@@ -397,7 +397,9 @@ export const ModelName = {
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
   BertaAgentRules: 'BertaAgentRules',
-  UsdCadDailyRate: 'UsdCadDailyRate'
+  UsdCadDailyRate: 'UsdCadDailyRate',
+  ExternalPortfolioAccount: 'ExternalPortfolioAccount',
+  ExternalAccountSnapshot: 'ExternalAccountSnapshot'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -413,7 +415,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1453,6 +1455,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ExternalPortfolioAccount: {
+      payload: Prisma.$ExternalPortfolioAccountPayload<ExtArgs>
+      fields: Prisma.ExternalPortfolioAccountFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ExternalPortfolioAccountFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ExternalPortfolioAccountFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>
+        }
+        findFirst: {
+          args: Prisma.ExternalPortfolioAccountFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ExternalPortfolioAccountFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>
+        }
+        findMany: {
+          args: Prisma.ExternalPortfolioAccountFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>[]
+        }
+        create: {
+          args: Prisma.ExternalPortfolioAccountCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>
+        }
+        createMany: {
+          args: Prisma.ExternalPortfolioAccountCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ExternalPortfolioAccountCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>[]
+        }
+        delete: {
+          args: Prisma.ExternalPortfolioAccountDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>
+        }
+        update: {
+          args: Prisma.ExternalPortfolioAccountUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>
+        }
+        deleteMany: {
+          args: Prisma.ExternalPortfolioAccountDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ExternalPortfolioAccountUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ExternalPortfolioAccountUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>[]
+        }
+        upsert: {
+          args: Prisma.ExternalPortfolioAccountUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountPayload>
+        }
+        aggregate: {
+          args: Prisma.ExternalPortfolioAccountAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateExternalPortfolioAccount>
+        }
+        groupBy: {
+          args: Prisma.ExternalPortfolioAccountGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ExternalPortfolioAccountGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ExternalPortfolioAccountCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ExternalPortfolioAccountCountAggregateOutputType> | number
+        }
+      }
+    }
+    ExternalAccountSnapshot: {
+      payload: Prisma.$ExternalAccountSnapshotPayload<ExtArgs>
+      fields: Prisma.ExternalAccountSnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ExternalAccountSnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ExternalAccountSnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.ExternalAccountSnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ExternalAccountSnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.ExternalAccountSnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.ExternalAccountSnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.ExternalAccountSnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ExternalAccountSnapshotCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>[]
+        }
+        delete: {
+          args: Prisma.ExternalAccountSnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>
+        }
+        update: {
+          args: Prisma.ExternalAccountSnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.ExternalAccountSnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ExternalAccountSnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ExternalAccountSnapshotUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>[]
+        }
+        upsert: {
+          args: Prisma.ExternalAccountSnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalAccountSnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.ExternalAccountSnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateExternalAccountSnapshot>
+        }
+        groupBy: {
+          args: Prisma.ExternalAccountSnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ExternalAccountSnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ExternalAccountSnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ExternalAccountSnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1718,6 +1868,34 @@ export const UsdCadDailyRateScalarFieldEnum = {
 } as const
 
 export type UsdCadDailyRateScalarFieldEnum = (typeof UsdCadDailyRateScalarFieldEnum)[keyof typeof UsdCadDailyRateScalarFieldEnum]
+
+
+export const ExternalPortfolioAccountScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  displayLabel: 'displayLabel',
+  owner: 'owner',
+  accountKey: 'accountKey',
+  currency: 'currency',
+  portalUrl: 'portalUrl',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ExternalPortfolioAccountScalarFieldEnum = (typeof ExternalPortfolioAccountScalarFieldEnum)[keyof typeof ExternalPortfolioAccountScalarFieldEnum]
+
+
+export const ExternalAccountSnapshotScalarFieldEnum = {
+  id: 'id',
+  externalAccountId: 'externalAccountId',
+  asOfDate: 'asOfDate',
+  totalValue: 'totalValue',
+  notes: 'notes',
+  createdAt: 'createdAt'
+} as const
+
+export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2023,6 +2201,8 @@ export type GlobalOmitConfig = {
   chatMessage?: Prisma.ChatMessageOmit
   bertaAgentRules?: Prisma.BertaAgentRulesOmit
   usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
+  externalPortfolioAccount?: Prisma.ExternalPortfolioAccountOmit
+  externalAccountSnapshot?: Prisma.ExternalAccountSnapshotOmit
 }
 
 /* Types for Logging */

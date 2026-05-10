@@ -321,18 +321,58 @@ enum MessageRole {
 
 /**
  * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).
- * Alimenté via Frankfurter (données publiques) ; les jours sans cotation (fins de semaine)
- * sont complétés en reportant le dernier cours connu.
+ * Alimenté via la série FXUSDCAD de la Banque du Canada ; les jours sans publication
+ * (fins de semaine, fériés) sont complétés en reportant le dernier cours connu.
  */
 model UsdCadDailyRate {
   id       String   @id @default(cuid())
   rateDate DateTime @map("rate_date") @db.Date
   usdToCad Float    @map("usd_to_cad")
-  source   String   @default("frankfurter")
+  source   String   @default("bank_of_canada")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([rateDate])
   @@index([rateDate])
   @@map("usd_cad_daily_rates")
+}
+
+/**
+ * Compte hors Disnat (ex. REER collectif assureur). Pas d’API publique :
+ * l’utilisateur saisit des snapshots de valeur périodiques depuis l’espace participant.
+ */
+model ExternalPortfolioAccount {
+  id           String                   @id @default(cuid())
+  /// Identifiant logique (ex. `desjardins_erc_reer_collectif`)
+  provider     String
+  displayLabel String
+  /// Propriétaire (même logique d’affichage que les comptes Disnat)
+  owner        String?
+  /// Clé stable pour l’UI ; préfixe `ext:` pour éviter les collisions Disnat
+  accountKey   String                   @unique
+  currency     String                   @default("CAD")
+  portalUrl    String?
+  metadata     Json?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  snapshots    ExternalAccountSnapshot[]
+
+  @@index([provider])
+  @@index([owner])
+  @@map("external_portfolio_accounts")
+}
+
+model ExternalAccountSnapshot {
+  id                String                 @id @default(cuid())
+  externalAccountId String
+  asOfDate          DateTime               @db.Date
+  totalValue        Float
+  notes             String?
+  createdAt         DateTime               @default(now())
+  externalAccount   ExternalPortfolioAccount @relation(fields: [externalAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([externalAccountId, asOfDate])
+  @@index([externalAccountId])
+  @@index([asOfDate])
+  @@map("external_account_snapshots")
 }
