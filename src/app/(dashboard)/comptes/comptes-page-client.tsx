@@ -3,11 +3,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import type { EnrichedPosition } from "@/features/portfolio/live-enrichment";
-import { formatCurrency, formatNumber, normalizeCurrency } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercent, normalizeCurrency } from "@/lib/utils";
 import type { AccountWithStats } from "./comptes-types";
 import {
   RECON_COLUMNS_STORAGE_KEY,
@@ -30,6 +31,19 @@ function dayTitresSignedClass(amount: number) {
   return "text-slate-700";
 }
 
+function dayTitresPct(
+  state: AccountDayTitresPnLState,
+): number | null {
+  if (
+    state.sum === null ||
+    state.priorCloseTitresValue === null ||
+    state.priorCloseTitresValue <= 0
+  ) {
+    return null;
+  }
+  return (state.sum / state.priorCloseTitresValue) * 100;
+}
+
 function DayTitresPnLTd(props: {
   state: AccountDayTitresPnLState;
   currency: string;
@@ -37,6 +51,7 @@ function DayTitresPnLTd(props: {
   usdToCad?: number | null;
   showCadEquivalent?: boolean;
   emphasize?: boolean;
+  density?: "default" | "compact";
 }) {
   const {
     state,
@@ -45,11 +60,14 @@ function DayTitresPnLTd(props: {
     usdToCad,
     showCadEquivalent = false,
     emphasize,
+    density = "default",
   } = props;
+  const pad = density === "compact" ? "px-2 py-2" : "px-4 py-2";
+  const pct = dayTitresPct(state);
   if (!state.hasTitresProjetes) {
     return (
       <td
-        className={`px-4 py-2 text-right tabular-nums text-slate-400 ${emphasize ? "font-semibold" : ""}`}
+        className={`${pad} text-right tabular-nums text-slate-400 ${emphasize ? "font-semibold" : ""}`}
       >
         —
       </td>
@@ -58,7 +76,7 @@ function DayTitresPnLTd(props: {
   if (state.sum === null) {
     return (
       <td
-        className={`px-4 py-2 text-right tabular-nums text-slate-400 ${emphasize ? "font-semibold" : ""}`}
+        className={`${pad} text-right tabular-nums text-slate-400 ${emphasize ? "font-semibold" : ""}`}
         title="Somme partielle : cotation jour absente sur au moins une ligne"
       >
         —{state.incomplete ? " *" : ""}
@@ -69,13 +87,19 @@ function DayTitresPnLTd(props: {
   const rate = typeof usdToCad === "number" && Number.isFinite(usdToCad) ? usdToCad : null;
   return (
     <td
-      className={`px-4 py-2 text-right tabular-nums ${emphasize ? "font-semibold" : ""} ${dayTitresSignedClass(sumVal)}`}
+      className={`${pad} text-right tabular-nums ${emphasize ? "font-semibold" : ""} ${dayTitresSignedClass(sumVal)}`}
     >
       <div>
         {sumVal > 0 ? "+" : ""}
         {formatCurrency(sumVal, currency)}
         {state.incomplete ? "*" : ""}
       </div>
+      {pct !== null ? (
+        <div className="mt-0.5 text-xs font-normal tabular-nums text-slate-500">
+          {pct > 0 ? "+" : ""}
+          {formatPercent(pct)}
+        </div>
+      ) : null}
       {isUsd && showCadEquivalent && rate !== null ? (
         <div className="mt-0.5 text-xs font-normal text-slate-500">
           ≈ {sumVal > 0 ? "+" : ""}
@@ -199,6 +223,14 @@ function OwnerAccountsTableFooter({
             )}
           </td>
         ) : null}
+        {showRecon ? (
+          <td className="px-4 py-2 text-right tabular-nums text-slate-600">{agg.txCount}</td>
+        ) : null}
+        {showRecon ? (
+          <td className="px-4 py-2 text-right text-xs text-slate-500">
+            {agg.lastTxDate ? agg.lastTxDate.toLocaleDateString("fr-CA") : "—"}
+          </td>
+        ) : null}
         <AmountCellUsdCad
           amount={agg.total}
           currency={cur}
@@ -207,12 +239,6 @@ function OwnerAccountsTableFooter({
           showCad={isUsd}
           emphasize
         />
-        {showRecon ? (
-          <td className="px-4 py-2 text-right tabular-nums text-slate-600">{agg.txCount}</td>
-        ) : null}
-        <td className="px-4 py-2 text-right text-xs text-slate-500">
-          {agg.lastTxDate ? agg.lastTxDate.toLocaleDateString("fr-CA") : "—"}
-        </td>
       </tr>
     );
   }
@@ -277,21 +303,23 @@ function OwnerAccountsTableFooter({
               )}
             </td>
           ) : null}
-          <td className="px-4 py-2 text-right tabular-nums text-base font-semibold text-slate-950">
-            {formatCurrency(cons.total!, "CAD")}
-          </td>
           {showRecon ? (
             <td className="px-4 py-2 text-right tabular-nums text-slate-600">
               {sum(ownerAccounts.map((a) => a.txCount))}
             </td>
           ) : null}
-          <td className="px-4 py-2 text-right text-xs text-slate-500">
-            {ownerAccounts.reduce<Date | null>((latest, a) => {
-              const d = a.lastTxDate;
-              if (!d) return latest;
-              if (!latest || d.getTime() > latest.getTime()) return d;
-              return latest;
-            }, null)?.toLocaleDateString("fr-CA") ?? "—"}
+          {showRecon ? (
+            <td className="px-4 py-2 text-right text-xs text-slate-500">
+              {ownerAccounts.reduce<Date | null>((latest, a) => {
+                const d = a.lastTxDate;
+                if (!d) return latest;
+                if (!latest || d.getTime() > latest.getTime()) return d;
+                return latest;
+              }, null)?.toLocaleDateString("fr-CA") ?? "—"}
+            </td>
+          ) : null}
+          <td className="px-4 py-2 text-right tabular-nums text-base font-semibold text-slate-950">
+            {formatCurrency(cons.total!, "CAD")}
           </td>
         </tr>,
       );
@@ -336,6 +364,10 @@ export type ComptesPageClientProps = {
   driftTopShareAbs: number | null;
   singleDominant: boolean;
   canShowDriftBanner: boolean;
+  /** Snapshots comptes externes pour le récap (solde total déclaré, pas de ventilation Disnat). */
+  externalRecapSnapshots: { currency: string; totalValue: number; asOf: string }[];
+  /** Disnat + hors Disnat en CAD lorsque le tout est convertible ; sinon `null`. */
+  grandTotalPortfolioCad: number | null;
 };
 
 export function ComptesPageClient(props: ComptesPageClientProps) {
@@ -365,7 +397,20 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
     driftTopShareAbs,
     singleDominant,
     canShowDriftBanner,
+    externalRecapSnapshots,
+    grandTotalPortfolioCad,
   } = props;
+
+  const extCadSnaps = externalRecapSnapshots.filter(
+    (s) => normalizeCurrency(s.currency) === "CAD",
+  );
+  const extUsdSnaps = externalRecapSnapshots.filter(
+    (s) => normalizeCurrency(s.currency) === "USD",
+  );
+  const extCadTotalCad = sum(extCadSnaps.map((s) => s.totalValue));
+  const extUsdTotalUsd = sum(extUsdSnaps.map((s) => s.totalValue));
+  const extUsdTotalCad = usdToCad != null ? extUsdTotalUsd * usdToCad : null;
+  const hasExternalRecap = externalRecapSnapshots.length > 0;
 
   const dayTitresByAccountKey = new Map<string, AccountDayTitresPnLState>(
     Object.entries(dayTitresRecord),
@@ -392,6 +437,15 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
       /* ignore */
     }
   }, []);
+
+  const router = useRouter();
+
+  const goToAccountPositions = useCallback(
+    (accountKey: string) => {
+      router.push(`/positions?accountKey=${encodeURIComponent(accountKey)}`);
+    },
+    [router],
+  );
 
   return (
     <div className="space-y-6">
@@ -483,8 +537,14 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
               : 1 USD = {formatNumber(fx.usdToCad, 5)} CAD
             </p>
           )}
+          {hasExternalRecap ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Hors Disnat : solde total au dernier snapshot saisi (pas d’encaisse / titres séparés ni P&amp;L
+              jour).
+            </p>
+          ) : null}
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[22rem] text-sm">
+            <table className="w-full min-w-[28rem] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
                   <th className="pb-2 pr-3 font-medium" />
@@ -525,7 +585,11 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                       )}
                     </td>
                   ) : null}
-                  <DayTitresPnLTd state={totalsBlocCadTitresDay} currency="CAD" />
+                  <DayTitresPnLTd
+                    state={totalsBlocCadTitresDay}
+                    currency="CAD"
+                    density="compact"
+                  />
                   <td className="pl-2 py-2 text-right tabular-nums font-medium">
                     {formatCurrency(cadTotal, "CAD")}
                   </td>
@@ -569,7 +633,11 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                       )}
                     </td>
                   ) : null}
-                  <DayTitresPnLTd state={totalsBlocUsdTitresDayCadEquiv} currency="CAD" />
+                  <DayTitresPnLTd
+                    state={totalsBlocUsdTitresDayCadEquiv}
+                    currency="CAD"
+                    density="compact"
+                  />
                   <td className="pl-2 py-2 text-right tabular-nums font-medium">
                     {usdTotalCad != null ? (
                       formatCurrency(usdTotalCad, "CAD")
@@ -578,8 +646,62 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     )}
                   </td>
                 </tr>
+                {extCadSnaps.length > 0 ? (
+                  <tr className="bg-violet-50/40 text-slate-800">
+                    <td className="py-2 pr-3 font-medium text-slate-700">
+                      Hors Disnat (CAD)
+                      <span className="mt-0.5 block text-xs font-normal normal-case text-slate-500">
+                        snapshot
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    {showRecon ? (
+                      <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    ) : null}
+                    <DayTitresPnLTd
+                      state={emptyDayTitresState()}
+                      currency="CAD"
+                      density="compact"
+                    />
+                    <td className="pl-2 py-2 text-right tabular-nums font-medium text-violet-950">
+                      {formatCurrency(extCadTotalCad, "CAD")}
+                    </td>
+                  </tr>
+                ) : null}
+                {extUsdSnaps.length > 0 ? (
+                  <tr className="bg-violet-50/40 text-slate-800">
+                    <td className="py-2 pr-3 font-medium text-slate-700">
+                      Hors Disnat (USD)
+                      <span className="mt-0.5 block text-xs font-normal normal-case text-slate-500">
+                        snapshot → CAD si taux dispo.
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    {showRecon ? (
+                      <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    ) : null}
+                    <DayTitresPnLTd
+                      state={emptyDayTitresState()}
+                      currency="CAD"
+                      density="compact"
+                    />
+                    <td className="pl-2 py-2 text-right tabular-nums font-medium text-violet-950">
+                      {extUsdTotalCad != null ? (
+                        formatCurrency(extUsdTotalCad, "CAD")
+                      ) : (
+                        <span className="text-slate-400" title="Taux USD→CAD manquant">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ) : null}
                 <tr className="border-t border-slate-300 bg-white/70 font-semibold text-slate-950">
-                  <td className="py-2 pr-3">Total en CAD</td>
+                  <td className="py-2 pr-3">
+                    {hasExternalRecap ? "Total Disnat (CAD)" : "Total en CAD"}
+                  </td>
                   <td className="px-2 py-2 text-right tabular-nums">
                     {consEncaisse != null ? (
                       formatCurrency(consEncaisse, "CAD")
@@ -607,6 +729,7 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     state={totalsBlocPortfolioTitresDayCad}
                     currency="CAD"
                     emphasize
+                    density="compact"
                   />
                   <td className="pl-2 py-2 text-right tabular-nums text-base">
                     {consTotal != null ? formatCurrency(consTotal, "CAD") : (
@@ -614,9 +737,33 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     )}
                   </td>
                 </tr>
+                {grandTotalPortfolioCad != null ? (
+                  <tr className="border-t-2 border-emerald-200/80 bg-emerald-50/50 font-semibold text-emerald-950">
+                    <td className="py-2 pr-3">Total portefeuille (CAD)</td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    {showRecon ? (
+                      <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    ) : null}
+                    <DayTitresPnLTd
+                      state={emptyDayTitresState()}
+                      currency="CAD"
+                      density="compact"
+                    />
+                    <td className="pl-2 py-2 text-right tabular-nums text-base font-semibold text-emerald-950">
+                      {formatCurrency(grandTotalPortfolioCad, "CAD")}
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
+          {hasExternalRecap && grandTotalPortfolioCad === null ? (
+            <p className="mt-2 text-xs text-amber-800">
+              Total portefeuille indisponible : le taux USD→CAD est requis pour additionner les snapshots
+              externes en dollars US aux totaux Disnat en CAD.
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -638,13 +785,18 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     {showRecon ? <th className="px-4 py-2 text-right">Local</th> : null}
                     <th className="px-4 py-2 text-right">Jour</th>
                     {showRecon ? <th className="px-4 py-2 text-right">Écart Disnat</th> : null}
-                    <th className="px-4 py-2 text-right">Total</th>
                     {showRecon ? (
-                      <th className="px-4 py-2 text-right" title="Nombre de lignes d’opérations importées (pas la quantité de titres)">
+                      <th
+                        className="px-4 py-2 text-right"
+                        title="Nombre de lignes d’opérations importées (pas la quantité de titres)"
+                      >
                         Nb op.
                       </th>
                     ) : null}
-                    <th className="px-4 py-2 text-right">Dernière</th>
+                    {showRecon ? (
+                      <th className="px-4 py-2 text-right">Dernière</th>
+                    ) : null}
+                    <th className="px-4 py-2 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -652,7 +804,20 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     const cur = normalizeCurrency(acc.currency);
                     const isUsd = cur === "USD" && usdToCad != null;
                     return (
-                      <tr key={acc.accountKey} className="hover:bg-slate-50">
+                      <tr
+                        key={acc.accountKey}
+                        className="cursor-pointer hover:bg-slate-50"
+                        role="link"
+                        tabIndex={0}
+                        title="Voir les positions de ce compte"
+                        onClick={() => goToAccountPositions(acc.accountKey)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            goToAccountPositions(acc.accountKey);
+                          }
+                        }}
+                      >
                         <td className="px-4 py-2 font-medium text-slate-800">
                           {acc.accountType ?? "—"}
                         </td>
@@ -718,20 +883,13 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                             )}
                           </td>
                         ) : null}
-                        <AmountCellUsdCad
-                          amount={acc.totalValue}
-                          currency={cur}
-                          isUsd={isUsd}
-                          usdToCad={usdToCad ?? 1}
-                          showCad={isUsd}
-                          emphasize
-                        />
                         {showRecon ? (
                           <td className="px-4 py-2 text-right text-slate-500">
                             {acc.txCount > 0 ? (
                               <Link
                                 href={`/transactions?accountKey=${encodeURIComponent(acc.accountKey)}`}
                                 className="text-slate-700 underline-offset-2 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 {acc.txCount}
                               </Link>
@@ -740,11 +898,21 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                             )}
                           </td>
                         ) : null}
-                        <td className="px-4 py-2 text-right text-xs text-slate-400">
-                          {acc.lastTxDate
-                            ? acc.lastTxDate.toLocaleDateString("fr-CA")
-                            : "—"}
-                        </td>
+                        {showRecon ? (
+                          <td className="px-4 py-2 text-right text-xs text-slate-400">
+                            {acc.lastTxDate
+                              ? acc.lastTxDate.toLocaleDateString("fr-CA")
+                              : "—"}
+                          </td>
+                        ) : null}
+                        <AmountCellUsdCad
+                          amount={acc.totalValue}
+                          currency={cur}
+                          isUsd={isUsd}
+                          usdToCad={usdToCad ?? 1}
+                          showCad={isUsd}
+                          emphasize
+                        />
                       </tr>
                     );
                   })}

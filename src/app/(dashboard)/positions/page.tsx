@@ -5,7 +5,16 @@ import { getAllPositions, getPortfolioSummary } from "@/features/portfolio/queri
 
 export const dynamic = "force-dynamic";
 
-export default async function PositionsPage() {
+export default async function PositionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const accountKeyRaw = params.accountKey;
+  const initialAccountKey =
+    typeof accountKeyRaw === "string" ? accountKeyRaw : undefined;
+
   const [positions, summary] = await Promise.all([
     getAllPositions().catch(() => []),
     getPortfolioSummary().catch(() => null),
@@ -65,7 +74,7 @@ export default async function PositionsPage() {
 
       <Card>
         <CardContent className="p-5">
-          <PositionsTable positions={positions} />
+          <PositionsTable positions={positions} initialAccountKey={initialAccountKey} />
         </CardContent>
       </Card>
     </div>

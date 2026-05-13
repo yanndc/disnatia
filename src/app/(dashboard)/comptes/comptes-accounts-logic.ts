@@ -9,12 +9,22 @@ export function sum(vals: number[]) {
 /** Somme marché approx. des lignes titre projetées pour ce compte. */
 export type AccountDayTitresPnLState = {
   sum: number | null;
+  /**
+   * Σ (valeur titre − P&L jour) sur les lignes où le P&L jour est connu ;
+   * approximation « valeur veille » pour un % journalier cohérent au niveau agrégé.
+   */
+  priorCloseTitresValue: number | null;
   incomplete: boolean;
   hasTitresProjetes: boolean;
 };
 
 export function emptyDayTitresState(): AccountDayTitresPnLState {
-  return { sum: null, incomplete: false, hasTitresProjetes: false };
+  return {
+    sum: null,
+    priorCloseTitresValue: null,
+    incomplete: false,
+    hasTitresProjetes: false,
+  };
 }
 
 export function accountDayTitresPnL(rows: EnrichedPosition[]): AccountDayTitresPnLState {
@@ -27,8 +37,16 @@ export function accountDayTitresPnL(rows: EnrichedPosition[]): AccountDayTitresP
   );
   const sumVal =
     known.length > 0 ? known.reduce((s, p) => s + (p.displayDayGainLoss ?? 0), 0) : null;
+  let priorSum = 0;
+  for (const p of known) {
+    const gl = p.displayDayGainLoss ?? 0;
+    const base = p.displayMarketValue - gl;
+    if (Number.isFinite(base) && base > 0) priorSum += base;
+  }
   return {
     sum: sumVal,
+    priorCloseTitresValue:
+      known.length > 0 && priorSum > 0 && Number.isFinite(priorSum) ? priorSum : null,
     incomplete: known.length < withQty.length,
     hasTitresProjetes: true,
   };
@@ -40,6 +58,8 @@ export function aggregateDayTitresForSubset(
 ): AccountDayTitresPnLState {
   let total = 0;
   let hasSum = false;
+  let totalPrior = 0;
+  let hasPrior = false;
   let incomplete = false;
   let hasTitres = false;
   for (const acc of subset) {
@@ -51,6 +71,10 @@ export function aggregateDayTitresForSubset(
       hasSum = true;
       total += row.sum;
     }
+    if (row.priorCloseTitresValue !== null && row.priorCloseTitresValue > 0) {
+      hasPrior = true;
+      totalPrior += row.priorCloseTitresValue;
+    }
   }
   const anyTitresSansDelta =
     incomplete ||
@@ -60,6 +84,7 @@ export function aggregateDayTitresForSubset(
     });
   return {
     sum: hasSum ? total : null,
+    priorCloseTitresValue: hasPrior && totalPrior > 0 ? totalPrior : null,
     incomplete: hasTitres && anyTitresSansDelta,
     hasTitresProjetes: hasTitres,
   };
@@ -83,6 +108,8 @@ export function consolidatedDayTitresCadState(
   const hasTitres = cadDay.hasTitresProjetes || usdDay.hasTitresProjetes;
   let contributed = false;
   let total = 0;
+  let totalPrior = 0;
+  let hasPrior = false;
   if (cadDay.sum !== null) {
     contributed = true;
     total += cadDay.sum;
@@ -90,6 +117,14 @@ export function consolidatedDayTitresCadState(
   if (usdDay.sum !== null) {
     contributed = true;
     total += usdDay.sum * usdToCad;
+  }
+  if (cadDay.priorCloseTitresValue !== null && cadDay.priorCloseTitresValue > 0) {
+    hasPrior = true;
+    totalPrior += cadDay.priorCloseTitresValue;
+  }
+  if (usdDay.priorCloseTitresValue !== null && usdDay.priorCloseTitresValue > 0) {
+    hasPrior = true;
+    totalPrior += usdDay.priorCloseTitresValue * usdToCad;
   }
   const incomplete =
     hasTitres &&
@@ -99,6 +134,7 @@ export function consolidatedDayTitresCadState(
       (usdDay.hasTitresProjetes && usdDay.sum === null));
   return {
     sum: contributed ? total : null,
+    priorCloseTitresValue: hasPrior && totalPrior > 0 ? totalPrior : null,
     incomplete,
     hasTitresProjetes: hasTitres,
   };
@@ -112,6 +148,7 @@ export function scaleUsdTitresDayStateToCad(
   if (usdToCad == null || !Number.isFinite(usdToCad) || usdToCad <= 0) {
     return {
       sum: null,
+      priorCloseTitresValue: null,
       incomplete: true,
       hasTitresProjetes: true,
     };
@@ -119,12 +156,20 @@ export function scaleUsdTitresDayStateToCad(
   if (state.sum === null) {
     return {
       sum: null,
+      priorCloseTitresValue:
+        state.priorCloseTitresValue !== null
+          ? state.priorCloseTitresValue * usdToCad
+          : null,
       incomplete: state.incomplete,
       hasTitresProjetes: true,
     };
   }
   return {
     sum: state.sum * usdToCad,
+    priorCloseTitresValue:
+      state.priorCloseTitresValue !== null
+        ? state.priorCloseTitresValue * usdToCad
+        : null,
     incomplete: state.incomplete,
     hasTitresProjetes: true,
   };

@@ -1,3 +1,4 @@
+import { BackgroundQuotesRefresh } from "@/features/portfolio/background-quotes-refresh";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 export default function DashboardLayout({
@@ -5,5 +6,10 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <DashboardShell>
+      <BackgroundQuotesRefresh />
+      {children}
+    </DashboardShell>
+  );
 }

@@ -30,6 +30,12 @@ function ownerSectionTitle(acc: AccountWithStats): string {
   return `Propriétaire inconnu (${normalizeCurrency(acc.currency)})`;
 }
 
+function toCadEquivalent(value: number, currency: string, usdToCad: number): number {
+  const cur = normalizeCurrency(currency);
+  if (cur === "USD" || cur === "US") return value * usdToCad;
+  return value;
+}
+
 export default async function ComptesPage() {
   const [accounts, externalAccounts, positions] = await Promise.all([
     getAccountsWithStats().catch(() => []),
@@ -256,6 +262,31 @@ export default async function ComptesPage() {
 
   const dayTitresRecord = Object.fromEntries(dayTitresByAccountKey.entries());
 
+  const extWithSnap = externalAccounts.filter((e) => e.latestSnapshot);
+  const externalRecapSnapshots = extWithSnap.map((e) => ({
+    currency: e.currency,
+    totalValue: e.latestSnapshot!.totalValue,
+    asOf: e.latestSnapshot!.asOfDate.toISOString(),
+  }));
+
+  let externalTotalCadOnly: number | null = null;
+  if (extWithSnap.length > 0) {
+    if (usdToCad != null) {
+      externalTotalCadOnly = sum(
+        extWithSnap.map((e) =>
+          toCadEquivalent(e.latestSnapshot!.totalValue, e.currency, usdToCad),
+        ),
+      );
+    } else if (extWithSnap.every((e) => normalizeCurrency(e.currency) === "CAD")) {
+      externalTotalCadOnly = sum(extWithSnap.map((e) => e.latestSnapshot!.totalValue));
+    }
+  }
+
+  const grandTotalPortfolioCad =
+    extWithSnap.length > 0 && consTotal != null && externalTotalCadOnly != null
+      ? consTotal + externalTotalCadOnly
+      : null;
+
   return (
     <div className="space-y-6">
       <ComptesPageClient
@@ -284,6 +315,8 @@ export default async function ComptesPage() {
         driftTopShareAbs={driftTopShareAbs}
         singleDominant={singleDominant}
         canShowDriftBanner={canShowDriftBanner}
+        externalRecapSnapshots={externalRecapSnapshots}
+        grandTotalPortfolioCad={grandTotalPortfolioCad}
       />
       {externalAccountsSection}
     </div>

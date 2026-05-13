@@ -205,12 +205,21 @@ function currencyGroupOrder(a: string, b: string) {
 const filterSelectClass =
   "h-9 shrink-0 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800 outline-none transition-colors focus:border-slate-400";
 
-export function PositionsTable({ positions }: { positions: EnrichedPosition[] }) {
+export function PositionsTable({
+  positions,
+  initialAccountKey,
+}: {
+  positions: EnrichedPosition[];
+  /** Pré-remplit le filtre compte (ex. `?accountKey=` depuis Comptes). */
+  initialAccountKey?: string | null;
+}) {
   const [sortKey, setSortKey] = useState<SortKey>("displayMarketValue");
   const [sortDesc, setSortDesc] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [filterCurrency, setFilterCurrency] = useState<string>("");
-  const [filterAccountKey, setFilterAccountKey] = useState<string>("");
+  const [filterAccountKey, setFilterAccountKey] = useState<string>(() =>
+    (initialAccountKey ?? "").trim(),
+  );
   const [filterQuoteMode, setFilterQuoteMode] = useState<"" | "live" | "snapshot">(
     "",
   );
