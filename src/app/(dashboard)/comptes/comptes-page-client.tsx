@@ -320,6 +320,10 @@ export type ComptesPageClientProps = {
   usdTotalCad: number | null;
   consEncaisse: number | null;
   consTitres: number | null;
+  /** Somme « projection app » en CAD (réconciliation). */
+  consTitresLocal: number | null;
+  cadTitresLocal: number | null;
+  usdTitresLocalUsd: number | null;
   consTotal: number | null;
   totalsBlocCadTitresDay: AccountDayTitresPnLState;
   totalsBlocUsdTitresDayCadEquiv: AccountDayTitresPnLState;
@@ -346,6 +350,9 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
     usdTotalCad,
     consEncaisse,
     consTitres,
+    consTitresLocal,
+    cadTitresLocal,
+    usdTitresLocalUsd,
     consTotal,
     totalsBlocCadTitresDay,
     totalsBlocUsdTitresDayCadEquiv,
@@ -482,8 +489,19 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                 <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
                   <th className="pb-2 pr-3 font-medium" />
                   <th className="pb-2 px-2 text-right font-medium">Encaisse</th>
+                  <th
+                    className="pb-2 px-2 text-right font-medium"
+                    title="Valeur des titres selon le dernier import portefeuille (Disnat)"
+                  >
+                    Titres
+                  </th>
                   {showRecon ? (
-                    <th className="pb-2 px-2 text-right font-medium">Disnat</th>
+                    <th
+                      className="pb-2 px-2 text-right font-medium"
+                      title="Projection opérations + cours (colonne Local du tableau)"
+                    >
+                      Local
+                    </th>
                   ) : null}
                   <th className="pb-2 px-2 text-right font-medium">Jour</th>
                   <th className="pb-2 pl-2 text-right font-medium">Total</th>
@@ -495,9 +513,16 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                   <td className="px-2 py-2 text-right tabular-nums">
                     {formatCurrency(cadEncaisse, "CAD")}
                   </td>
+                  <td className="px-2 py-2 text-right tabular-nums">
+                    {formatCurrency(cadTitres, "CAD")}
+                  </td>
                   {showRecon ? (
-                    <td className="px-2 py-2 text-right tabular-nums">
-                      {formatCurrency(cadTitres, "CAD")}
+                    <td className="px-2 py-2 text-right tabular-nums text-slate-700">
+                      {cadTitresLocal == null ? (
+                        <span className="text-slate-400">—</span>
+                      ) : (
+                        formatCurrency(cadTitresLocal, "CAD")
+                      )}
                     </td>
                   ) : null}
                   <DayTitresPnLTd state={totalsBlocCadTitresDay} currency="CAD" />
@@ -521,12 +546,26 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
+                  <td className="px-2 py-2 text-right tabular-nums">
+                    {usdTitresCad != null ? (
+                      formatCurrency(usdTitresCad, "CAD")
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
                   {showRecon ? (
-                    <td className="px-2 py-2 text-right tabular-nums">
-                      {usdTitresCad != null ? (
-                        formatCurrency(usdTitresCad, "CAD")
-                      ) : (
+                    <td className="px-2 py-2 text-right tabular-nums text-slate-700">
+                      {usdTitresLocalUsd == null ? (
                         <span className="text-slate-400">—</span>
+                      ) : (
+                        <>
+                          <div>{formatCurrency(usdTitresLocalUsd, "USD")}</div>
+                          {usdToCad != null ? (
+                            <div className="mt-0.5 text-xs font-normal text-slate-500">
+                              ≈ {formatCurrency(usdTitresLocalUsd * usdToCad, "CAD")}
+                            </div>
+                          ) : null}
+                        </>
                       )}
                     </td>
                   ) : null}
@@ -548,9 +587,18 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
+                  <td className="px-2 py-2 text-right tabular-nums">
+                    {consTitres != null ? (
+                      formatCurrency(consTitres, "CAD")
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
                   {showRecon ? (
                     <td className="px-2 py-2 text-right tabular-nums">
-                      {consTitres != null ? formatCurrency(consTitres, "CAD") : (
+                      {consTitresLocal != null ? (
+                        formatCurrency(consTitresLocal, "CAD")
+                      ) : (
                         <span className="text-slate-400">—</span>
                       )}
                     </td>

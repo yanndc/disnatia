@@ -179,10 +179,15 @@ export default async function ComptesPage() {
   const usdTitresCad = usdToCad != null ? usdTitresUsd * usdToCad : null;
   const usdTotalCad = usdToCad != null ? usdTotalUsd * usdToCad : null;
 
-  const consEncaisse =
-    usdEncaisseCad != null ? cadEncaisse + usdEncaisseCad : null;
-  const consTitres = usdTitresCad != null ? cadTitres + usdTitresCad : null;
-  const consTotal = usdTotalCad != null ? cadTotal + usdTotalCad : null;
+  const cadAgg = aggregateByCurrency(accounts, "CAD");
+  const usdAgg = aggregateByCurrency(accounts, "USD");
+  const consolidated = ownerConsolidatedCad(accounts, usdToCad);
+  const consEncaisse = consolidated.encaisse;
+  const consTitres = consolidated.titresFichier;
+  const consTitresLocal = consolidated.titresRecon;
+  const consTotal = consolidated.total;
+  const cadTitresLocal = cadAgg.reconstructedMarketValue;
+  const usdTitresLocalUsd = usdAgg.reconstructedMarketValue;
 
   const positionsByAccountKey = new Map<string, EnrichedPosition[]>();
   for (const p of positions) {
@@ -264,6 +269,9 @@ export default async function ComptesPage() {
         usdTotalCad={usdTotalCad}
         consEncaisse={consEncaisse}
         consTitres={consTitres}
+        consTitresLocal={consTitresLocal}
+        cadTitresLocal={cadTitresLocal}
+        usdTitresLocalUsd={usdTitresLocalUsd}
         consTotal={consTotal}
         totalsBlocCadTitresDay={totalsBlocCadTitresDay}
         totalsBlocUsdTitresDayCadEquiv={totalsBlocUsdTitresDayCadEquiv}
