@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { EnrichedPosition } from "@/features/portfolio/live-enrichment";
 import { TX_CATEGORY_LABELS } from "@/lib/csv/tx-category";
 import type { TxCategory } from "@/generated/prisma/enums";
+import {
+  formatCurrencyDetailed,
+  formatNumber,
+  formatPercent,
+  normalizeCurrency,
+} from "@/lib/utils";
 
 type ApiRow = {
   id: string;
@@ -49,6 +55,80 @@ function fmtDate(v: string | null) {
 function fmtQty(v: number | null) {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   return new Intl.NumberFormat("fr-CA", { maximumFractionDigits: 6 }).format(v);
+}
+
+function signedMoneyClass(value: number) {
+  if (value > 0) return "text-emerald-700";
+  if (value < 0) return "text-red-600";
+  return "text-slate-700";
+}
+
+function PositionDetailQuoteSummary({ position }: { position: EnrichedPosition }) {
+  const cur = normalizeCurrency(position.currency);
+  const dpp = position.displayPrice;
+  const delta = position.quoteChangePerShare;
+  const dayPct = position.quoteSessionChangePct;
+  const dayPnl = position.displayDayGainLoss;
+
+  const stat = (label: string, children: ReactNode) => (
+    <div className="min-w-0">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <div className="mt-0.5 font-medium tabular-nums text-slate-900">{children}</div>
+    </div>
+  );
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-3 lg:grid-cols-6">
+        {stat("Quantité", formatNumber(position.quantity, 4))}
+        {stat(
+          "Prix",
+          dpp !== null && Number.isFinite(dpp) ? (
+            formatCurrencyDetailed(dpp, cur, 2)
+          ) : (
+            <span className="text-slate-400">—</span>
+          ),
+        )}
+        {stat(
+          "Variation / action",
+          delta !== null && Number.isFinite(delta) ? (
+            <span className={signedMoneyClass(delta)}>{formatCurrencyDetailed(delta, cur, 2)}</span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          ),
+        )}
+        {stat(
+          "% jour",
+          dayPct !== null && Number.isFinite(dayPct) ? (
+            <span className={signedMoneyClass(delta ?? 0)}>{formatPercent(dayPct)}</span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          ),
+        )}
+        {stat(
+          "Jour",
+          dayPnl !== null && Number.isFinite(dayPnl) ? (
+            <span className={signedMoneyClass(dayPnl)}>{formatCurrencyDetailed(dayPnl, cur, 2)}</span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          ),
+        )}
+        {stat(
+          "Valeur",
+          formatCurrencyDetailed(position.displayMarketValue, cur, 2),
+        )}
+      </div>
+      {position.quoteChangePerShare === null ? (
+        <p className="text-[11px] text-slate-500">
+          Variation jour indisponible pour cette cotation — actualiser les cours sur Positions si besoin.
+        </p>
+      ) : !position.usesLiveQuote ? (
+        <p className="text-[11px] text-slate-500">
+          Prix et valeur suivent l’import ; le jour s’appuie sur la dernière cotation marché stockée.
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 export function PositionTransactionsModal({
@@ -131,8 +211,9 @@ export function PositionTransactionsModal({
               {position.securityName || "—"} · {position.accountName}
             </p>
             <p className="mt-1 text-[11px] text-slate-500">
-              Lignes importées reliées à cette position (même agrégation que le calcul des quantités).
+              Mouvements importés reliés à cette ligne (même agrégation que les quantités).
             </p>
+            <PositionDetailQuoteSummary position={position} />
           </div>
           <div className="flex shrink-0 gap-2">
             <Button type="button" variant="ghost" className="h-8 px-2 text-xs" onClick={() => void load()}>

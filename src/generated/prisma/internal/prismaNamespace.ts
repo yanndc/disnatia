@@ -1645,6 +1645,8 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 export const PortfolioImportScalarFieldEnum = {
   id: 'id',
   sourceFileName: 'sourceFileName',
+  sourceFileContent: 'sourceFileContent',
+  sourceFileKept: 'sourceFileKept',
   importedAt: 'importedAt',
   dataFromDate: 'dataFromDate',
   dataToDate: 'dataToDate',
@@ -1963,6 +1965,27 @@ export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 
  * Reference to a field of type 'String[]'
  */
 export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Bytes'
+ */
+export type BytesFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Bytes'>
+    
+
+
+/**
+ * Reference to a field of type 'Bytes[]'
+ */
+export type ListBytesFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Bytes[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 

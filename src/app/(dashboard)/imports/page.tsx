@@ -35,6 +35,7 @@ export default async function ImportsPage() {
       initialImports={imports.map((item) => ({
         id: item.id,
         sourceFileName: item.sourceFileName,
+        sourceFileKept: item.sourceFileKept,
         importedAt: item.importedAt.toISOString(),
         dataFromDate: item.dataFromDate?.toISOString() ?? null,
         dataToDate: item.dataToDate?.toISOString() ?? null,

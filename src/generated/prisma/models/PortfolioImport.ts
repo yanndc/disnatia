@@ -37,6 +37,8 @@ export type PortfolioImportSumAggregateOutputType = {
 export type PortfolioImportMinAggregateOutputType = {
   id: string | null
   sourceFileName: string | null
+  sourceFileContent: runtime.Bytes | null
+  sourceFileKept: boolean | null
   importedAt: Date | null
   dataFromDate: Date | null
   dataToDate: Date | null
@@ -49,6 +51,8 @@ export type PortfolioImportMinAggregateOutputType = {
 export type PortfolioImportMaxAggregateOutputType = {
   id: string | null
   sourceFileName: string | null
+  sourceFileContent: runtime.Bytes | null
+  sourceFileKept: boolean | null
   importedAt: Date | null
   dataFromDate: Date | null
   dataToDate: Date | null
@@ -61,6 +65,8 @@ export type PortfolioImportMaxAggregateOutputType = {
 export type PortfolioImportCountAggregateOutputType = {
   id: number
   sourceFileName: number
+  sourceFileContent: number
+  sourceFileKept: number
   importedAt: number
   dataFromDate: number
   dataToDate: number
@@ -84,6 +90,8 @@ export type PortfolioImportSumAggregateInputType = {
 export type PortfolioImportMinAggregateInputType = {
   id?: true
   sourceFileName?: true
+  sourceFileContent?: true
+  sourceFileKept?: true
   importedAt?: true
   dataFromDate?: true
   dataToDate?: true
@@ -96,6 +104,8 @@ export type PortfolioImportMinAggregateInputType = {
 export type PortfolioImportMaxAggregateInputType = {
   id?: true
   sourceFileName?: true
+  sourceFileContent?: true
+  sourceFileKept?: true
   importedAt?: true
   dataFromDate?: true
   dataToDate?: true
@@ -108,6 +118,8 @@ export type PortfolioImportMaxAggregateInputType = {
 export type PortfolioImportCountAggregateInputType = {
   id?: true
   sourceFileName?: true
+  sourceFileContent?: true
+  sourceFileKept?: true
   importedAt?: true
   dataFromDate?: true
   dataToDate?: true
@@ -208,6 +220,8 @@ export type PortfolioImportGroupByArgs<ExtArgs extends runtime.Types.Extensions.
 export type PortfolioImportGroupByOutputType = {
   id: string
   sourceFileName: string
+  sourceFileContent: runtime.Bytes | null
+  sourceFileKept: boolean
   importedAt: Date
   dataFromDate: Date | null
   dataToDate: Date | null
@@ -244,6 +258,8 @@ export type PortfolioImportWhereInput = {
   NOT?: Prisma.PortfolioImportWhereInput | Prisma.PortfolioImportWhereInput[]
   id?: Prisma.StringFilter<"PortfolioImport"> | string
   sourceFileName?: Prisma.StringFilter<"PortfolioImport"> | string
+  sourceFileContent?: Prisma.BytesNullableFilter<"PortfolioImport"> | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFilter<"PortfolioImport"> | boolean
   importedAt?: Prisma.DateTimeFilter<"PortfolioImport"> | Date | string
   dataFromDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
   dataToDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
@@ -260,6 +276,8 @@ export type PortfolioImportWhereInput = {
 export type PortfolioImportOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
+  sourceFileContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  sourceFileKept?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   dataFromDate?: Prisma.SortOrderInput | Prisma.SortOrder
   dataToDate?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -279,6 +297,8 @@ export type PortfolioImportWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.PortfolioImportWhereInput[]
   NOT?: Prisma.PortfolioImportWhereInput | Prisma.PortfolioImportWhereInput[]
   sourceFileName?: Prisma.StringFilter<"PortfolioImport"> | string
+  sourceFileContent?: Prisma.BytesNullableFilter<"PortfolioImport"> | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFilter<"PortfolioImport"> | boolean
   importedAt?: Prisma.DateTimeFilter<"PortfolioImport"> | Date | string
   dataFromDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
   dataToDate?: Prisma.DateTimeNullableFilter<"PortfolioImport"> | Date | string | null
@@ -295,6 +315,8 @@ export type PortfolioImportWhereUniqueInput = Prisma.AtLeast<{
 export type PortfolioImportOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
+  sourceFileContent?: Prisma.SortOrderInput | Prisma.SortOrder
+  sourceFileKept?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   dataFromDate?: Prisma.SortOrderInput | Prisma.SortOrder
   dataToDate?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -316,6 +338,8 @@ export type PortfolioImportScalarWhereWithAggregatesInput = {
   NOT?: Prisma.PortfolioImportScalarWhereWithAggregatesInput | Prisma.PortfolioImportScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"PortfolioImport"> | string
   sourceFileName?: Prisma.StringWithAggregatesFilter<"PortfolioImport"> | string
+  sourceFileContent?: Prisma.BytesNullableWithAggregatesFilter<"PortfolioImport"> | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolWithAggregatesFilter<"PortfolioImport"> | boolean
   importedAt?: Prisma.DateTimeWithAggregatesFilter<"PortfolioImport"> | Date | string
   dataFromDate?: Prisma.DateTimeNullableWithAggregatesFilter<"PortfolioImport"> | Date | string | null
   dataToDate?: Prisma.DateTimeNullableWithAggregatesFilter<"PortfolioImport"> | Date | string | null
@@ -329,6 +353,8 @@ export type PortfolioImportScalarWhereWithAggregatesInput = {
 export type PortfolioImportCreateInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -345,6 +371,8 @@ export type PortfolioImportCreateInput = {
 export type PortfolioImportUncheckedCreateInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -361,6 +389,8 @@ export type PortfolioImportUncheckedCreateInput = {
 export type PortfolioImportUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -377,6 +407,8 @@ export type PortfolioImportUpdateInput = {
 export type PortfolioImportUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -393,6 +425,8 @@ export type PortfolioImportUncheckedUpdateInput = {
 export type PortfolioImportCreateManyInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -406,6 +440,8 @@ export type PortfolioImportCreateManyInput = {
 export type PortfolioImportUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -419,6 +455,8 @@ export type PortfolioImportUpdateManyMutationInput = {
 export type PortfolioImportUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -432,6 +470,8 @@ export type PortfolioImportUncheckedUpdateManyInput = {
 export type PortfolioImportCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
+  sourceFileContent?: Prisma.SortOrder
+  sourceFileKept?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   dataFromDate?: Prisma.SortOrder
   dataToDate?: Prisma.SortOrder
@@ -449,6 +489,8 @@ export type PortfolioImportAvgOrderByAggregateInput = {
 export type PortfolioImportMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
+  sourceFileContent?: Prisma.SortOrder
+  sourceFileKept?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   dataFromDate?: Prisma.SortOrder
   dataToDate?: Prisma.SortOrder
@@ -461,6 +503,8 @@ export type PortfolioImportMaxOrderByAggregateInput = {
 export type PortfolioImportMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sourceFileName?: Prisma.SortOrder
+  sourceFileContent?: Prisma.SortOrder
+  sourceFileKept?: Prisma.SortOrder
   importedAt?: Prisma.SortOrder
   dataFromDate?: Prisma.SortOrder
   dataToDate?: Prisma.SortOrder
@@ -481,6 +525,14 @@ export type PortfolioImportScalarRelationFilter = {
 
 export type StringFieldUpdateOperationsInput = {
   set?: string
+}
+
+export type NullableBytesFieldUpdateOperationsInput = {
+  set?: runtime.Bytes | null
+}
+
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
@@ -556,6 +608,8 @@ export type PortfolioImportUpdateOneRequiredWithoutTransactionsNestedInput = {
 export type PortfolioImportCreateWithoutAccountsInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -571,6 +625,8 @@ export type PortfolioImportCreateWithoutAccountsInput = {
 export type PortfolioImportUncheckedCreateWithoutAccountsInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -602,6 +658,8 @@ export type PortfolioImportUpdateToOneWithWhereWithoutAccountsInput = {
 export type PortfolioImportUpdateWithoutAccountsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -617,6 +675,8 @@ export type PortfolioImportUpdateWithoutAccountsInput = {
 export type PortfolioImportUncheckedUpdateWithoutAccountsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -632,6 +692,8 @@ export type PortfolioImportUncheckedUpdateWithoutAccountsInput = {
 export type PortfolioImportCreateWithoutPositionsInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -647,6 +709,8 @@ export type PortfolioImportCreateWithoutPositionsInput = {
 export type PortfolioImportUncheckedCreateWithoutPositionsInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -678,6 +742,8 @@ export type PortfolioImportUpdateToOneWithWhereWithoutPositionsInput = {
 export type PortfolioImportUpdateWithoutPositionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -693,6 +759,8 @@ export type PortfolioImportUpdateWithoutPositionsInput = {
 export type PortfolioImportUncheckedUpdateWithoutPositionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -708,6 +776,8 @@ export type PortfolioImportUncheckedUpdateWithoutPositionsInput = {
 export type PortfolioImportCreateWithoutTransactionsInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -723,6 +793,8 @@ export type PortfolioImportCreateWithoutTransactionsInput = {
 export type PortfolioImportUncheckedCreateWithoutTransactionsInput = {
   id?: string
   sourceFileName: string
+  sourceFileContent?: runtime.Bytes | null
+  sourceFileKept?: boolean
   importedAt?: Date | string
   dataFromDate?: Date | string | null
   dataToDate?: Date | string | null
@@ -754,6 +826,8 @@ export type PortfolioImportUpdateToOneWithWhereWithoutTransactionsInput = {
 export type PortfolioImportUpdateWithoutTransactionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -769,6 +843,8 @@ export type PortfolioImportUpdateWithoutTransactionsInput = {
 export type PortfolioImportUncheckedUpdateWithoutTransactionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sourceFileName?: Prisma.StringFieldUpdateOperationsInput | string
+  sourceFileContent?: Prisma.NullableBytesFieldUpdateOperationsInput | runtime.Bytes | null
+  sourceFileKept?: Prisma.BoolFieldUpdateOperationsInput | boolean
   importedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dataFromDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   dataToDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -833,6 +909,8 @@ export type PortfolioImportCountOutputTypeCountTransactionsArgs<ExtArgs extends 
 export type PortfolioImportSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   sourceFileName?: boolean
+  sourceFileContent?: boolean
+  sourceFileKept?: boolean
   importedAt?: boolean
   dataFromDate?: boolean
   dataToDate?: boolean
@@ -850,6 +928,8 @@ export type PortfolioImportSelect<ExtArgs extends runtime.Types.Extensions.Inter
 export type PortfolioImportSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   sourceFileName?: boolean
+  sourceFileContent?: boolean
+  sourceFileKept?: boolean
   importedAt?: boolean
   dataFromDate?: boolean
   dataToDate?: boolean
@@ -863,6 +943,8 @@ export type PortfolioImportSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
 export type PortfolioImportSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   sourceFileName?: boolean
+  sourceFileContent?: boolean
+  sourceFileKept?: boolean
   importedAt?: boolean
   dataFromDate?: boolean
   dataToDate?: boolean
@@ -876,6 +958,8 @@ export type PortfolioImportSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
 export type PortfolioImportSelectScalar = {
   id?: boolean
   sourceFileName?: boolean
+  sourceFileContent?: boolean
+  sourceFileKept?: boolean
   importedAt?: boolean
   dataFromDate?: boolean
   dataToDate?: boolean
@@ -886,7 +970,7 @@ export type PortfolioImportSelectScalar = {
   notes?: boolean
 }
 
-export type PortfolioImportOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sourceFileName" | "importedAt" | "dataFromDate" | "dataToDate" | "status" | "importType" | "rawHeaderJson" | "rawRowCount" | "notes", ExtArgs["result"]["portfolioImport"]>
+export type PortfolioImportOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sourceFileName" | "sourceFileContent" | "sourceFileKept" | "importedAt" | "dataFromDate" | "dataToDate" | "status" | "importType" | "rawHeaderJson" | "rawRowCount" | "notes", ExtArgs["result"]["portfolioImport"]>
 export type PortfolioImportInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   accounts?: boolean | Prisma.PortfolioImport$accountsArgs<ExtArgs>
   positions?: boolean | Prisma.PortfolioImport$positionsArgs<ExtArgs>
@@ -906,6 +990,14 @@ export type $PortfolioImportPayload<ExtArgs extends runtime.Types.Extensions.Int
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     sourceFileName: string
+    /**
+     * Octets bruts du fichier importé (CSV / Excel). Supprimés avec la ligne (DELETE import).
+     */
+    sourceFileContent: runtime.Bytes | null
+    /**
+     * Indique si un contenu est stocké (évite de charger le blob pour les listes).
+     */
+    sourceFileKept: boolean
     importedAt: Date
     /**
      * Borne basse des dates présentes dans le fichier (ex. min date d’opération).
@@ -1348,6 +1440,8 @@ export interface Prisma__PortfolioImportClient<T, Null = never, ExtArgs extends 
 export interface PortfolioImportFieldRefs {
   readonly id: Prisma.FieldRef<"PortfolioImport", 'String'>
   readonly sourceFileName: Prisma.FieldRef<"PortfolioImport", 'String'>
+  readonly sourceFileContent: Prisma.FieldRef<"PortfolioImport", 'Bytes'>
+  readonly sourceFileKept: Prisma.FieldRef<"PortfolioImport", 'Boolean'>
   readonly importedAt: Prisma.FieldRef<"PortfolioImport", 'DateTime'>
   readonly dataFromDate: Prisma.FieldRef<"PortfolioImport", 'DateTime'>
   readonly dataToDate: Prisma.FieldRef<"PortfolioImport", 'DateTime'>

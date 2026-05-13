@@ -1,289 +1,40 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
+import { Card, CardContent } from "@/components/ui/card";
 import { listExternalAccountsWithLatest } from "@/features/portfolio/external-accounts-queries";
-import { getAccountsWithStats } from "@/features/portfolio/queries";
+import type { EnrichedPosition } from "@/features/portfolio/live-enrichment";
+import { getAccountsWithStats, getAllPositions } from "@/features/portfolio/queries";
 import { getLatestUsdCadRate } from "@/lib/fx/latest-usd-cad-rate";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
 import { EXTERNAL_ACCOUNT_PROVIDERS } from "@/lib/portfolio/external-account-providers";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
-import { formatCurrency, formatNumber, normalizeCurrency } from "@/lib/utils";
+import { formatCurrency, normalizeCurrency } from "@/lib/utils";
+import {
+  accountDayTitresPnL,
+  accountDriftTitresCad,
+  aggregateByCurrency,
+  aggregateDayTitresForSubset,
+  consolidatedDayTitresCadState,
+  ownerConsolidatedCad,
+  scaleUsdTitresDayStateToCad,
+  sum,
+  type AccountDayTitresPnLState,
+} from "./comptes-accounts-logic";
+import { ComptesPageClient } from "./comptes-page-client";
+import type { AccountWithStats } from "./comptes-types";
 
 export const dynamic = "force-dynamic";
 
-type AccountWithStats = Awaited<ReturnType<typeof getAccountsWithStats>>[number];
-
-function sum(vals: number[]) {
-  return vals.reduce((t, v) => t + v, 0);
-}
-
-function accountDriftTitresCad(
-  acc: AccountWithStats,
-  usdToCad: number | null,
-): number | null {
-  if (acc.driftTitresVsSnapshot === null) return null;
-  const cur = normalizeCurrency(acc.currency);
-  if (cur === "USD") return usdToCad != null ? acc.driftTitresVsSnapshot * usdToCad : null;
-  return acc.driftTitresVsSnapshot;
-}
-
-/** Titre de carte : propriétaire réel, sinon une ligne par devise pour éviter un seul bloc géant. */
 function ownerSectionTitle(acc: AccountWithStats): string {
   const named = sanitizePortfolioOwner(acc.owner);
   if (named) return named;
   return `Propriétaire inconnu (${normalizeCurrency(acc.currency)})`;
 }
 
-/** Agrège les comptes d’un même propriétaire pour une devise (lignes récap type Disnat). */
-function aggregateByCurrency(accounts: AccountWithStats[], currency: "CAD" | "USD") {
-  const subset = accounts.filter((a) => normalizeCurrency(a.currency) === currency);
-  let reconMissing = false;
-  let driftMissing = false;
-  let reconSum = 0;
-  let driftSum = 0;
-  for (const a of subset) {
-    if (a.reconstructedMarketValue === null) reconMissing = true;
-    else reconSum += a.reconstructedMarketValue;
-    if (a.driftTitresVsSnapshot === null) driftMissing = true;
-    else driftSum += a.driftTitresVsSnapshot;
-  }
-  return {
-    subset,
-    cash: sum(subset.map((a) => a.cashValue)),
-    market: sum(subset.map((a) => a.marketValue)),
-    total: sum(subset.map((a) => a.totalValue)),
-    reconstructedMarketValue: reconMissing ? null : reconSum,
-    driftTitresVsSnapshot: driftMissing ? null : driftSum,
-    txCount: sum(subset.map((a) => a.txCount)),
-    lastTxDate: subset.reduce<Date | null>((latest, a) => {
-      const d = a.lastTxDate;
-      if (!d) return latest;
-      if (!latest || d.getTime() > latest.getTime()) return d;
-      return latest;
-    }, null),
-  };
-}
-
-function ownerDriftNetCad(
-  accounts: AccountWithStats[],
-  usdToCad: number | null,
-): number | null {
-  const parts = accounts
-    .map((a) => accountDriftTitresCad(a, usdToCad))
-    .filter((v): v is number => v !== null);
-  return parts.length > 0 ? sum(parts) : null;
-}
-
-function ownerConsolidatedCad(
-  accounts: AccountWithStats[],
-  usdToCad: number | null,
-): {
-  encaisse: number | null;
-  titresFichier: number | null;
-  titresRecon: number | null;
-  total: number | null;
-} {
-  if (usdToCad == null) {
-    return {
-      encaisse: null,
-      titresFichier: null,
-      titresRecon: null,
-      total: null,
-    };
-  }
-  let reconMissing = false;
-  let enc = 0;
-  let mkt = 0;
-  let tot = 0;
-  let recon = 0;
-  for (const a of accounts) {
-    const cur = normalizeCurrency(a.currency);
-    const mult = cur === "USD" ? usdToCad : 1;
-    enc += a.cashValue * mult;
-    mkt += a.marketValue * mult;
-    tot += a.totalValue * mult;
-    if (a.reconstructedMarketValue === null) reconMissing = true;
-    else recon += a.reconstructedMarketValue * mult;
-  }
-  return {
-    encaisse: enc,
-    titresFichier: mkt,
-    titresRecon: reconMissing ? null : recon,
-    total: tot,
-  };
-}
-
-function driftCellClass(drift: number | null) {
-  if (drift === null) return "text-slate-400";
-  return Math.abs(drift) > 500 ? "font-medium text-amber-700" : "text-slate-700";
-}
-
-/** Pied de tableau par personne : sous-totaux CAD / USD (style synthèse Disnat) + total équivalent CAD si pertinent. */
-function OwnerAccountsTableFooter({
-  ownerAccounts,
-  usdToCad,
-}: {
-  ownerAccounts: AccountWithStats[];
-  usdToCad: number | null;
-}) {
-  const cadAgg = aggregateByCurrency(ownerAccounts, "CAD");
-  const usdAgg = aggregateByCurrency(ownerAccounts, "USD");
-  const hasCad = cadAgg.subset.length > 0;
-  const hasUsd = usdAgg.subset.length > 0;
-  const showSplit = hasCad && hasUsd;
-  const cons = ownerConsolidatedCad(ownerAccounts, usdToCad);
-  const driftNetCad = ownerDriftNetCad(ownerAccounts, usdToCad);
-  const rowMuted = "border-t border-slate-200 bg-slate-50/90 font-medium text-slate-900";
-  const rowTotal =
-    "border-t-2 border-slate-300 bg-white/80 font-semibold text-slate-950";
-
-  function subtotalRow(
-    label: string,
-    agg: ReturnType<typeof aggregateByCurrency>,
-    currency: "CAD" | "USD",
-  ) {
-    if (agg.subset.length === 0) return null;
-    const cur = currency;
-    const isUsd = cur === "USD" && usdToCad != null;
-    const rate = usdToCad ?? 1;
-    return (
-      <tr key={`sub-${currency}`} className={rowMuted}>
-        <td className="px-4 py-2 text-slate-800">{label}</td>
-        <td className="px-4 py-2 font-mono text-slate-400">—</td>
-        <td className="px-4 py-2">
-          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
-            {currency}
-          </span>
-        </td>
-        <AmountCellUsdCad
-          amount={agg.cash}
-          currency={cur}
-          isUsd={isUsd}
-          usdToCad={rate}
-          showCad={isUsd}
-        />
-        <AmountCellUsdCad
-          amount={agg.market}
-          currency={cur}
-          isUsd={isUsd}
-          usdToCad={rate}
-          showCad={isUsd}
-        />
-        <td className="px-4 py-2 text-right tabular-nums text-slate-700">
-          {agg.reconstructedMarketValue === null ? (
-            <span className="text-slate-400">—</span>
-          ) : (
-            formatCurrency(agg.reconstructedMarketValue, cur)
-          )}
-        </td>
-        <td className={`px-4 py-2 text-right tabular-nums ${driftCellClass(agg.driftTitresVsSnapshot)}`}>
-          {agg.driftTitresVsSnapshot === null ? (
-            "—"
-          ) : (
-            <>
-              {agg.driftTitresVsSnapshot > 0 ? "+" : ""}
-              {formatCurrency(agg.driftTitresVsSnapshot, cur)}
-            </>
-          )}
-        </td>
-        <AmountCellUsdCad
-          amount={agg.total}
-          currency={cur}
-          isUsd={isUsd}
-          usdToCad={rate}
-          showCad={isUsd}
-          emphasize
-        />
-        <td className="px-4 py-2 text-right tabular-nums text-slate-600">{agg.txCount}</td>
-        <td className="px-4 py-2 text-right text-xs text-slate-500">
-          {agg.lastTxDate ? agg.lastTxDate.toLocaleDateString("fr-CA") : "—"}
-        </td>
-      </tr>
-    );
-  }
-
-  const rows: ReactNode[] = [];
-
-  if (showSplit) {
-    const rowCad = subtotalRow("Sous-total · comptes CAD", cadAgg, "CAD");
-    const rowUsd = subtotalRow("Sous-total · comptes USD", usdAgg, "USD");
-    if (rowCad) rows.push(rowCad);
-    if (rowUsd) rows.push(rowUsd);
-    if (usdToCad != null && cons.encaisse != null) {
-      rows.push(
-        <tr key="consolidated" className={rowTotal}>
-          <td className="px-4 py-2">
-            Total portefeuille
-            <span className="mt-0.5 block text-xs font-normal text-slate-500">
-              équivalent CAD (taux du jour)
-            </span>
-          </td>
-          <td className="px-4 py-2 font-mono text-slate-400">—</td>
-          <td className="px-4 py-2">
-            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
-              CAD
-            </span>
-          </td>
-          <td className="px-4 py-2 text-right tabular-nums font-semibold text-slate-950">
-            {formatCurrency(cons.encaisse, "CAD")}
-          </td>
-          <td className="px-4 py-2 text-right tabular-nums font-semibold text-slate-950">
-            {formatCurrency(cons.titresFichier!, "CAD")}
-          </td>
-          <td className="px-4 py-2 text-right tabular-nums">
-            {cons.titresRecon === null ? (
-              <span className="text-slate-400">—</span>
-            ) : (
-              formatCurrency(cons.titresRecon, "CAD")
-            )}
-          </td>
-          <td
-            className={`px-4 py-2 text-right tabular-nums ${driftCellClass(driftNetCad)}`}
-          >
-            {driftNetCad === null ? (
-              "—"
-            ) : (
-              <>
-                {driftNetCad > 0 ? "+" : ""}
-                {formatCurrency(driftNetCad, "CAD")}
-              </>
-            )}
-          </td>
-          <td className="px-4 py-2 text-right tabular-nums text-base font-semibold text-slate-950">
-            {formatCurrency(cons.total!, "CAD")}
-          </td>
-          <td className="px-4 py-2 text-right tabular-nums text-slate-600">
-            {sum(ownerAccounts.map((a) => a.txCount))}
-          </td>
-          <td className="px-4 py-2 text-right text-xs text-slate-500">
-            {ownerAccounts.reduce<Date | null>((latest, a) => {
-              const d = a.lastTxDate;
-              if (!d) return latest;
-              if (!latest || d.getTime() > latest.getTime()) return d;
-              return latest;
-            }, null)?.toLocaleDateString("fr-CA") ?? "—"}
-          </td>
-        </tr>,
-      );
-    }
-  } else if (hasCad) {
-    const row = subtotalRow("Total (CAD)", cadAgg, "CAD");
-    if (row) rows.push(row);
-  } else if (hasUsd) {
-    const row = subtotalRow("Total (USD)", usdAgg, "USD");
-    if (row) rows.push(row);
-  }
-
-  if (rows.length === 0) return null;
-
-  return <tfoot>{rows}</tfoot>;
-}
-
 export default async function ComptesPage() {
-  const [accounts, externalAccounts] = await Promise.all([
+  const [accounts, externalAccounts, positions] = await Promise.all([
     getAccountsWithStats().catch(() => []),
     listExternalAccountsWithLatest().catch(() => []),
+    getAllPositions().catch(() => []),
   ]);
 
   if (accounts.length === 0 && externalAccounts.length === 0) {
@@ -313,17 +64,17 @@ export default async function ComptesPage() {
   const externalAccountsSection =
     externalAccounts.length > 0 ? (
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Comptes hors Disnat</CardTitle>
-          <p className="text-sm text-slate-500">
-            Snapshots de valeur saisis sur la page{" "}
-            <Link href="/imports" className="text-violet-700 underline-offset-2 hover:underline">
-              Imports
-            </Link>
-            .
-          </p>
-        </CardHeader>
         <CardContent className="p-0">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="text-base font-semibold text-slate-950">Comptes hors Disnat</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Snapshots sur la page{" "}
+              <Link href="/imports" className="text-violet-700 underline-offset-2 hover:underline">
+                Imports
+              </Link>
+              .
+            </p>
+          </div>
           <div className="overflow-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase text-slate-500">
@@ -332,7 +83,7 @@ export default async function ComptesPage() {
                   <th className="px-4 py-2">Propriétaire</th>
                   <th className="px-4 py-2">Source</th>
                   <th className="px-4 py-2">Devise</th>
-                  <th className="px-4 py-2 text-right">Solde (snapshot)</th>
+                  <th className="px-4 py-2 text-right">Solde</th>
                   <th className="px-4 py-2 text-right">Date</th>
                 </tr>
               </thead>
@@ -370,8 +121,7 @@ export default async function ComptesPage() {
             </table>
           </div>
           <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
-            Pas de synchronisation automatique avec l&apos;assureur — chaque point correspond à une
-            valeur lue sur ton espace sécurisé.
+            Pas de sync automatique avec l&apos;assureur.
           </p>
         </CardContent>
       </Card>
@@ -384,8 +134,7 @@ export default async function ComptesPage() {
           <CardContent className="flex min-h-40 flex-col items-center justify-center py-8 text-center">
             <h2 className="text-lg font-semibold text-slate-950">Comptes Disnat</h2>
             <p className="mt-2 max-w-md text-sm text-slate-500">
-              Importe le CSV portefeuille Disnat pour voir le détail encaisse / titres / écarts par
-              compte.
+              Importe le CSV portefeuille Disnat pour afficher les soldes par compte.
             </p>
             <Link
               href="/imports"
@@ -404,7 +153,6 @@ export default async function ComptesPage() {
   const fx = await getLatestUsdCadRate();
   const usdToCad = fx?.usdToCad ?? null;
 
-  // Grouper par propriétaire (sans nom → une carte par devise)
   const byOwner = new Map<string, AccountWithStats[]>();
   for (const acc of accounts) {
     const section = ownerSectionTitle(acc);
@@ -436,6 +184,49 @@ export default async function ComptesPage() {
   const consTitres = usdTitresCad != null ? cadTitres + usdTitresCad : null;
   const consTotal = usdTotalCad != null ? cadTotal + usdTotalCad : null;
 
+  const positionsByAccountKey = new Map<string, EnrichedPosition[]>();
+  for (const p of positions) {
+    const k = p.accountKey?.trim();
+    if (!k) continue;
+    const list = positionsByAccountKey.get(k);
+    if (list) list.push(p);
+    else positionsByAccountKey.set(k, [p]);
+  }
+
+  const dayTitresByAccountKey = new Map<string, AccountDayTitresPnLState>();
+  for (const acc of accounts) {
+    const rows = positionsByAccountKey.get(acc.accountKey) ?? [];
+    const sameCur = rows.filter(
+      (p) => normalizeCurrency(p.currency) === normalizeCurrency(acc.currency),
+    );
+    dayTitresByAccountKey.set(acc.accountKey, accountDayTitresPnL(sameCur));
+  }
+
+  const totalsBlocCadTitresDay = aggregateDayTitresForSubset(
+    cadAccounts,
+    dayTitresByAccountKey,
+  );
+  const totalsBlocUsdTitresDay = aggregateDayTitresForSubset(
+    usdAccounts,
+    dayTitresByAccountKey,
+  );
+  const totalsBlocPortfolioTitresDayCad =
+    usdToCad != null && Number.isFinite(usdToCad)
+      ? consolidatedDayTitresCadState(cadAccounts, usdAccounts, dayTitresByAccountKey, usdToCad)
+      : (() => {
+          const cadOnly = aggregateDayTitresForSubset(cadAccounts, dayTitresByAccountKey);
+          const usdBloc = aggregateDayTitresForSubset(usdAccounts, dayTitresByAccountKey);
+          return {
+            ...cadOnly,
+            incomplete: cadOnly.incomplete || usdBloc.hasTitresProjetes,
+          };
+        })();
+
+  const totalsBlocUsdTitresDayCadEquiv = scaleUsdTitresDayStateToCad(
+    totalsBlocUsdTitresDay,
+    usdToCad,
+  );
+
   const driftParts = accounts
     .map((a) => ({
       acc: a,
@@ -456,314 +247,37 @@ export default async function ComptesPage() {
   const singleDominant =
     driftTopShareAbs != null && driftTopShareAbs >= 85 && driftTop != null;
 
+  const canShowDriftBanner = driftNetCad !== null && usdToCad !== null;
+
+  const dayTitresRecord = Object.fromEntries(dayTitresByAccountKey.entries());
+
   return (
     <div className="space-y-6">
-      <section>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm text-slate-500">Tableau de bord</p>
-            <h2 className="text-2xl font-semibold text-slate-950">Comptes</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {accounts.length} compte{accounts.length > 1 ? "s" : ""} ·{" "}
-              <strong className="font-medium text-slate-700">Écart titres</strong> = titres
-              projetés depuis les opérations (+ cours) − valeur titres du fichier portefeuille Disnat.
-            </p>
-          </div>
-          <RefreshQuotesButton />
-        </div>
-
-        {driftNetCad !== null && usdToCad != null ? (
-          <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-            <p>
-              <span className="text-slate-500">Écart titres net (CAD) : </span>
-              <span className="font-semibold tabular-nums text-slate-900">
-                {driftNetCad > 0 ? "+" : ""}
-                {formatCurrency(driftNetCad, "CAD")}
-              </span>
-            </p>
-            {driftTop ? (
-              <p className="mt-1 text-xs text-slate-600">
-                Plus gros écart :{" "}
-                <span className="font-mono text-slate-800">
-                  {driftTop.acc.accountNumber ?? driftTop.acc.accountKey}
-                </span>{" "}
-                ({driftTop.acc.accountType ?? "—"}, {driftTop.acc.currency}) →{" "}
-                <span className="tabular-nums font-medium">
-                  {driftTop.driftCad > 0 ? "+" : ""}
-                  {formatCurrency(driftTop.driftCad, "CAD")}
-                </span>
-                {driftTopShareAbs != null ? (
-                  <>
-                    {" "}
-                    · {formatNumber(driftTopShareAbs, 0)} % des écarts (valeur absolue)
-                  </>
-                ) : null}
-                {singleDominant ? (
-                  <span className="ml-1 font-medium text-amber-800">
-                    — presque tout vient de ce compte.
-                  </span>
-                ) : driftTopShareAbs != null && driftTopShareAbs < 85 ? (
-                  <span className="ml-1 text-slate-500">— plusieurs comptes comptent.</span>
-                ) : null}
-              </p>
-            ) : null}
-          </div>
-        ) : driftNetCad === null && accounts.some((a) => a.driftTitresVsSnapshot !== null) ? (
-          <p className="mt-2 text-xs text-amber-800">
-            Taux USD→CAD manquant : écart total en CAD non calculable.
-          </p>
-        ) : null}
-
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Totaux (équivalent CAD)
-          </p>
-          {usdToCad == null || fx == null ? (
-            <p className="mt-2 text-sm text-amber-800">
-              Taux USD→CAD indisponible : les montants consolidés en CAD ne peuvent pas être
-              calculés. Les comptes en US restent affichés en dollars US seulement.
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-slate-500">
-              Taux du{" "}
-              <time dateTime={fx.rateDate.toISOString().slice(0, 10)}>
-                {fx.rateDate.toLocaleDateString("fr-CA")}
-              </time>{" "}
-              : 1 USD = {formatNumber(fx.usdToCad, 5)} CAD
-            </p>
-          )}
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[22rem] text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                  <th className="pb-2 pr-3 font-medium" />
-                  <th
-                    className="pb-2 px-2 text-right font-medium"
-                    title="Référence import portefeuille"
-                  >
-                    Encaisse (réf.)
-                  </th>
-                  <th className="pb-2 px-2 text-right font-medium">Titres</th>
-                  <th className="pb-2 pl-2 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-800">
-                <tr>
-                  <td className="py-2 pr-3 font-medium text-slate-600">Comptes CAD</td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {formatCurrency(cadEncaisse, "CAD")}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {formatCurrency(cadTitres, "CAD")}
-                  </td>
-                  <td className="pl-2 py-2 text-right tabular-nums font-medium">
-                    {formatCurrency(cadTotal, "CAD")}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-3 font-medium text-slate-600">
-                    Comptes USD
-                    {usdToCad != null ? (
-                      <span className="mt-0.5 block text-xs font-normal normal-case text-slate-400">
-                        converti au taux du jour
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {usdEncaisseCad != null ? (
-                      formatCurrency(usdEncaisseCad, "CAD")
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {usdTitresCad != null ? (
-                      formatCurrency(usdTitresCad, "CAD")
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="pl-2 py-2 text-right tabular-nums font-medium">
-                    {usdTotalCad != null ? (
-                      formatCurrency(usdTotalCad, "CAD")
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                </tr>
-                <tr className="border-t border-slate-300 bg-white/70 font-semibold text-slate-950">
-                  <td className="py-2 pr-3">Total en CAD</td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {consEncaisse != null ? (
-                      formatCurrency(consEncaisse, "CAD")
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {consTitres != null ? formatCurrency(consTitres, "CAD") : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="pl-2 py-2 text-right tabular-nums text-base">
-                    {consTotal != null ? formatCurrency(consTotal, "CAD") : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {ownerSectionsSorted.map(([owner, ownerAccounts]) => (
-        <Card key={owner}>
-          <CardHeader>
-            <CardTitle className="text-base">{owner}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase text-slate-500">
-                  <tr>
-                    <th className="px-4 py-2">Type</th>
-                    <th className="px-4 py-2">N° compte</th>
-                    <th className="px-4 py-2">Devise</th>
-                    <th className="px-4 py-2 text-right" title="Dernier import portefeuille — référence réconciliation">
-                      Encaisse (réf.)
-                    </th>
-                    <th className="px-4 py-2 text-right">Titres (fichier)</th>
-                    <th className="px-4 py-2 text-right">Titres reconstr.</th>
-                    <th className="px-4 py-2 text-right">Écart titres</th>
-                    <th className="px-4 py-2 text-right">Total</th>
-                    <th className="px-4 py-2 text-right">Transactions</th>
-                    <th className="px-4 py-2 text-right">Dernière op.</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {ownerAccounts.map((acc) => {
-                    const cur = normalizeCurrency(acc.currency);
-                    const isUsd = cur === "USD" && usdToCad != null;
-                    return (
-                      <tr key={acc.accountKey} className="hover:bg-slate-50">
-                        <td className="px-4 py-2 font-medium text-slate-800">
-                          {acc.accountType ?? "—"}
-                        </td>
-                        <td className="px-4 py-2 font-mono text-slate-600">
-                          {acc.accountNumber ?? "—"}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                            {acc.currency}
-                          </span>
-                        </td>
-                        <AmountCellUsdCad
-                          amount={acc.cashValue}
-                          currency={cur}
-                          isUsd={isUsd}
-                          usdToCad={usdToCad ?? 1}
-                          showCad={isUsd}
-                        />
-                        <AmountCellUsdCad
-                          amount={acc.marketValue}
-                          currency={cur}
-                          isUsd={isUsd}
-                          usdToCad={usdToCad ?? 1}
-                          showCad={isUsd}
-                        />
-                        <td className="px-4 py-2 text-right tabular-nums text-slate-700">
-                          {acc.reconstructedMarketValue === null ? (
-                            <span className="text-slate-400">—</span>
-                          ) : (
-                            formatCurrency(acc.reconstructedMarketValue, cur)
-                          )}
-                        </td>
-                        <td
-                          className={`px-4 py-2 text-right tabular-nums ${
-                            acc.driftTitresVsSnapshot === null
-                              ? "text-slate-400"
-                              : Math.abs(acc.driftTitresVsSnapshot) > 500
-                                ? "font-medium text-amber-700"
-                                : "text-slate-700"
-                          }`}
-                        >
-                          {acc.driftTitresVsSnapshot === null ? (
-                            "—"
-                          ) : (
-                            <>
-                              {acc.driftTitresVsSnapshot > 0 ? "+" : ""}
-                              {formatCurrency(acc.driftTitresVsSnapshot, cur)}
-                            </>
-                          )}
-                        </td>
-                        <AmountCellUsdCad
-                          amount={acc.totalValue}
-                          currency={cur}
-                          isUsd={isUsd}
-                          usdToCad={usdToCad ?? 1}
-                          showCad={isUsd}
-                          emphasize
-                        />
-                        <td className="px-4 py-2 text-right text-slate-500">
-                          {acc.txCount > 0 ? (
-                            <Link
-                              href={`/transactions?accountKey=${encodeURIComponent(acc.accountKey)}`}
-                              className="text-slate-700 underline-offset-2 hover:underline"
-                            >
-                              {acc.txCount}
-                            </Link>
-                          ) : (
-                            <span className="text-slate-300">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-right text-xs text-slate-400">
-                          {acc.lastTxDate
-                            ? acc.lastTxDate.toLocaleDateString("fr-CA")
-                            : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <OwnerAccountsTableFooter
-                  ownerAccounts={ownerAccounts}
-                  usdToCad={usdToCad}
-                />
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      <ComptesPageClient
+        accounts={accounts}
+        ownerSectionsSorted={ownerSectionsSorted}
+        cadEncaisse={cadEncaisse}
+        cadTitres={cadTitres}
+        cadTotal={cadTotal}
+        usdEncaisseCad={usdEncaisseCad}
+        usdTitresCad={usdTitresCad}
+        usdTotalCad={usdTotalCad}
+        consEncaisse={consEncaisse}
+        consTitres={consTitres}
+        consTotal={consTotal}
+        totalsBlocCadTitresDay={totalsBlocCadTitresDay}
+        totalsBlocUsdTitresDayCadEquiv={totalsBlocUsdTitresDayCadEquiv}
+        totalsBlocPortfolioTitresDayCad={totalsBlocPortfolioTitresDayCad}
+        dayTitresRecord={dayTitresRecord}
+        usdToCad={usdToCad}
+        fx={fx}
+        driftNetCad={driftNetCad}
+        driftTop={driftTop ?? null}
+        driftTopShareAbs={driftTopShareAbs}
+        singleDominant={singleDominant}
+        canShowDriftBanner={canShowDriftBanner}
+      />
       {externalAccountsSection}
     </div>
-  );
-}
-
-function AmountCellUsdCad(props: {
-  amount: number;
-  currency: string;
-  isUsd: boolean;
-  usdToCad: number;
-  showCad: boolean;
-  emphasize?: boolean;
-}) {
-  const { amount, currency, isUsd, usdToCad, showCad, emphasize } = props;
-  const cadEq = amount * usdToCad;
-
-  return (
-    <td
-      className={`px-4 py-2 text-right text-slate-700 ${emphasize ? "font-semibold text-slate-950" : ""}`}
-    >
-      <div>{formatCurrency(amount, currency)}</div>
-      {isUsd && showCad ? (
-        <div className="mt-0.5 text-xs font-normal text-slate-500">
-          ≈ {formatCurrency(cadEq, "CAD")}
-        </div>
-      ) : null}
-      {currency === "USD" && !showCad ? (
-        <div className="mt-0.5 text-xs text-slate-400">Taux CAD indispo.</div>
-      ) : null}
-    </td>
   );
 }

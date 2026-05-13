@@ -330,6 +330,7 @@ export async function getPortfolioSummary() {
   // Import le plus récent (pour l'affichage info seulement)
   const latestImport = await prisma.portfolioImport.findFirst({
     orderBy: { importedAt: "desc" },
+    select: { id: true, importedAt: true },
   });
 
   return {
@@ -434,8 +435,21 @@ export async function getImportHistory() {
   const imports = await prisma.portfolioImport.findMany({
     orderBy: { importedAt: "desc" },
     take: 20,
-    include: {
-      _count: { select: { positions: true, accounts: true, transactions: true } },
+    select: {
+      id: true,
+      sourceFileName: true,
+      sourceFileKept: true,
+      importedAt: true,
+      dataFromDate: true,
+      dataToDate: true,
+      status: true,
+      importType: true,
+      rawHeaderJson: true,
+      rawRowCount: true,
+      notes: true,
+      _count: {
+        select: { positions: true, accounts: true, transactions: true },
+      },
       accounts: {
         select: { accountName: true, accountNumber: true, currency: true },
       },
@@ -473,7 +487,14 @@ export async function getImportHistory() {
 export async function getLatestImportInfo() {
   const latest = await prisma.portfolioImport.findFirst({
     orderBy: { importedAt: "desc" },
-    include: { accounts: true, positions: true },
+    select: {
+      id: true,
+      sourceFileName: true,
+      importedAt: true,
+      rawRowCount: true,
+      status: true,
+      notes: true,
+    },
   });
   if (!latest) return null;
   return {
@@ -740,7 +761,21 @@ export async function getIncomeByYear() {
 export async function getLatestPortfolioImport() {
   return prisma.portfolioImport.findFirst({
     orderBy: { importedAt: "desc" },
-    include: { accounts: true, positions: true },
+    select: {
+      id: true,
+      sourceFileName: true,
+      sourceFileKept: true,
+      importedAt: true,
+      dataFromDate: true,
+      dataToDate: true,
+      status: true,
+      importType: true,
+      rawHeaderJson: true,
+      rawRowCount: true,
+      notes: true,
+      accounts: true,
+      positions: true,
+    },
   });
 }
 
@@ -750,7 +785,21 @@ export async function getLatestDashboardImport() {
     where: { OR: [{ positions: { some: {} } }, { accounts: { some: {} } }] },
     orderBy: { importedAt: "desc" },
     take: 40,
-    include: { accounts: true, positions: true },
+    select: {
+      id: true,
+      sourceFileName: true,
+      sourceFileKept: true,
+      importedAt: true,
+      dataFromDate: true,
+      dataToDate: true,
+      status: true,
+      importType: true,
+      rawHeaderJson: true,
+      rawRowCount: true,
+      notes: true,
+      accounts: true,
+      positions: true,
+    },
   });
   if (candidates.length === 0) return null;
   return candidates.toSorted(

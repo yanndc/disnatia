@@ -32,7 +32,8 @@ const normalizedPositionSchema = z.object({
 const columnAliases = {
   /** Éviter « nom » et « compte » seuls : sur les exports titres, « Nom » est souvent le libellé du titre. */
   accountName: ["nom du compte", "account name", "designation du compte", "portfolio name", "account"],
-  accountType: ["type de compte", "account type"],
+  /** Inclut « Type » seul (exports titre / portefeuille) en plus de « Type de compte ». */
+  accountType: ["type de compte", "account type", "type"],
   accountNumber: [
     "compte",
     "numero de compte",
@@ -105,6 +106,10 @@ const columnAliases = {
   ],
   transactionType: [
     "type de transaction",
+    "type d'opération",
+    "type d'operation",
+    "type dopération",
+    "type doperation",
     "type",
     "operation",
     "opération",
@@ -165,9 +170,10 @@ export function parseDisnatCsv(fileText: string) {
     dynamicTyping: false,
   });
 
-  const headerCells = (rawResult.data[0] ?? []).map((header, index) =>
+  const rawHeaderCells = (rawResult.data[0] ?? []).map((header, index) =>
     header.trim() || `Colonne ${index + 1}`,
   );
+  const headerCells = disambiguateHeaders(rawHeaderCells);
   const rows = rawResult.data
     .slice(1)
     .filter((cells) => !isHeaderCells(cells))
@@ -203,7 +209,15 @@ export function normalizeDisnatRows(
 
   rows.forEach((row, index) => {
     const ticker = readText(row, columnAliases.ticker);
-    const accountName = readText(row, columnAliases.accountName) || "Compte Disnat";
+    const nomCell = readText(row, ["nom"]);
+    const namedFromAlias = readText(row, columnAliases.accountName);
+    /*
+     * Synthèse portefeuille Disnat : une seule colonne « Nom » (CELI, REER, Comptant…), sans
+     * « Nom du compte ». Sur détail titres, « Nom » est le titre : ne pas l’utiliser comme nom
+     * de compte quand une ligne a un symbole.
+     */
+    const accountName =
+      namedFromAlias || (!ticker ? nomCell : undefined) || "Compte Disnat";
     const accountNumber = readText(row, columnAliases.accountNumber) || undefined;
     const currency = inferCurrency(row);
     const marketValue = readMoney(row, columnAliases.marketValue);
@@ -229,10 +243,14 @@ export function normalizeDisnatRows(
       }
       const owner = resolveOwnerFromMap(ownerMap, accountNumber);
       snapshotIncludesCashFromPortfolioExport = true;
+      const accountTypePortfolio =
+        readText(row, columnAliases.accountType) ||
+        (namedFromAlias ? undefined : nomCell) ||
+        undefined;
       upsertAccount(cashByAccount, {
         accountName,
         accountNumber,
-        accountType: readText(row, columnAliases.accountType) || undefined,
+        accountType: accountTypePortfolio,
         owner,
         currency,
         cashValue: cashValue ?? Math.max((totalValue ?? 0) - (marketValue ?? 0), 0),
@@ -299,8 +317,8 @@ export function normalizeDisnatRows(
     upsertAccount(cashByAccount, {
       accountName,
       accountNumber: parsed.data.accountNumber,
-      /* Ne pas reprendre le type depuis une ligne titre (souvent confondu avec le nom de valeur). */
-      accountType: undefined,
+      /* Type déjà filtré si identique au libellé du titre (voir rowAccountType ci-dessus). */
+      accountType: parsed.data.accountType,
       owner,
       currency,
       cashValue: 0,
@@ -407,6 +425,36 @@ function readText(
 ): string | undefined {
   const value = readRaw(row, aliases);
   return typeof value === "string" ? value.trim() : String(value ?? "").trim();
+}
+
+function isDisnatTypeLikePreviewHeader(header: string): boolean {
+  const nh = normalizeHeaderForMatching(header);
+  if (nh === "type") return true;
+  for (const a of columnAliases.transactionType) {
+    if (normalizeHeader(String(a)) === nh) return true;
+  }
+  for (const a of columnAliases.accountType) {
+    if (normalizeHeader(String(a)) === nh) return true;
+  }
+  return false;
+}
+
+/**
+ * Cellule d’aperçu : Disnat laisse souvent la colonne « Type » vide tout en mettant le libellé
+ * dans « Activité », « Opération », « Type d’opération », etc. — ce que readText sait déjà lire.
+ */
+export function disnatPreviewCellDisplay(row: ParsedDisnatRow, header: string): string {
+  const raw = String(row[header] ?? "").trim();
+  if (raw.length > 0) {
+    return String(row[header] ?? "");
+  }
+  if (isDisnatTypeLikePreviewHeader(header)) {
+    const tx = readText(row, columnAliases.transactionType);
+    if (tx) return tx;
+    const acct = readText(row, columnAliases.accountType);
+    if (acct) return acct;
+  }
+  return String(row[header] ?? "");
 }
 
 /** Normalise une chaîne monétaire (fr-ca, en-us, sortie Excel CSV) en nombre décimal JS. */
@@ -587,18 +635,41 @@ function readDate(row: ParsedDisnatRow, aliases: readonly string[]) {
 
 function readRaw(row: ParsedDisnatRow, aliases: readonly string[]) {
   const entries = Object.entries(row);
-  const found = entries.find(([key]) =>
-    aliases.some((alias) => normalizeHeader(key) === normalizeHeader(alias)),
+  const matches = entries.filter(([key]) =>
+    aliases.some((alias) => headerKeyMatchesAlias(key, alias)),
   );
+  for (const [, val] of matches) {
+    if (val !== null && val !== undefined && String(val).trim() !== "") {
+      return val;
+    }
+  }
+  return matches[0]?.[1];
+}
 
-  return found?.[1];
+/** Colonnes Excel dupliquées → « Type », « Type (2) » : comparer comme « type ». */
+function normalizeHeaderForMatching(header: string) {
+  return normalizeHeader(header).replace(/\s*\(\d+\)\s*$/, "").trim();
+}
+
+function disambiguateHeaders(rawHeaders: string[]): string[] {
+  const seen = new Map<string, number>();
+  return rawHeaders.map((label) => {
+    const n = seen.get(label) ?? 0;
+    seen.set(label, n + 1);
+    if (n === 0) return label;
+    return `${label} (${n + 1})`;
+  });
+}
+
+function headerKeyMatchesAlias(key: string, alias: string): boolean {
+  return normalizeHeaderForMatching(key) === normalizeHeader(alias);
 }
 
 function detectImportKind(
   headers: string[],
   rows: ParsedDisnatRow[],
 ): CsvImportKind {
-  const normalizedHeaders = headers.map(normalizeHeader);
+  const normalizedHeaders = headers.map(normalizeHeaderForMatching);
   const hasTransactionColumns = [
     "date",
     "date de transaction",
@@ -818,7 +889,7 @@ function disnatTableHeaderMarkers(): string[] {
 }
 
 function headersLookLikeDisnatTable(headers: string[]): boolean {
-  const normalizedCells = headers.map(normalizeHeader);
+  const normalizedCells = headers.map(normalizeHeaderForMatching);
   const expected = disnatTableHeaderMarkers();
   return expected.filter((marker) => normalizedCells.includes(marker)).length >= 3;
 }
@@ -910,7 +981,7 @@ export function validateDisnatInvestmentExportFile(input: {
   headers: string[];
   importKind: CsvImportKind;
 }): DisnatInvestmentCsvValidation {
-  const normalizedHeaders = input.headers.map(normalizeHeader);
+  const normalizedHeaders = input.headers.map(normalizeHeaderForMatching);
   const branding = disnatBrandingInPreamble(input.rawText);
   const tableLike = headersLookLikeDisnatTable(input.headers);
   const signals = disnatInvestmentHeaderSignalScore(normalizedHeaders);
@@ -938,14 +1009,14 @@ export function validateDisnatInvestmentExportFile(input: {
 }
 
 function isDisnatHeaderLine(line: string, delimiter: string) {
-  const normalizedCells = line.split(delimiter).map(normalizeHeader);
+  const normalizedCells = line.split(delimiter).map(normalizeHeaderForMatching);
   const expected = disnatTableHeaderMarkers();
 
   return expected.filter((header) => normalizedCells.includes(header)).length >= 3;
 }
 
 function isHeaderCells(cells: string[]) {
-  const normalizedCells = cells.map(normalizeHeader);
+  const normalizedCells = cells.map(normalizeHeaderForMatching);
   return (
     normalizedCells.includes("nom") &&
     normalizedCells.includes("compte") &&
@@ -974,6 +1045,7 @@ function isSummaryOrHeaderLabel(value: string) {
 
 function normalizeHeader(header: string) {
   return header
+    .replace(/[\u2018\u2019\u201A\u2032\u00B4]/g, "'")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\uFFFD/g, "")

@@ -12,10 +12,18 @@ export type EnrichedPosition = PortfolioPosition & {
   disnatMarketPrice: number | null;
   quoteFetchedAt: Date | null;
   usesLiveQuote: boolean;
-  /** Variation ($) par action lorsque le cours live Yahoo inclut regularMarketChange */
+  /**
+   * Variation journalière ($ / action) d’après la cotation stockée (Yahoo/Stooq) :
+   * `changeAmount` si présent, sinon `prix − clôture veille`.
+   * Peut être renseignée même si le prix affiché reste un snapshot Disnat (mismatch possible).
+   */
   quoteChangePerShare: number | null;
-  /** Profits du jour ($) estimés si variation disponible */
+  /** Profits du jour ($) = variation × quantité lorsque la variation est connue */
   displayDayGainLoss: number | null;
+  /**
+   * Variation % de la séance d’après la cotation (Δ / clôture veille), indépendante du prix affiché snapshot.
+   */
+  quoteSessionChangePct: number | null;
 };
 
 export function indexQuotesByTickerCurrency(
@@ -63,6 +71,49 @@ function liveQuoteMatchesReference(
   return false;
 }
 
+function sessionDeltaPerShareFromQuote(
+  quote: PortfolioLiveQuote | undefined,
+): number | null {
+  if (!quote) return null;
+  const direct = quote.changeAmount;
+  if (direct !== null && Number.isFinite(direct)) {
+    return direct;
+  }
+  const p = quote.price;
+  const prev = quote.previousClose;
+  if (
+    p !== null &&
+    Number.isFinite(p) &&
+    prev !== null &&
+    Number.isFinite(prev) &&
+    prev > 0
+  ) {
+    return p - prev;
+  }
+  return null;
+}
+
+function sessionPctFromQuote(
+  quote: PortfolioLiveQuote | undefined,
+  deltaPerShare: number | null,
+): number | null {
+  if (deltaPerShare === null || !Number.isFinite(deltaPerShare) || !quote) {
+    return null;
+  }
+  const prev = quote.previousClose;
+  if (prev !== null && Number.isFinite(prev) && prev > 0) {
+    return (deltaPerShare / prev) * 100;
+  }
+  const p = quote.price;
+  if (p !== null && Number.isFinite(p)) {
+    const inferredPrev = p - deltaPerShare;
+    if (inferredPrev > 0) {
+      return (deltaPerShare / inferredPrev) * 100;
+    }
+  }
+  return null;
+}
+
 export function enrichPositionRow(
   position: PortfolioPosition & { accountKey?: string },
   accountName: string,
@@ -86,17 +137,13 @@ export function enrichPositionRow(
       : disnatMarketValue;
 
   const usesLiveQuote = livePrice != null;
-  const rawDelta = quote?.changeAmount ?? null;
-  const quoteChangePerShare =
-    usesLiveQuote &&
-    rawDelta !== null &&
-    Number.isFinite(rawDelta)
-      ? rawDelta
-      : null;
+  const quoteChangePerShare = sessionDeltaPerShareFromQuote(quote);
   const displayDayGainLoss =
     quoteChangePerShare !== null && position.quantity > 0
       ? quoteChangePerShare * position.quantity
       : null;
+
+  const quoteSessionChangePct = sessionPctFromQuote(quote, quoteChangePerShare);
 
   return {
     ...position,
@@ -110,6 +157,7 @@ export function enrichPositionRow(
     usesLiveQuote,
     quoteChangePerShare,
     displayDayGainLoss,
+    quoteSessionChangePct,
   };
 }
 

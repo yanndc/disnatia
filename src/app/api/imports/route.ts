@@ -6,7 +6,11 @@ import {
   parseDisnatCsv,
   validateDisnatInvestmentExportFile,
 } from "@/lib/csv/disnat";
-import { importFileToParseText } from "@/lib/csv/import-file-text";
+import {
+  decodeCsvBuffer,
+  isExcelLike,
+  workbookBufferToPlainText,
+} from "@/lib/csv/import-file-text";
 import { prisma } from "@/lib/db/prisma";
 import { getImportHistory } from "@/features/portfolio/queries";
 import {
@@ -21,6 +25,14 @@ import {
   GLOBAL_TRANSACTION_DUPLICATE_SCOPE,
   txFingerprint,
 } from "@/lib/csv/tx-fingerprint";
+
+/** Réponse API : ne jamais sérialiser `sourceFileContent` (BYTEA). */
+function portfolioImportForJson<T extends { sourceFileContent?: unknown }>(
+  row: T,
+): Omit<T, "sourceFileContent"> {
+  const { sourceFileContent: _omit, ...rest } = row;
+  return rest;
+}
 
 export async function GET() {
   try {
@@ -45,8 +57,13 @@ export async function POST(request: Request) {
   }
 
   let fileText: string;
+  let sourceBuffer: Buffer;
   try {
-    fileText = await importFileToParseText(file);
+    const arrayBuffer = await file.arrayBuffer();
+    sourceBuffer = Buffer.from(arrayBuffer);
+    fileText = isExcelLike(file.name, file.type)
+      ? workbookBufferToPlainText(arrayBuffer)
+      : decodeCsvBuffer(arrayBuffer);
   } catch (cause) {
     return NextResponse.json(
       {
@@ -197,6 +214,8 @@ export async function POST(request: Request) {
     const portfolioImport = await tx.portfolioImport.create({
       data: {
         sourceFileName: file.name,
+        sourceFileContent: new Uint8Array(sourceBuffer),
+        sourceFileKept: true,
         status: "COMPLETED",
         importType: snapshot.importKind,
         rawHeaderJson: parsed.headers,
@@ -340,7 +359,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    import: savedImport,
+    import: portfolioImportForJson(savedImport),
     parsed: {
       headers: parsed.headers,
       importKind: snapshot.importKind,

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   buildPortfolioSnapshot,
+  disnatPreviewCellDisplay,
   parseDisnatCsv,
   validateDisnatInvestmentExportFile,
 } from "@/lib/csv/disnat";
@@ -18,6 +19,7 @@ import {
   ExternalAccountsPanel,
   type ExternalAccountDto,
 } from "@/features/imports/external-accounts-panel";
+import { cn } from "@/lib/utils";
 
 type KnownAccount = {
   accountKey: string;
@@ -35,6 +37,8 @@ const importSchema = z.object({
 });
 
 type ImportForm = z.infer<typeof importSchema>;
+
+type ImportsTab = "external" | "disnat" | "followup";
 
 /** Plage d’années civiles couverte par les dates d’opération du fichier (min / max). L’horodatage d’import est affiché à part, sans répéter son année ici. */
 function dataYearsInFileLabel(dataFromIso: string | null, dataToIso: string | null): string {
@@ -59,6 +63,7 @@ export function ImportsClient({
   initialImports: {
     id: string;
     sourceFileName: string;
+    sourceFileKept: boolean;
     importedAt: string;
     dataFromDate: string | null;
     dataToDate: string | null;
@@ -87,6 +92,7 @@ export function ImportsClient({
   const [backfillBusy, setBackfillBusy] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
   const [ownerMap, setOwnerMap] = useState<Map<string, string>>(() => new Map());
+  const [tab, setTab] = useState<ImportsTab>("disnat");
   const form = useForm<ImportForm>({
     resolver: zodResolver(importSchema),
   });
@@ -303,9 +309,37 @@ export function ImportsClient({
   }
 
   return (
-    <div className="space-y-6">
-      <ExternalAccountsPanel initialAccounts={initialExternalAccounts} />
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+        {(
+          [
+            { id: "external" as const, label: "Comptes hors Disnat" },
+            { id: "disnat" as const, label: "Fichier Disnat" },
+            { id: "followup" as const, label: "Historique et recalcul" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              tab === t.id
+                ? "bg-slate-950 text-white"
+                : "text-slate-600 hover:bg-slate-100",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
+      {tab === "external" ? (
+        <ExternalAccountsPanel initialAccounts={initialExternalAccounts} />
+      ) : null}
+
+      {tab === "disnat" ? (
+        <>
       <section>
         <p className="text-sm text-slate-500">Import Disnat (CSV ou Excel)</p>
         <h2 className="text-2xl font-semibold text-slate-950">Imports</h2>
@@ -424,6 +458,47 @@ export function ImportsClient({
 
       <Card>
         <CardHeader>
+          <CardTitle>Preview des 20 premières lignes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="max-h-[min(55vh,520px)] overflow-auto rounded-lg border border-slate-200">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <tr>
+                  {headers.map((header) => (
+                    <th key={header} className="px-3 py-2 font-medium">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.slice(0, 20).map((row, index) => (
+                  <tr key={index}>
+                    {headers.map((header) => (
+                      <td key={header} className="px-3 py-2 text-slate-700">
+                        {disnatPreviewCellDisplay(row, header)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {rows.length === 0 ? (
+              <p className="p-6 text-center text-sm text-slate-500">
+                Aucun fichier sélectionné.
+              </p>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+        </>
+      ) : null}
+
+      {tab === "followup" ? (
+        <>
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Recalcul portefeuille</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -448,43 +523,6 @@ export function ImportsClient({
               {backfillResult}
             </p>
           ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Preview des 20 premières lignes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-auto rounded-lg border border-slate-200">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  {headers.map((header) => (
-                    <th key={header} className="px-3 py-2 font-medium">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rows.slice(0, 20).map((row, index) => (
-                  <tr key={index}>
-                    {headers.map((header) => (
-                      <td key={header} className="px-3 py-2 text-slate-700">
-                        {String(row[header] ?? "")}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {rows.length === 0 ? (
-              <p className="p-6 text-center text-sm text-slate-500">
-                Aucun fichier sélectionné.
-              </p>
-            ) : null}
-          </div>
         </CardContent>
       </Card>
 
@@ -531,6 +569,11 @@ export function ImportsClient({
                   {item.notes ? (
                     <p className="mt-0.5 text-xs text-slate-400">{item.notes.split("\n")[0]}</p>
                   ) : null}
+                  {item.sourceFileKept ? (
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      Fichier source conservé en base (même base local / prod).
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
@@ -560,6 +603,8 @@ export function ImportsClient({
           </div>
         </CardContent>
       </Card>
+        </>
+      ) : null}
     </div>
   );
 }

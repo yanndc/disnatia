@@ -10,6 +10,10 @@ datasource db {
 model PortfolioImport {
   id             String                     @id @default(cuid())
   sourceFileName String
+  /// Octets bruts du fichier importé (CSV / Excel). Supprimés avec la ligne (DELETE import).
+  sourceFileContent Bytes?                  @map("source_file_content")
+  /// Indique si un contenu est stocké (évite de charger le blob pour les listes).
+  sourceFileKept    Boolean                  @default(false) @map("source_file_kept")
   importedAt     DateTime                   @default(now())
   /// Borne basse des dates présentes dans le fichier (ex. min date d’opération).
   dataFromDate   DateTime?

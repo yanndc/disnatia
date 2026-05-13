@@ -27,14 +27,14 @@ export function PortfolioCompositionKpiCard({
   const data: Slice[] = [
     { name: "Titres", value: Math.max(0, positionsValue), key: "positions" },
     {
-      name: "Encaisse (réf. réconciliation)",
+      name: "Encaisse",
       value: Math.max(0, cashValue),
       key: "cash",
     },
     ...(ext > 0
       ? ([
           {
-            name: "Comptes externes (snapshots)",
+            name: "Externes",
             value: ext,
             key: "external",
           },

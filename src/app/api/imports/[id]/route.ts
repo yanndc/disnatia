@@ -16,6 +16,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Import introuvable." }, { status: 404 });
   }
 
+  /** Supprime l’import et toutes les données liées, y compris le fichier source (BYTEA). */
   await prisma.portfolioImport.delete({ where: { id } });
 
   return NextResponse.json({ ok: true });

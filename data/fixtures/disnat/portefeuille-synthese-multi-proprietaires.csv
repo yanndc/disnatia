@@ -1,0 +1,32 @@
+Portefeuille
+
+Total des actifs (en $)
+;Nom;Compte;Devise;Encaisse ($);Valeur des titres ($);Valeur totale ($);Marge ($)
+;Total des actifs (en CAD);;CAD;14175,26;215810,23;229985,49;0,00
+
+PERSONNE EXEMPLE A
+;Nom;Compte;Devise;Encaisse ($);Valeur des titres ($);Valeur totale ($);Marge ($)
+;Total des actifs (en CAD);;CAD;7964,62;155205,33;163169,95;0,00
+;Vue d'ensemble;;CAD;7628,54;31942,49;39571,03;0,00
+;Vue d'ensemble;;USD;245,08;89887,58;90132,66;0,00
+;Comptant;5AAZZE1;CAD;0,00;0,00;0,00;0,00
+;Comptant;5AAZZE2;USD;0,00;0,00;0,00;0,00
+;CELI;5AAZZE3;CAD;7506,64;18461,36;25968,60;0,00
+;CELI;5AAZZE4;USD;3,78;1411,97;1415,75;0,00
+;REER;5AAZZE5;CAD;107,75;13481,13;13588,88;0,00
+;REER;5AAZZE6;USD;102,95;57537,81;57640,76;0,00
+;CRI;5AAZZE7;CAD;14,15;0,00;14,15;0,00
+;CRI;5AAZZE8;USD;138,35;30937,80;31076,15;0,00
+
+PERSONNE EXEMPLE B
+;Nom;Compte;Devise;Encaisse ($);Valeur des titres ($);Valeur totale ($);Marge ($)
+;Total des actifs (en CAD);;CAD;6210,64;60604,90;66815,54;0,00
+;Vue d'ensemble;;CAD;6132,19;50271,84;56404,03;0,00
+;Vue d'ensemble;;USD;57,21;7535,23;7592,44;0,00
+;Comptant;5BBZZF1;CAD;0,00;0,00;0,00;0,00
+;Comptant;5BBZZF2;USD;0,00;0,00;0,00;0,00
+;REER conjoint;5BBZZF3;CAD;6132,19;50271,84;56404,03;0,00
+;REER conjoint;5BBZZF4;USD;57,21;7535,23;7592,44;0,00
+
+;En date du :;;;2026-05-12 10:24
+;Taux de change :;;;1,3713

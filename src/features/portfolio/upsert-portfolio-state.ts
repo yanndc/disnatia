@@ -60,6 +60,8 @@ export async function upsertPortfolioStateFromSnapshot(
     const cashValue = preserveCash ? existing.cashValue : account.cashValue;
     const marketValue = account.marketValue;
     const totalValue = cashValue + marketValue;
+    const accountTypeResolved =
+      account.accountType ?? (existing != null ? existing.accountType : null);
 
     await prisma.portfolioAccountState.upsert({
       where: { accountKey_currency: { accountKey, currency: account.currency.toUpperCase() } },
@@ -67,7 +69,7 @@ export async function upsertPortfolioStateFromSnapshot(
         accountKey,
         accountName: account.accountName,
         accountNumber: account.accountNumber ?? null,
-        accountType: account.accountType ?? null,
+        accountType: accountTypeResolved,
         owner,
         currency: account.currency.toUpperCase(),
         cashValue,
@@ -79,7 +81,7 @@ export async function upsertPortfolioStateFromSnapshot(
       update: {
         accountName: account.accountName,
         accountNumber: account.accountNumber ?? null,
-        accountType: account.accountType ?? null,
+        accountType: accountTypeResolved,
         owner,
         cashValue,
         marketValue,

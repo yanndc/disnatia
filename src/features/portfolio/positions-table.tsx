@@ -371,7 +371,7 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
           >
             <option value="">Tous les cours</option>
             <option value="live">Cours live</option>
-            <option value="snapshot">Snapshot Disnat</option>
+            <option value="snapshot">Projection</option>
           </select>
           <select
             aria-label="Filtrer par classe d’actif"
@@ -395,15 +395,13 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
 
       {positions.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          Aucune position. Importe un fichier Disnat pour remplir la table.
+          Aucune position. Vérifie les imports d&apos;opérations sur la page Imports.
         </div>
       ) : null}
 
       {grouped.map(({ currency, rows }) => (
         <div key={currency} className="space-y-2">
-          <h3 className="text-base font-semibold text-slate-900">
-            ACTIONS détenu(e)s dans le(s) compte(s) en {currency}
-          </h3>
+          <h3 className="text-base font-semibold text-slate-900">En {currency}</h3>
           <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
             <table className="w-full min-w-[1400px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
@@ -411,21 +409,21 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                   {th("accountName", "Compte")}
                   {th("ticker", "Symbole")}
                   <th className="whitespace-nowrap px-1 py-1 font-medium" scope="col">
-                    Opérations
+                    Historique
                   </th>
                   {th("securityName", "Nom")}
                   {th("assetType", "Classe")}
                   {th("quantity", "Quantité")}
                   {th("averageCost", "Coût moyen")}
                   {th("totalCost", "Coût total")}
-                  {th("displayPrice", "Prix actuel")}
-                  {th("quoteChangePerShare", "Variation ($)")}
-                  {th("displayDayGainLoss", "Profits du jour ($)")}
-                  {th("displayMarketValue", "Valeur au marché")}
-                  {th("loanValue", "Valeur d'emprunt")}
-                  {th("unrealizedDollar", "Profits non réalisés ($)")}
-                  {th("unrealizedPct", "Profits non réalisés (%)")}
-                  {th("weightPct", "% portefeuille")}
+                  {th("displayPrice", "Prix")}
+                  {th("quoteChangePerShare", "Variation")}
+                  {th("displayDayGainLoss", "Jour")}
+                  {th("displayMarketValue", "Valeur")}
+                  {th("loanValue", "Emprunt")}
+                  {th("unrealizedDollar", "Non réalisé $")}
+                  {th("unrealizedPct", "Non réalisé %")}
+                  {th("weightPct", "% PF")}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -512,7 +510,7 @@ export function PositionsTable({ positions }: { positions: EnrichedPosition[] })
                           <p className="text-[10px] font-normal normal-case text-slate-400">
                             {p.usesLiveQuote && quoteFetchedAt
                               ? `Direct · ${formatQuoteAge(quoteFetchedAt)}`
-                              : "Snapshot Disnat"}
+                              : "Import"}
                           </p>
                         </div>
                       </td>

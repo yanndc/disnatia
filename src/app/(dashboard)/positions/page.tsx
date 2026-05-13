@@ -18,8 +18,7 @@ export default async function PositionsPage() {
           <p className="text-sm text-slate-500">Positions</p>
           <h2 className="text-2xl font-semibold text-slate-950">Détail</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Lignes titre recalculées à partir des <strong>opérations importées</strong> (pas à partir
-            du CSV portefeuille). Prix affichés = cours marché si disponible, sinon base de projection.
+            Montants dérivés des opérations importées ; prix marché ou projection selon la cotation.
           </p>
           {summary && summary.positionCount > 0 ? (
             <p className="mt-1 text-xs text-slate-600">

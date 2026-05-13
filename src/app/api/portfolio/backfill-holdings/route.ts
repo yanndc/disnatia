@@ -13,7 +13,21 @@ export async function POST() {
   try {
     const imports = await prisma.portfolioImport.findMany({
       where: { OR: [{ positions: { some: {} } }, { accounts: { some: {} } }] },
-      include: { accounts: true, positions: true },
+      select: {
+        id: true,
+        sourceFileName: true,
+        sourceFileKept: true,
+        importedAt: true,
+        dataFromDate: true,
+        dataToDate: true,
+        status: true,
+        importType: true,
+        rawHeaderJson: true,
+        rawRowCount: true,
+        notes: true,
+        accounts: true,
+        positions: true,
+      },
       orderBy: { importedAt: "asc" },
     });
 

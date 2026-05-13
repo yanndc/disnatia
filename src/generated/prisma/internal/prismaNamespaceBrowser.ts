@@ -88,6 +88,8 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 export const PortfolioImportScalarFieldEnum = {
   id: 'id',
   sourceFileName: 'sourceFileName',
+  sourceFileContent: 'sourceFileContent',
+  sourceFileKept: 'sourceFileKept',
   importedAt: 'importedAt',
   dataFromDate: 'dataFromDate',
   dataToDate: 'dataToDate',
