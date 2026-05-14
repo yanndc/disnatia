@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { defineConfig } from "prisma/config";
+import { coerceValidPostgresUrl } from "./src/lib/db/coerce-postgres-url";
 import { applyDatabaseEnvOverridesFromEnvLocal } from "./src/lib/db/database-env-bootstrap";
 
 applyDatabaseEnvOverridesFromEnvLocal();
@@ -16,11 +17,15 @@ const buildTimePlaceholderUrl =
   "postgresql://prisma:prisma@127.0.0.1:5432/prisma_build?schema=public";
 
 // CLI migrate : préférer DIRECT_URL (connexion directe) si DATABASE_URL utilise un pooler transactionnel Supabase (:6543).
-const migrateDatasourceUrl =
+const migrateRaw =
   process.env.DIRECT_URL?.trim() ||
   process.env.MIGRATE_DATABASE_URL?.trim() ||
   process.env.DATABASE_URL?.trim() ||
   buildTimePlaceholderUrl;
+const migrateDatasourceUrl =
+  migrateRaw === buildTimePlaceholderUrl
+    ? migrateRaw
+    : coerceValidPostgresUrl(migrateRaw);
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

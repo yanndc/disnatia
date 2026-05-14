@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
+import { coerceValidPostgresUrl } from "./coerce-postgres-url";
 import { applyDatabaseEnvOverridesFromEnvLocal } from "./database-env-bootstrap";
 import { normalizeRuntimePostgresUrl } from "./normalize-postgres-url";
 
@@ -26,7 +27,7 @@ function resolvePostgresConnectionString(): string {
       "Aucune URL Postgres pour Prisma : définissez DATABASE_URL (recommandé) ou DIRECT_URL / LOCAL_DATABASE_URL dans .env.local.",
     );
   }
-  return normalizeRuntimePostgresUrl(url);
+  return normalizeRuntimePostgresUrl(coerceValidPostgresUrl(url));
 }
 
 function createPrismaClient(connectionString: string): PrismaClient {
