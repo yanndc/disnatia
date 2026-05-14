@@ -36,7 +36,7 @@ function isSupabasePoolHost(hostname: string): boolean {
   );
 }
 
-/** TLS strict désactivé pour la chaîne (proxy d’entreprise, magasin de certificats local). */
+/** TLS relâché pour Supabase en dev et sur Vercel (désactive avec POSTGRES_SSL_REJECT_UNAUTHORIZED=1). */
 function relaxedSslForPool(
   connectionString: string,
 ): { rejectUnauthorized: false } | undefined {
@@ -46,12 +46,13 @@ function relaxedSslForPool(
   if (process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "0") {
     return { rejectUnauthorized: false } as const;
   }
-  if (process.env.NODE_ENV !== "development") {
-    return undefined;
-  }
   try {
     const u = new URL(connectionString);
-    if (isSupabasePoolHost(u.hostname)) {
+    if (!isSupabasePoolHost(u.hostname)) return undefined;
+    if (
+      process.env.NODE_ENV === "development" ||
+      process.env.VERCEL === "1"
+    ) {
       return { rejectUnauthorized: false } as const;
     }
   } catch {
@@ -61,9 +62,8 @@ function relaxedSslForPool(
 }
 
 /**
- * `pg` fait `Object.assign({}, opts, parse(connectionString))` : si l’URL contient
- * `sslmode=require`, le parse impose `ssl: {}` et **écrase** `ssl: { rejectUnauthorized: false }`.
- * On retire donc les paramètres SSL de l’URL dès qu’on passe un objet `ssl` au Pool.
+ * `pg` fusionne le parse de l’URL après les options : `sslmode=require` écrase `ssl`.
+ * Si on passe un objet `ssl` au Pool, on enlève les paramètres SSL de l’URL.
  */
 function connectionStringWithoutSslSearchParams(connectionString: string): string {
   let u: URL;

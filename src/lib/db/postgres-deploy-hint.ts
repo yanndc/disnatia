@@ -42,11 +42,5 @@ export function getPostgresDeployHint(): string | null {
     }
   }
 
-  const isSupabase =
-    host.includes("supabase.com") || host.endsWith(".supabase.co");
-  if (isSupabase) {
-    return "Vercel → onglet Logs → Runtime : l’erreur exacte est aussi résumée sous le message.";
-  }
-
-  return "Vérifie DATABASE_URL dans Vercel (pas de guillemets parasites) et les Runtime logs pour le détail.";
+  return null;
 }
