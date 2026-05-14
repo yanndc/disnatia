@@ -49,7 +49,9 @@ export function coerceValidPostgresUrl(input: string): string {
   const password =
     colonIdx >= 0 ? userinfo.slice(colonIdx + 1) : "";
 
-  const userEnc = encodeURIComponent(safeDecode(user));
+  // `pg.Pool` (utilisé par @prisma/adapter-pg) interprète mal un point dans le user
+  // (ex. Supabase `postgres.<project_ref>` → user tronqué à `postgres`). `%2E` corrige.
+  const userEnc = encodeURIComponent(safeDecode(user)).replaceAll(".", "%2E");
   const passEnc = encodeURIComponent(safeDecode(password));
 
   const rebuilt = `${protocol}${userEnc}:${passEnc}@${hostPort}${dbPath}${search}`;

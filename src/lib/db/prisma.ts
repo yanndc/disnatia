@@ -1,4 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { coerceValidPostgresUrl } from "./coerce-postgres-url";
 import { applyDatabaseEnvOverridesFromEnvLocal } from "./database-env-bootstrap";
@@ -29,10 +30,15 @@ function resolvePostgresConnectionString(): string {
 }
 
 function createPrismaClient(connectionString: string): PrismaClient {
+  const ssl =
+    process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "0"
+      ? ({ rejectUnauthorized: false } as const)
+      : undefined;
+  const pool = new Pool(
+    ssl ? { connectionString, ssl } : { connectionString },
+  );
   return new PrismaClient({
-    adapter: new PrismaPg({
-      connectionString,
-    }),
+    adapter: new PrismaPg(pool, { disposeExternalPool: true }),
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
