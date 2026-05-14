@@ -42,7 +42,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-5 py-4 backdrop-blur">
+        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-5 py-4 backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
