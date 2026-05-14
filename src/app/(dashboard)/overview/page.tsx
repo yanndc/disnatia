@@ -26,7 +26,7 @@ export default async function OverviewPage() {
           [
             "La connexion PostgreSQL a échoué.",
             hint ??
-              "Sur Vercel, DATABASE_URL doit être une URI valide (souvent le pooler Transaction :6543 pour Supabase). Compare avec ton .env.local et les logs runtime.",
+              "Vérifie DATABASE_URL / DIRECT_URL et que PostgreSQL est joignable depuis cette machine.",
           ].join(" ")
         }
       />
