@@ -50,26 +50,34 @@ L'app sera disponible sur `http://localhost:3001`.
 
 ## Variables d'environnement
 
-**`.env.local`** est **gitignoré** à dessein : tu le gardes uniquement sur ta machine (secrets, URL Supabase locale, etc.) et tu ne le commites pas. En prod, tu copies les clés équivalentes dans les variables du déploiement (ex. Vercel). Ce dev local n’empêche pas d’utiliser **Supabase comme base**.
+**`.env.local`** est **gitignoré** : secrets et URLs Postgres sur ta machine. En mono-base Supabase, l’important est que **la prod Vercel et le dev utilisent les mêmes valeurs**.
 
 Modèle : [.env.example](.env.example) (copier en `.env.local`).
 
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5433/disnatia?schema=public"
-OPENAI_API_KEY=""
-# Optionnel — si absent, aucune question de mot de passe à l’entrée du site :
-# SITE_ACCESS_PASSWORD="ton-secret"
-```
+### Prod comme le dev — une seule base Supabase
 
-`OPENAI_API_KEY` est nécessaire pour `/insights`. Le reste du dashboard fonctionne sans clé IA si la base est configurée.
+L’objet : **`DATABASE_URL`** (et **`DIRECT_URL`** si tu passes par le pooler Supabase pour l’une et la connexion session pour les migrations) est **la même chaîne partout**.
 
-**SITE_ACCESS_PASSWORD** : le middleware impose une page `/site-lock` tant que cette variable est définie et que le cookie de session n’est pas valide. Sans variable (ou valeur vide après trim côté logique métier habituelle : absent = désactivé), l’accès au dashboard est direct — c’est une **mono-instance locale**, pas un compte utilisateur.
+1. Dans le **dashboard Supabase** (Settings → Database), récupère les URLs que tu utilisées déjà en dev dans **`.env.local`**.
+2. Dans **Vercel → Ton projet → Environment Variables → Production** (et Preview si besoin), mets **exactement** ces mêmes `DATABASE_URL` / `Direct URL` (**copie depuis `.env.local` ou depuis Supabase** — ça doit matcher bit à bit celles où tu vois tes données).
+3. **Redéploie** le projet après toute modification d’ENV.
+4. Si la première fois sur cette DB : **`pnpm prisma migrate deploy`** une fois contre cette URL (localement avec la même `DATABASE_URL` ou via ta CI), pour avoir le même schéma qu’en dev.
 
-**Données vides** : la V1 ne seed pas le portefeuille. Une base nouvellement migrée est normalement vide jusqu’à ce que tu importes au moins un CSV Disnat depuis `/imports` (et que PostgreSQL tourne bien sur l’URL de `DATABASE_URL`).
+Référence la base **Supabase**, pas « ce qui est déjà dans Vercel » si tes données viennent surtout du dev : c’est bien **la prod qui doit rejoindre le dev**.
+
+Alternative pratique : mettre dans Vercel exactement les mêmes lignes que ton `.env.local` fonctionnel (copier/coller).
+
+⚠️ `vercel env pull` **inverse** la direction (réplique depuis Vercel vers disque) : utile seulement si Vercel est déjà la source de vérité.
+
+⚠️ Tout ce que tu fais en local (import CSV, migration) contre cette URL **touche la même BD** pour dev et prod.
 
 Next.js charge `.env.local` en local. La configuration Prisma charge aussi `.env.local`, puis `.env` en repli pour les commandes CLI.
 
 Si tu modifies le schéma Prisma après avoir lancé `pnpm dev`, relance ensuite `pnpm prisma:generate`, arrête puis redémarre le serveur de dev. Sinon le singleton Prisma en mémoire peut rester sur une ancienne version du client et provoquer des erreurs comme `Unknown argument importType` ou `_count.select.transactions` inconnu après une migration.
+
+- **`OPENAI_API_KEY`** : pour `/insights`.
+- **`SITE_ACCESS_PASSWORD`** : optionnel ; si défini → page `/site-lock` (même mot de passe dans Vercel et `.env.local` si tu veux le même flux partout).
+- **Données** : pas de seed automatique ; après alignement des URLs, import CSV sur `/imports`.
 
 ## Importer un CSV Disnat
 
