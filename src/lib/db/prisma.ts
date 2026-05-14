@@ -29,11 +29,39 @@ function resolvePostgresConnectionString(): string {
   return normalizeRuntimePostgresUrl(coerceValidPostgresUrl(url));
 }
 
+function isSupabasePoolHost(hostname: string): boolean {
+  return (
+    hostname.endsWith(".supabase.co") ||
+    hostname.includes("pooler.supabase.com")
+  );
+}
+
+/** TLS strict désactivé pour la chaîne (proxy d’entreprise, magasin de certificats local). */
+function relaxedSslForPool(
+  connectionString: string,
+): { rejectUnauthorized: false } | undefined {
+  if (process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "1") {
+    return undefined;
+  }
+  if (process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "0") {
+    return { rejectUnauthorized: false } as const;
+  }
+  if (process.env.NODE_ENV !== "development") {
+    return undefined;
+  }
+  try {
+    const u = new URL(connectionString);
+    if (isSupabasePoolHost(u.hostname)) {
+      return { rejectUnauthorized: false } as const;
+    }
+  } catch {
+    /* ignore */
+  }
+  return undefined;
+}
+
 function createPrismaClient(connectionString: string): PrismaClient {
-  const ssl =
-    process.env.POSTGRES_SSL_REJECT_UNAUTHORIZED === "0"
-      ? ({ rejectUnauthorized: false } as const)
-      : undefined;
+  const ssl = relaxedSslForPool(connectionString);
   const pool = new Pool(
     ssl ? { connectionString, ssl } : { connectionString },
   );

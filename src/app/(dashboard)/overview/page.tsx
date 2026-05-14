@@ -5,7 +5,7 @@ import { CurrencyExposureKpiCard } from "@/features/portfolio/currency-exposure-
 import { PortfolioCompositionKpiCard } from "@/features/portfolio/portfolio-composition-kpi-card";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getPortfolioSummary } from "@/features/portfolio/queries";
-import { formatPostgresErrorForDev } from "@/lib/db/postgres-error-for-dev";
+import { formatPostgresConnectionErrorDetail } from "@/lib/db/postgres-error-for-dev";
 import { getPostgresDeployHint } from "@/lib/db/postgres-deploy-hint";
 import { TopPositionsKpiCard } from "@/features/portfolio/top-positions-kpi-card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
@@ -19,7 +19,7 @@ export default async function OverviewPage() {
   } catch (e) {
     console.error("[overview] getPortfolioSummary", e);
     const hint = getPostgresDeployHint();
-    const devDetail = formatPostgresErrorForDev(e);
+    const detail = formatPostgresConnectionErrorDetail(e);
     return (
       <EmptyState
         variant="error"
@@ -29,7 +29,7 @@ export default async function OverviewPage() {
             "La connexion PostgreSQL a échoué.",
             hint ??
               "Vérifie DATABASE_URL / DIRECT_URL et que PostgreSQL est joignable depuis cette machine.",
-            devDetail ? `Détail (dev) : ${devDetail}` : null,
+            detail ? `Détail : ${detail}` : null,
           ]
             .filter((s): s is string => Boolean(s))
             .join(" ")
