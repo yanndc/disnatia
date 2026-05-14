@@ -3,6 +3,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { coerceValidPostgresUrl } from "./coerce-postgres-url";
 import { applyDatabaseEnvOverridesFromEnvLocal } from "./database-env-bootstrap";
 import { normalizeRuntimePostgresUrl } from "./normalize-postgres-url";
+import { firstEnvValue, RUNTIME_POSTGRES_URL_KEYS } from "./postgres-env";
 
 applyDatabaseEnvOverridesFromEnvLocal();
 
@@ -16,15 +17,12 @@ const globalForPrisma = globalThis as unknown as {
 let productionPrisma: PrismaClient | undefined;
 let productionPrismaResolvedConnectionString: string | undefined;
 
-/** Adapter runtime : DATABASE_URL puis DIRECT_URL puis LOCAL_DATABASE_URL (le CLI migrate lit DIRECT_URL puis DATABASE_URL dans prisma.config). */
+/** Adapter runtime : ordre dans `RUNTIME_POSTGRES_URL_KEYS` (`postgres-env.ts`). */
 function resolvePostgresConnectionString(): string {
-  const url =
-    process.env.DATABASE_URL?.trim() ||
-    process.env.DIRECT_URL?.trim() ||
-    process.env.LOCAL_DATABASE_URL?.trim();
+  const url = firstEnvValue(RUNTIME_POSTGRES_URL_KEYS);
   if (!url) {
     throw new Error(
-      "Aucune URL Postgres pour Prisma : définissez DATABASE_URL (recommandé) ou DIRECT_URL / LOCAL_DATABASE_URL dans .env.local.",
+      "Aucune URL Postgres pour Prisma : définis une URI dans .env.local (voir src/lib/db/postgres-env.ts pour les noms acceptés).",
     );
   }
   return normalizeRuntimePostgresUrl(coerceValidPostgresUrl(url));

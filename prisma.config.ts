@@ -2,6 +2,10 @@ import dotenv from "dotenv";
 import { defineConfig } from "prisma/config";
 import { coerceValidPostgresUrl } from "./src/lib/db/coerce-postgres-url";
 import { applyDatabaseEnvOverridesFromEnvLocal } from "./src/lib/db/database-env-bootstrap";
+import {
+  firstEnvValue,
+  MIGRATE_POSTGRES_URL_KEYS,
+} from "./src/lib/db/postgres-env";
 
 applyDatabaseEnvOverridesFromEnvLocal();
 
@@ -11,17 +15,13 @@ dotenv.config({ path: ".env" });
 /**
  * `prisma generate` charge ce fichier même sans base réelle (CI / Vercel).
  * Ne pas utiliser `env("DATABASE_URL")` ici : ça ferait échouer l’install si la variable manque.
- * En prod, définir `DATABASE_URL` (et idéalement `DIRECT_URL` pour les migrations Supabase).
+ * En prod, définir au moins une URL Postgres (voir `postgres-env.ts`).
  */
 const buildTimePlaceholderUrl =
   "postgresql://prisma:prisma@127.0.0.1:5432/prisma_build?schema=public";
 
-// CLI migrate : préférer DIRECT_URL (connexion directe) si DATABASE_URL utilise un pooler transactionnel Supabase (:6543).
 const migrateRaw =
-  process.env.DIRECT_URL?.trim() ||
-  process.env.MIGRATE_DATABASE_URL?.trim() ||
-  process.env.DATABASE_URL?.trim() ||
-  buildTimePlaceholderUrl;
+  firstEnvValue(MIGRATE_POSTGRES_URL_KEYS) || buildTimePlaceholderUrl;
 const migrateDatasourceUrl =
   migrateRaw === buildTimePlaceholderUrl
     ? migrateRaw

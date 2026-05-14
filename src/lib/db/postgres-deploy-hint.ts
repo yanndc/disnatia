@@ -1,4 +1,5 @@
 import { coerceValidPostgresUrl } from "./coerce-postgres-url";
+import { firstEnvValue, RUNTIME_POSTGRES_URL_KEYS } from "./postgres-env";
 
 /**
  * Indices pour erreurs Postgres en prod (Vercel + Supabase surtout).
@@ -7,9 +8,9 @@ import { coerceValidPostgresUrl } from "./coerce-postgres-url";
 export function getPostgresDeployHint(): string | null {
   if (process.env.VERCEL !== "1") return null;
 
-  const raw = process.env.DATABASE_URL?.trim();
+  const raw = firstEnvValue(RUNTIME_POSTGRES_URL_KEYS);
   if (!raw) {
-    return "DATABASE_URL est absente pour ce déploiement. Vercel → Settings → Environment Variables → Production.";
+    return "Aucune URL Postgres trouvée (DATABASE_URL, POSTGRES_URL, SUPABASE_DATABASE_URL, etc.). Vercel → Environment Variables.";
   }
 
   let u: URL;

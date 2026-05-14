@@ -4,19 +4,28 @@
  */
 const { spawnSync } = require("node:child_process");
 
+/** Garde en sync avec `src/lib/db/postgres-env.ts` → MIGRATE_POSTGRES_URL_KEYS */
+const MIGRATE_POSTGRES_URL_KEYS = [
+  "DIRECT_URL",
+  "POSTGRES_URL_NON_POOLING",
+  "MIGRATE_DATABASE_URL",
+  "DATABASE_URL",
+  "POSTGRES_PRISMA_URL",
+  "POSTGRES_URL",
+  "SUPABASE_DATABASE_URL",
+];
+
 function hasDbUrl() {
-  return !!(
-    process.env.DIRECT_URL?.trim() ||
-    process.env.MIGRATE_DATABASE_URL?.trim() ||
-    process.env.DATABASE_URL?.trim()
+  return MIGRATE_POSTGRES_URL_KEYS.some(
+    (k) => process.env[k] && String(process.env[k]).trim().length > 0,
   );
 }
 
 if (process.env.VERCEL === "1" && !hasDbUrl()) {
   console.error(
-    "\n[disnatia] Aucune URL Postgres pour le build (DATABASE_URL / DIRECT_URL / MIGRATE_DATABASE_URL).\n" +
-      "Dans Vercel → Settings → Environment Variables, ajoute les mêmes clés que dans .env.local pour\n" +
-      "l'environnement qui build (souvent Preview ET Production, pas seulement une des deux).\n"
+    "\n[disnatia] Aucune URL Postgres pour le build. Variables reconnues :\n  " +
+      MIGRATE_POSTGRES_URL_KEYS.join(", ") +
+      "\n(voir src/lib/db/postgres-env.ts). Coche Preview + Production sur Vercel.\n"
   );
   process.exit(1);
 }

@@ -1,13 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import dotenv from "dotenv";
-
-const DATABASE_ENV_KEYS = [
-  "DATABASE_URL",
-  "DIRECT_URL",
-  "LOCAL_DATABASE_URL",
-  "MIGRATE_DATABASE_URL",
-] as const;
+import { POSTGRES_URL_ENV_KEYS_FOR_DOTENV } from "./postgres-env";
 
 /**
  * L’IDE (ex. Cursor) ou le shell peuvent exporter un `DATABASE_URL` vers une autre base :
@@ -27,7 +21,7 @@ export function applyDatabaseEnvOverridesFromEnvLocal(
     return;
   }
 
-  for (const key of DATABASE_ENV_KEYS) {
+  for (const key of POSTGRES_URL_ENV_KEYS_FOR_DOTENV) {
     const raw = parsed[key];
     if (raw === undefined) continue;
     const value = raw.trim();
