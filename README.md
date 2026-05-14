@@ -10,7 +10,7 @@ DisnatIA est un tableau de bord web pour analyser un portefeuille d'actions Disn
 - Recharts pour les graphiques
 - Papa Parse pour le CSV
 - Zod et React Hook Form pour validation/formulaires
-- Prisma avec PostgreSQL
+- Prisma (ORM / migrations) vers **PostgreSQL** — utilisable avec Postgres **local**, **Docker** ou **Supabase** (URL du dashboard dans `DATABASE_URL` ; avec Supabase prévoir souvent aussi `DIRECT_URL` pour les migrations).
 - Vercel AI SDK avec OpenAI
 
 ## Lancer localement
@@ -50,12 +50,22 @@ L'app sera disponible sur `http://localhost:3001`.
 
 ## Variables d'environnement
 
+**`.env.local`** est **gitignoré** à dessein : tu le gardes uniquement sur ta machine (secrets, URL Supabase locale, etc.) et tu ne le commites pas. En prod, tu copies les clés équivalentes dans les variables du déploiement (ex. Vercel). Ce dev local n’empêche pas d’utiliser **Supabase comme base**.
+
+Modèle : [.env.example](.env.example) (copier en `.env.local`).
+
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5433/disnatia?schema=public"
 OPENAI_API_KEY=""
+# Optionnel — si absent, aucune question de mot de passe à l’entrée du site :
+# SITE_ACCESS_PASSWORD="ton-secret"
 ```
 
 `OPENAI_API_KEY` est nécessaire pour `/insights`. Le reste du dashboard fonctionne sans clé IA si la base est configurée.
+
+**SITE_ACCESS_PASSWORD** : le middleware impose une page `/site-lock` tant que cette variable est définie et que le cookie de session n’est pas valide. Sans variable (ou valeur vide après trim côté logique métier habituelle : absent = désactivé), l’accès au dashboard est direct — c’est une **mono-instance locale**, pas un compte utilisateur.
+
+**Données vides** : la V1 ne seed pas le portefeuille. Une base nouvellement migrée est normalement vide jusqu’à ce que tu importes au moins un CSV Disnat depuis `/imports` (et que PostgreSQL tourne bien sur l’URL de `DATABASE_URL`).
 
 Next.js charge `.env.local` en local. La configuration Prisma charge aussi `.env.local`, puis `.env` en repli pour les commandes CLI.
 
@@ -90,7 +100,7 @@ Le format Disnat peut varier selon le type d'export. La V1 sépare les lignes de
 
 ## Limites connues V1
 
-- Pas d'authentification ni multi-utilisateur.
+- Pas de comptes utilisateurs multi-tenant ; verrouillage site optionnel via `SITE_ACCESS_PASSWORD` uniquement.
 - Pas de taux de change CAD/USD dynamique.
 - Le mapping CSV devra probablement être ajusté avec un vrai export Disnat.
 - Pas de conseils financiers personnalisés; les réponses IA sont analytiques.
