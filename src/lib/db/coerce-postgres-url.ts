@@ -12,19 +12,16 @@ export function coerceValidPostgresUrl(input: string): string {
   }
   if (!trimmed) return trimmed;
 
-  try {
-    const probe = new URL(trimmed);
-    if (probe.protocol === "postgres:" || probe.protocol === "postgresql:") {
-      return trimmed;
-    }
-  } catch {
-    // continuer
-  }
-
   const protoMatch = trimmed.match(/^((?:postgres|postgresql):\/\/)/i);
   if (!protoMatch) {
-    return trimmed;
+    try {
+      return new URL(trimmed).href;
+    } catch {
+      return trimmed;
+    }
   }
+
+  // Toujours reconstruire les URI Postgres : `new URL()` interprète mal `#`, `%`, etc. dans le mot de passe.
 
   const protocol = protoMatch[1].toLowerCase();
   const rest = trimmed.slice(protocol.length);
