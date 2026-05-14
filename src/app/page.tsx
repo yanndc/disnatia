@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DisnatiaLogo } from "@/components/brand/disnatia-logo";
 import {
   ArrowRight,
   BarChart3,
@@ -17,14 +18,11 @@ export default function Home() {
         <div className="absolute inset-x-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
 
         <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl bg-white text-slate-950 shadow-lg shadow-cyan-500/10">
-              <BarChart3 className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-wide">DisnatIA</p>
-              <p className="text-xs text-slate-400">Portefeuille Disnat intelligent</p>
-            </div>
+          <Link href="/" className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+            <DisnatiaLogo className="h-10 w-auto shrink-0 text-white sm:h-11" />
+            <p className="text-xs text-slate-400 sm:max-w-[14rem] sm:leading-snug">
+              Portefeuille Disnat intelligent (DisnatIA)
+            </p>
           </Link>
           <Link
             href="/overview"

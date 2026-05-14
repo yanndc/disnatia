@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { DisnatiaLogo } from "@/components/brand/disnatia-logo";
 import {
-  BarChart3,
   FileUp,
   LayoutDashboard,
   Sparkles,
@@ -24,14 +24,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-200 bg-white px-4 py-5 lg:block">
-        <Link href="/overview" className="flex items-center gap-3 px-2">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-white">
-            <BarChart3 className="size-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-950">DisnatIA</p>
-            <p className="text-xs text-slate-500">Portefeuille Disnat</p>
-          </div>
+        <Link href="/overview" className="flex flex-col gap-2 px-2">
+          <DisnatiaLogo className="h-9 w-auto text-slate-950" />
+          <p className="text-xs text-slate-500">Assistant portefeuille DisnatIA</p>
         </Link>
         <nav className="mt-8 space-y-1">
           {navigation.map((item) => (
@@ -49,11 +44,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-5 py-4 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between">
-            <div>
+            <div className="space-y-1">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Dashboard portefeuille
               </p>
-              <h1 className="text-lg font-semibold text-slate-950">DisnatIA</h1>
+              <DisnatiaLogo className="h-6 w-auto max-w-[9rem] text-slate-950" />
             </div>
             <div className="text-right text-xs text-slate-500">
               <p>Mono-utilisateur V1</p>

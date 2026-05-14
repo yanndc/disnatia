@@ -1,5 +1,6 @@
 "use client";
 
+import { DisnatiaLogo } from "@/components/brand/disnatia-logo";
 import { safeInternalPath } from "@/lib/site-access";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
@@ -40,6 +41,7 @@ function SiteLockForm() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 py-16 text-white">
+      <DisnatiaLogo className="mb-8 h-10 w-auto text-white" />
       <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-white/[0.04] p-8 shadow-2xl shadow-slate-950/50">
         <h1 className="text-xl font-semibold tracking-tight">Accès DisnatIA</h1>
         <p className="mt-2 text-sm text-slate-400">
