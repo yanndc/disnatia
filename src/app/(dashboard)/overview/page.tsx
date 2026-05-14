@@ -5,6 +5,7 @@ import { CurrencyExposureKpiCard } from "@/features/portfolio/currency-exposure-
 import { PortfolioCompositionKpiCard } from "@/features/portfolio/portfolio-composition-kpi-card";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getPortfolioSummary } from "@/features/portfolio/queries";
+import { getPostgresDeployHint } from "@/lib/db/postgres-deploy-hint";
 import { TopPositionsKpiCard } from "@/features/portfolio/top-positions-kpi-card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
@@ -16,11 +17,18 @@ export default async function OverviewPage() {
     summary = await getPortfolioSummary();
   } catch (e) {
     console.error("[overview] getPortfolioSummary", e);
+    const hint = getPostgresDeployHint();
     return (
       <EmptyState
         variant="error"
         title="Impossible de charger les données"
-        description="La connexion à PostgreSQL a échoué en production. Vérifie sur Vercel que DATABASE_URL (et DIRECT_URL) sont identiques au .env.local qui marche, puis consulte les runtime logs du déploiement."
+        description={
+          [
+            "La connexion PostgreSQL a échoué.",
+            hint ??
+              "Sur Vercel, DATABASE_URL doit être une URI valide (souvent le pooler Transaction :6543 pour Supabase). Compare avec ton .env.local et les logs runtime.",
+          ].join(" ")
+        }
       />
     );
   }
