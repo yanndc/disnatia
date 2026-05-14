@@ -1,18 +1,17 @@
-/**
- * Sur Vercel, Prisma migrate doit voir DIRECT_URL / DATABASE_URL (sinon prisma.config
- * retombe sur 127.0.0.1). Beaucoup d'échecs viennent des vars absentes pour Preview.
- */
 const { spawnSync } = require("node:child_process");
 
-/** Garde en sync avec `src/lib/db/postgres-env.ts` → MIGRATE_POSTGRES_URL_KEYS */
+/**
+ * Liste identique à `MIGRATE_POSTGRES_URL_KEYS` dans src/lib/db/postgres-env.ts
+ */
 const MIGRATE_POSTGRES_URL_KEYS = [
   "DIRECT_URL",
-  "POSTGRES_URL_NON_POOLING",
   "MIGRATE_DATABASE_URL",
+  "POSTGRES_URL_NON_POOLING",
   "DATABASE_URL",
   "POSTGRES_PRISMA_URL",
   "POSTGRES_URL",
   "SUPABASE_DATABASE_URL",
+  "LOCAL_DATABASE_URL",
 ];
 
 function hasDbUrl() {
@@ -23,11 +22,26 @@ function hasDbUrl() {
 
 if (process.env.VERCEL === "1" && !hasDbUrl()) {
   console.error(
-    "\n[disnatia] Aucune URL Postgres pour le build. Variables reconnues :\n  " +
-      MIGRATE_POSTGRES_URL_KEYS.join(", ") +
-      "\n(voir src/lib/db/postgres-env.ts). Coche Preview + Production sur Vercel.\n"
+    "\n[disnatia] Il manque une URL Postgres pour migrate (ex. DIRECT_URL + DATABASE_URL).\n" +
+      "Voir src/lib/db/postgres-env.ts\n"
   );
   process.exit(1);
+}
+
+if (process.env.VERCEL === "1") {
+  for (const k of MIGRATE_POSTGRES_URL_KEYS) {
+    const v = process.env[k]?.trim();
+    if (!v) continue;
+    let where = "?";
+    try {
+      const u = new URL(v);
+      where = u.hostname + (u.port ? `:${u.port}` : "");
+    } catch {
+      where = "(URI illisible)";
+    }
+    console.log(`[disnatia] prisma migrate utilise ${k} → ${where}`);
+    break;
+  }
 }
 
 function run(cmd, args) {

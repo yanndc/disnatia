@@ -17,7 +17,7 @@ const globalForPrisma = globalThis as unknown as {
 let productionPrisma: PrismaClient | undefined;
 let productionPrismaResolvedConnectionString: string | undefined;
 
-/** Adapter runtime : ordre dans `RUNTIME_POSTGRES_URL_KEYS` (`postgres-env.ts`). */
+/** `@see postgres-env.ts` → RUNTIME_POSTGRES_URL_KEYS. */
 function resolvePostgresConnectionString(): string {
   const url = firstEnvValue(RUNTIME_POSTGRES_URL_KEYS);
   if (!url) {
