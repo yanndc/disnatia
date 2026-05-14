@@ -11,23 +11,36 @@ import { formatCurrency, formatPercent } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
-  const summary = await getPortfolioSummary().catch(() => null);
-
-  const hasPortfolioData =
-    (summary?.positionCount ?? 0) > 0 ||
-    (summary?.accountCount ?? 0) > 0 ||
-    (summary?.externalAccountsCount ?? 0) > 0;
-
-  if (!summary || !hasPortfolioData) {
+  let summary: Awaited<ReturnType<typeof getPortfolioSummary>>;
+  try {
+    summary = await getPortfolioSummary();
+  } catch (e) {
+    console.error("[overview] getPortfolioSummary", e);
     return (
       <EmptyState
+        variant="error"
+        title="Impossible de charger les données"
+        description="La connexion à PostgreSQL a échoué en production. Vérifie sur Vercel que DATABASE_URL (et DIRECT_URL) sont identiques au .env.local qui marche, puis consulte les runtime logs du déploiement."
+      />
+    );
+  }
+
+  const hasPortfolioData =
+    (summary.positionCount ?? 0) > 0 ||
+    (summary.accountCount ?? 0) > 0 ||
+    (summary.externalAccountsCount ?? 0) > 0;
+
+  if (!hasPortfolioData) {
+    return (
+      <EmptyState
+        variant="empty"
         title={
-          summary?.hasAnyImportsInHistory
+          summary.hasAnyImportsInHistory
             ? "Données incomplètes pour la vue d’ensemble"
             : "Aucun portefeuille importé"
         }
         description={
-          summary?.hasAnyImportsInHistory
+          summary.hasAnyImportsInHistory
             ? "Les comptes ou les opérations sont partiels : importe le CSV portefeuille Disnat pour les comptes et propriétaires, puis l’historique des transactions pour alimenter les titres affichés ici."
             : "Commence par importer le fichier CSV « Portefeuille » exporté depuis Disnat pour identifier tes comptes (CELI, REER, CRI…). Ensuite, importe les fichiers d’historique d’opérations pour chaque compte afin de remplir les positions."
         }
@@ -147,23 +160,33 @@ function InfoPill({ label, value }: { label: string; value: string }) {
 }
 
 function EmptyState({
+  variant,
   title,
   description,
 }: {
+  variant: "empty" | "error";
   title: string;
   description: string;
 }) {
   return (
-    <Card>
+    <Card
+      className={
+        variant === "error"
+          ? "border-rose-200 bg-rose-50/40"
+          : undefined
+      }
+    >
       <CardContent className="flex min-h-80 flex-col items-center justify-center text-center">
         <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
         <p className="mt-2 max-w-md text-sm text-slate-500">{description}</p>
-        <Link
-          href="/imports"
-          className="mt-5 rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          Importer un fichier
-        </Link>
+        {variant === "empty" ? (
+          <Link
+            href="/imports"
+            className="mt-5 rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            Importer un fichier
+          </Link>
+        ) : null}
       </CardContent>
     </Card>
   );
