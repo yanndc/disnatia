@@ -60,10 +60,34 @@ function relaxedSslForPool(
   return undefined;
 }
 
+/**
+ * `pg` fait `Object.assign({}, opts, parse(connectionString))` : si l’URL contient
+ * `sslmode=require`, le parse impose `ssl: {}` et **écrase** `ssl: { rejectUnauthorized: false }`.
+ * On retire donc les paramètres SSL de l’URL dès qu’on passe un objet `ssl` au Pool.
+ */
+function connectionStringWithoutSslSearchParams(connectionString: string): string {
+  let u: URL;
+  try {
+    u = new URL(connectionString);
+  } catch {
+    return connectionString;
+  }
+  const drop = ["sslmode", "ssl", "sslcert", "sslkey", "sslrootcert"];
+  for (const k of drop) {
+    u.searchParams.delete(k);
+  }
+  const qs = u.searchParams.toString();
+  u.search = qs ? `?${qs}` : "";
+  return u.toString();
+}
+
 function createPrismaClient(connectionString: string): PrismaClient {
   const ssl = relaxedSslForPool(connectionString);
+  const conn = ssl
+    ? connectionStringWithoutSslSearchParams(connectionString)
+    : connectionString;
   const pool = new Pool(
-    ssl ? { connectionString, ssl } : { connectionString },
+    ssl ? { connectionString: conn, ssl } : { connectionString: conn },
   );
   return new PrismaClient({
     adapter: new PrismaPg(pool, { disposeExternalPool: true }),
