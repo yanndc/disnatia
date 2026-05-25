@@ -415,12 +415,12 @@ export function PositionsTable({
             <table className="w-full min-w-[1400px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
-                  {th("accountName", "Compte")}
                   {th("ticker", "Symbole")}
+                  {th("securityName", "Nom")}
+                  {th("accountName", "Compte")}
                   <th className="whitespace-nowrap px-1 py-1 font-medium" scope="col">
                     Historique
                   </th>
-                  {th("securityName", "Nom")}
                   {th("assetType", "Classe")}
                   {th("quantity", "Quantité")}
                   {th("averageCost", "Coût moyen")}
@@ -448,6 +448,19 @@ export function PositionsTable({
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50">
+                      <td className="px-1 py-1">
+                        <div>
+                          <p className="font-semibold text-emerald-700">{p.ticker}</p>
+                          {p.usesLiveQuote ? (
+                            <p className="text-[10px] uppercase tracking-wide text-emerald-700">
+                              cours live
+                            </p>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="max-w-[220px] px-1 py-1 text-slate-700">
+                        <p className="line-clamp-2">{p.securityName || "—"}</p>
+                      </td>
                       <td className="px-1 py-1 text-slate-700">
                         <div>
                           <p className="font-medium">
@@ -456,16 +469,6 @@ export function PositionsTable({
                           {formatAccountNumber(p.accountNumber) ? (
                             <p className="text-xs text-slate-500">
                               {formatAccountNumber(p.accountNumber)}
-                            </p>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="px-1 py-1">
-                        <div>
-                          <p className="font-semibold text-emerald-700">{p.ticker}</p>
-                          {p.usesLiveQuote ? (
-                            <p className="text-[10px] uppercase tracking-wide text-emerald-700">
-                              cours live
                             </p>
                           ) : null}
                         </div>
@@ -483,9 +486,6 @@ export function PositionsTable({
                         ) : (
                           <span className="text-xs text-slate-400">—</span>
                         )}
-                      </td>
-                      <td className="max-w-[220px] px-1 py-1 text-slate-700">
-                        <p className="line-clamp-2">{p.securityName || "—"}</p>
                       </td>
                       <td className="max-w-[160px] px-1 py-1 text-xs text-slate-600">
                         {assetLabel || "—"}
