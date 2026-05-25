@@ -31,8 +31,9 @@ export function TopPositionsKpiCard({
           <div>
             <CardTitle className="text-slate-500">Plus grosses positions</CardTitle>
             <p className="mt-1 text-xs text-slate-500">
-              Même symbole sur plusieurs comptes = une seule ligne (somme). Poids vs tout le portefeuille,
-              équivalent CAD si le taux est disponible.
+              Même symbole sur plusieurs comptes = une ligne (somme). Titres du même indice (ex. SPY + VFV,
+              QQQ + XQQ) sont regroupés pour le poids. Poids vs tout le portefeuille, équivalent CAD si le taux
+              est disponible.
             </p>
           </div>
           <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">

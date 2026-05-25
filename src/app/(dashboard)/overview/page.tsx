@@ -99,13 +99,6 @@ export default async function OverviewPage() {
             <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
               Vue d&apos;ensemble du portefeuille
             </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
-              Titres : calcul à partir des opérations importées et des cours du marché.
-              L&apos;encaisse et les totaux compte issus du fichier portefeuille Disnat sont la{" "}
-              <strong className="font-medium text-slate-200">référence de réconciliation</strong> au
-              regard du fichier (date d&apos;état par compte) — elles ne sont pas recalculées depuis les
-              opérations.
-            </p>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <div className="grid flex-1 gap-3 text-sm sm:grid-cols-3 min-w-[12rem]">

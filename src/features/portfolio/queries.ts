@@ -11,6 +11,10 @@ import {
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { makeAccountKey } from "./upsert-portfolio-state";
 import { formatAccountNumber } from "@/lib/utils";
+import {
+  formatAggregatedTickerLabel,
+  resolveAggregationGroupMeta,
+} from "@/features/portfolio/ticker-aggregation-groups";
 
 export type { EnrichedPosition };
 
@@ -48,19 +52,30 @@ function buildAggregatedTickerRows(
   usdToCad: number | null,
   totalPortfolioValue: number,
 ): { ticker: string; marketValue: number; weightPct: number }[] {
-  const byTicker = new Map<string, number>();
+  const buckets = new Map<
+    string,
+    { marketValue: number; tickers: Set<string>; groupLabel: string | null }
+  >();
   for (const p of enrichedPositions) {
-    const key = p.ticker.trim().toUpperCase();
-    if (!key) continue;
+    const raw = p.ticker.trim();
+    if (!raw) continue;
+    const { mapKey, groupLabel, token } = resolveAggregationGroupMeta(raw);
     const add = positionDisplayValueCad(p, usdToCad);
-    byTicker.set(key, (byTicker.get(key) ?? 0) + add);
+    let b = buckets.get(mapKey);
+    if (!b) {
+      b = { marketValue: 0, tickers: new Set(), groupLabel };
+      buckets.set(mapKey, b);
+    }
+    b.marketValue += add;
+    b.tickers.add(token);
+    if (groupLabel) b.groupLabel = groupLabel;
   }
   const denom = totalPortfolioValue > 0 ? totalPortfolioValue : 0;
-  return [...byTicker.entries()]
-    .map(([ticker, marketValue]) => ({
-      ticker,
-      marketValue,
-      weightPct: denom > 0 ? (marketValue / denom) * 100 : 0,
+  return [...buckets.values()]
+    .map((row) => ({
+      ticker: formatAggregatedTickerLabel(row),
+      marketValue: row.marketValue,
+      weightPct: denom > 0 ? (row.marketValue / denom) * 100 : 0,
     }))
     .toSorted((a, b) => b.marketValue - a.marketValue);
 }

@@ -55,6 +55,21 @@ const snapshotFormSchema = z.object({
 
 type SnapshotForm = z.infer<typeof snapshotFormSchema>;
 
+function emptyCreateFormDefaults(): CreateForm {
+  return {
+    provider: "desjardins_erc_reer_collectif",
+    displayLabel: "",
+    currency: "CAD",
+    portalUrl: "https://www.erc-grs.dsf-dfs.com/",
+    sourceSummary: "",
+    asOfDate: new Date().toISOString().slice(0, 10),
+    totalValue: 0,
+    notes: "",
+    transactionUpdateInstructions: "",
+    owner: "",
+  };
+}
+
 export function ExternalAccountsPanel({
   initialAccounts,
 }: {
@@ -63,22 +78,11 @@ export function ExternalAccountsPanel({
   const [accounts, setAccounts] = useState(initialAccounts);
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(initialAccounts.length === 0);
 
   const createForm = useForm<CreateForm>({
     resolver: zodResolver(createFormSchema) as Resolver<CreateForm>,
-    defaultValues: {
-      provider: "desjardins_erc_reer_collectif",
-      displayLabel: "REER collectif — Desjardins / portail ERC",
-      currency: "CAD",
-      portalUrl: "https://www.erc-grs.dsf-dfs.com/",
-      sourceSummary:
-        "Régime enregistré d'épargne-retraite — Répartition de l'actif - Croissance | Directives de placement - Audacieux",
-      asOfDate: new Date().toISOString().slice(0, 10),
-      totalValue: 0,
-      notes: "",
-      transactionUpdateInstructions: "",
-      owner: "",
-    },
+    defaultValues: emptyCreateFormDefaults(),
   });
 
   async function refreshAccounts() {
@@ -127,6 +131,8 @@ export function ExternalAccountsPanel({
     setGlobalMessage(
       "Compte externe ajouté. Tu peux compléter l’historique avec de nouveaux snapshots.",
     );
+    createForm.reset(emptyCreateFormDefaults());
+    setCreateOpen(false);
     await refreshAccounts();
   }
 
@@ -185,11 +191,49 @@ export function ExternalAccountsPanel({
         )}
 
         <div className="rounded-xl border border-dashed border-violet-300 bg-white/80 p-4">
-          <p className="mb-3 text-sm font-medium text-slate-800">Ajouter un compte</p>
-          <form
-            className="grid gap-3 sm:grid-cols-2"
-            onSubmit={createForm.handleSubmit((v) => void onCreate(v))}
-          >
+          {accounts.length > 0 && !createOpen ? (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-slate-800">Autre compte hors Disnat ?</p>
+              <p className="text-xs text-slate-600">
+                Les comptes ci-dessus se mettent à jour via « Ajouter une mise à jour de la valeur ».
+                Utilise ce formulaire seulement pour enregistrer un <strong>nouveau</strong> compte.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-2 h-9"
+                onClick={() => {
+                  createForm.reset(emptyCreateFormDefaults());
+                  setCreateOpen(true);
+                }}
+              >
+                Ajouter un autre compte
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="mb-3 space-y-1">
+                <p className="text-sm font-medium text-slate-800">Ajouter un compte</p>
+                {accounts.length > 0 ? (
+                  <p className="text-xs text-slate-600">
+                    Nouveau compte distinct de ceux déjà listés — remplis les champs ci-dessous puis
+                    crée le premier snapshot.
+                  </p>
+                ) : null}
+              </div>
+              {accounts.length > 0 ? (
+                <button
+                  type="button"
+                  className="mb-3 text-xs text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+                  onClick={() => setCreateOpen(false)}
+                >
+                  Annuler
+                </button>
+              ) : null}
+              <form
+                className="grid gap-3 sm:grid-cols-2"
+                onSubmit={createForm.handleSubmit((v) => void onCreate(v))}
+              >
             <label className="sm:col-span-2">
               <span className="mb-1 block text-xs font-medium text-slate-600">Institution</span>
               <select
@@ -215,6 +259,7 @@ export function ExternalAccountsPanel({
               <span className="mb-1 block text-xs font-medium text-slate-600">Libellé affiché</span>
               <input
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                placeholder="Ex. REER collectif — Desjardins / portail ERC"
                 {...createForm.register("displayLabel")}
               />
             </label>
@@ -252,6 +297,7 @@ export function ExternalAccountsPanel({
               </span>
               <textarea
                 rows={2}
+                placeholder="Ex. Régime enregistré d'épargne-retraite — Croissance | Audacieux"
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 {...createForm.register("sourceSummary")}
               />
@@ -299,7 +345,9 @@ export function ExternalAccountsPanel({
             <div className="sm:col-span-2">
               <Button type="submit">Créer le compte et le premier snapshot</Button>
             </div>
-          </form>
+              </form>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -558,7 +606,14 @@ function ExternalAccountCardBody({
       ) : null}
 
       <div className="mt-3 border-t border-slate-100 pt-3">
-        <SnapshotInlineForm accountId={acc.id} currency={acc.currency} onSaved={onAccountsChanged} />
+        <p className="text-xs font-medium text-slate-700">Ajouter une mise à jour de la valeur</p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Nouvelle lecture sur le portail (ex. après une paie) — la date la plus récente sert au total
+          du tableau de bord.
+        </p>
+        <div className="mt-2">
+          <SnapshotInlineForm accountId={acc.id} currency={acc.currency} onSaved={onAccountsChanged} />
+        </div>
       </div>
       <Button
         type="button"
@@ -612,6 +667,11 @@ function SnapshotInlineForm({
         return;
       }
       setMsg("Snapshot enregistré.");
+      form.reset({
+        asOfDate: new Date().toISOString().slice(0, 10),
+        totalValue: 0,
+        notes: "",
+      });
       await onSaved();
     } finally {
       setBusy(false);
