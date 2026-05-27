@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DisnatiaLogo } from "@/components/brand/disnatia-logo";
 import { dashboardNavigation } from "@/components/dashboard/dashboard-navigation";
+import { dashboardNavIcons } from "@/components/dashboard/dashboard-nav-icons";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -12,16 +13,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-slate-500">Assistant portefeuille DisnatIA</p>
         </Link>
         <nav className="mt-8 space-y-1">
-          {dashboardNavigation.map((item) => (
+          {dashboardNavigation.map((item) => {
+            const Icon = dashboardNavIcons[item.icon];
+            return (
             <Link
               key={item.href}
               href={item.href}
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950"
             >
-              <item.icon className="size-4" />
+              <Icon className="size-4" />
               {item.label}
             </Link>
-          ))}
+            );
+          })}
         </nav>
       </aside>
       <div className="lg:pl-64">

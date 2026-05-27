@@ -1,20 +1,24 @@
-import {
-  FileUp,
-  LayoutDashboard,
-  Sparkles,
-  Table2,
-  Landmark,
-  ArrowLeftRight,
-  TrendingUp,
-} from "lucide-react";
-import type { MobileNavItem } from "./mobile-nav";
+export type DashboardNavIconName =
+  | "layout-dashboard"
+  | "landmark"
+  | "table2"
+  | "arrow-left-right"
+  | "trending-up"
+  | "file-up"
+  | "sparkles";
 
-export const dashboardNavigation: MobileNavItem[] = [
-  { href: "/overview", label: "Vue d'ensemble", icon: LayoutDashboard },
-  { href: "/comptes", label: "Comptes", icon: Landmark },
-  { href: "/positions", label: "Positions", icon: Table2 },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/revenus", label: "Revenus", icon: TrendingUp },
-  { href: "/imports", label: "Imports", icon: FileUp },
-  { href: "/insights", label: "Discuter avec Berta", icon: Sparkles },
+export type DashboardNavItem = {
+  href: string;
+  label: string;
+  icon: DashboardNavIconName;
+};
+
+export const dashboardNavigation: DashboardNavItem[] = [
+  { href: "/overview", label: "Vue d'ensemble", icon: "layout-dashboard" },
+  { href: "/comptes", label: "Comptes", icon: "landmark" },
+  { href: "/positions", label: "Positions", icon: "table2" },
+  { href: "/transactions", label: "Transactions", icon: "arrow-left-right" },
+  { href: "/revenus", label: "Revenus", icon: "trending-up" },
+  { href: "/imports", label: "Imports", icon: "file-up" },
+  { href: "/insights", label: "Discuter avec Berta", icon: "sparkles" },
 ];

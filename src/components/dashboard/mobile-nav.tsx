@@ -3,15 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, type LucideIcon } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import type { DashboardNavItem } from "./dashboard-navigation";
+import { dashboardNavIcons } from "./dashboard-nav-icons";
 
-export type MobileNavItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-};
-
-export function MobileNav({ items }: { items: MobileNavItem[] }) {
+export function MobileNav({ items }: { items: DashboardNavItem[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -63,6 +59,7 @@ export function MobileNav({ items }: { items: MobileNavItem[] }) {
             <nav className="flex-1 overflow-y-auto p-3">
               <ul className="space-y-1">
                 {items.map((item) => {
+                  const Icon = dashboardNavIcons[item.icon];
                   const active =
                     pathname === item.href ||
                     (item.href !== "/overview" && pathname.startsWith(item.href));
@@ -76,7 +73,7 @@ export function MobileNav({ items }: { items: MobileNavItem[] }) {
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
                         }`}
                       >
-                        <item.icon className="size-4 shrink-0" />
+                        <Icon className="size-4 shrink-0" />
                         {item.label}
                       </Link>
                     </li>
