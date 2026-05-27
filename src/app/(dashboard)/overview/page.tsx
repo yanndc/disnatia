@@ -96,13 +96,13 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-sm">
+      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-950 shadow-sm">
         <div className="relative isolate p-6 sm:p-8">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.28),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.18),transparent_30%)]" />
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(5,150,105,0.06),transparent_30%)]" />
           <div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-100">
-              <span className="rounded-full bg-white/10 px-3 py-1">Tableau de bord</span>
-              <span className="rounded-full bg-white/10 px-3 py-1">{quoteCoverageLabel}</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-700">
+              <span className="rounded-full bg-cyan-50 px-3 py-1 ring-1 ring-cyan-100">Tableau de bord</span>
+              <span className="rounded-full bg-cyan-50 px-3 py-1 ring-1 ring-cyan-100">{quoteCoverageLabel}</span>
             </div>
             <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
               Vue d&apos;ensemble du portefeuille
@@ -170,9 +170,9 @@ export default async function OverviewPage() {
 
 function InfoPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className="mt-1 font-medium text-white">{value}</p>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-1 font-medium text-slate-950">{value}</p>
     </div>
   );
 }

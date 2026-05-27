@@ -181,15 +181,15 @@ export function PerformanceIndicatorCard({
   if (payload.accounts.length === 0) return null;
 
   return (
-    <Card className="overflow-hidden border-slate-800 bg-slate-950 text-white shadow-lg ring-1 ring-white/10">
+    <Card className="overflow-hidden border-slate-200 bg-white text-slate-950 shadow-sm">
       <CardContent className="p-0">
         <div className="relative isolate">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.22),transparent_42%),radial-gradient(circle_at_85%_15%,rgba(56,189,248,0.18),transparent_38%)]" />
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(5,150,105,0.06),transparent_42%),radial-gradient(circle_at_85%_15%,rgba(14,165,233,0.05),transparent_38%)]" />
 
           {/* En-tête + filtres portée */}
-          <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
                 <Activity className="size-5" />
               </div>
               <div>
@@ -197,19 +197,19 @@ export function PerformanceIndicatorCard({
                   <h3 className="text-lg font-semibold tracking-tight">
                     Performance dynamique
                   </h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cyan-200">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cyan-700 ring-1 ring-cyan-100">
                     <Sparkles className="size-3" />
                     Live
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-slate-500">
                   Gains et pertes en $ et % · filtres par période, portée et comptes
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-xl bg-white/5 p-1 ring-1 ring-white/10">
+              <div className="flex rounded-xl bg-slate-100 p-1 ring-1 ring-slate-200">
                 {(Object.keys(PRESET_LABELS) as PerformanceScopePreset[]).map((preset) => (
                   <button
                     key={preset}
@@ -224,7 +224,7 @@ export function PerformanceIndicatorCard({
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                       filters.preset === preset
                         ? "bg-white text-slate-950 shadow-sm"
-                        : "text-slate-300 hover:bg-white/10 hover:text-white"
+                        : "text-slate-600 hover:bg-white hover:text-slate-950"
                     }`}
                   >
                     {PRESET_LABELS[preset]}
@@ -238,7 +238,7 @@ export function PerformanceIndicatorCard({
                   onChange={(e) =>
                     updateFilters({ owner: e.target.value || null })
                   }
-                  className="rounded-xl border-0 bg-white/5 px-3 py-2 text-xs text-slate-200 ring-1 ring-white/10 focus:ring-cyan-400/50"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:ring-cyan-400/50"
                 >
                   <option value="">Tous propriétaires</option>
                   {owners.map((o) => (
@@ -252,7 +252,7 @@ export function PerformanceIndicatorCard({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 gap-2 rounded-xl bg-white/5 text-slate-200 ring-1 ring-white/10 hover:bg-white/10 hover:text-white"
+                className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                 onClick={() => setScopeOpen((v) => !v)}
               >
                 <Filter className="size-4" />
@@ -266,14 +266,14 @@ export function PerformanceIndicatorCard({
 
           {/* Panneau comptes */}
           {scopeOpen ? (
-            <div className="border-b border-white/10 bg-black/20 px-5 py-4 sm:px-6">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Inclure / exclure des comptes
                 </p>
                 <button
                   type="button"
-                  className="text-xs text-slate-400 hover:text-white"
+                  className="text-xs text-slate-500 hover:text-slate-950"
                   onClick={() =>
                     updateFilters({
                       preset: "all",
@@ -297,10 +297,10 @@ export function PerformanceIndicatorCard({
                       key={acc.accountKey}
                       className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 ring-1 transition ${
                         excluded
-                          ? "bg-rose-500/10 ring-rose-400/20 opacity-60"
+                          ? "bg-rose-50 ring-rose-200 opacity-60"
                           : included
-                            ? "bg-cyan-500/10 ring-cyan-400/30"
-                            : "bg-white/5 ring-white/10 hover:bg-white/10"
+                            ? "bg-cyan-50 ring-cyan-200"
+                            : "bg-white ring-slate-200 hover:bg-slate-50"
                       }`}
                     >
                       <Switch
@@ -309,7 +309,7 @@ export function PerformanceIndicatorCard({
                         aria-label={`Inclure ${acc.label}`}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-100">
+                        <p className="truncate text-sm font-medium text-slate-900">
                           {acc.label}
                         </p>
                         <p className="truncate text-xs text-slate-500">
@@ -317,7 +317,7 @@ export function PerformanceIndicatorCard({
                           {acc.owner ? ` · ${acc.owner}` : ""}
                         </p>
                       </div>
-                      <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                      <span className="shrink-0 text-xs tabular-nums text-slate-500">
                         {cur ? formatCurrency(cur.totalCad, "CAD") : "—"}
                       </span>
                     </label>
@@ -335,7 +335,7 @@ export function PerformanceIndicatorCard({
           <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-slate-400">
+                <p className="text-sm font-medium text-slate-500">
                   {active.label}
                   {filters.activePeriod === "year" ? ` · ${filters.selectedYear}` : ""}
                 </p>
@@ -345,7 +345,7 @@ export function PerformanceIndicatorCard({
                     onChange={(e) =>
                       updateFilters({ selectedYear: Number(e.target.value) })
                     }
-                    className="rounded-lg border-0 bg-white/10 px-2 py-1 text-xs text-white ring-1 ring-white/10"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
                   >
                     {payload.availableYears.map((y) => (
                       <option key={y} value={y}>
@@ -358,9 +358,9 @@ export function PerformanceIndicatorCard({
 
               <div className="mt-3 flex items-end gap-3">
                 {active.gainCad !== null && active.gainCad >= 0 ? (
-                  <TrendingUp className="size-8 shrink-0 text-emerald-400/80" />
+                  <TrendingUp className="size-8 shrink-0 text-emerald-600/80" />
                 ) : active.gainCad !== null && active.gainCad < 0 ? (
-                  <TrendingDown className="size-8 shrink-0 text-rose-400/80" />
+                  <TrendingDown className="size-8 shrink-0 text-rose-600/80" />
                 ) : null}
                 <div>
                   <p
@@ -398,7 +398,7 @@ export function PerformanceIndicatorCard({
               </div>
 
               {active.note ? (
-                <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-200/90 ring-1 ring-amber-400/20">
+                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
                   {active.note}
                 </p>
               ) : null}
@@ -415,8 +415,8 @@ export function PerformanceIndicatorCard({
                     onClick={() => updateFilters({ activePeriod: row.periodId })}
                     className={`group relative overflow-hidden rounded-2xl p-3 text-left ring-1 transition hover:scale-[1.02] ${
                       isActive
-                        ? `${signedGainBg(row.gainCad)} ring-2 ring-white/30`
-                        : "bg-white/5 ring-white/10 hover:bg-white/10"
+                        ? `${signedGainBg(row.gainCad)} ring-2 ring-slate-300`
+                        : "bg-slate-50 ring-slate-200 hover:bg-slate-100"
                     }`}
                   >
                     <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
@@ -443,7 +443,7 @@ export function PerformanceIndicatorCard({
           </div>
 
           {/* Bandeau périodes (navigation rapide) */}
-          <div className="flex gap-1 overflow-x-auto border-t border-white/10 bg-black/25 px-3 py-2">
+          <div className="flex gap-1 overflow-x-auto border-t border-slate-200 bg-slate-50 px-3 py-2">
             {PERIOD_ORDER.map((id) => (
               <button
                 key={id}
@@ -451,8 +451,8 @@ export function PerformanceIndicatorCard({
                 onClick={() => updateFilters({ activePeriod: id })}
                 className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                   filters.activePeriod === id
-                    ? "bg-white/15 text-white"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                    ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
+                    : "text-slate-500 hover:bg-white hover:text-slate-700"
                 }`}
               >
                 {resolvePeriodMeta(id, payload.asOfNow).label}

@@ -1,0 +1,36 @@
+# Déclenche le rapport fin de journée sur l’app Vercel (évite la limite Vercel Cron).
+# La route applique shouldSendEodReport (lun–ven, 17 h 15–19 h Toronto) et l’idempotence en base.
+name: Rapport EOD
+
+on:
+  schedule:
+    # Lun–ven 22 h 30 UTC ≈ 17 h 30–18 h 30 Toronto (EST/EDT)
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/cron/eod-report
+        env:
+          APP_URL: ${{ secrets.EOD_REPORT_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Secrets manquants : EOD_REPORT_APP_URL et CRON_SECRET (Settings → Secrets → Actions)"
+            exit 1
+          fi
+          BASE="${APP_URL%/}"
+          echo "Appel ${BASE}/api/cron/eod-report"
+          HTTP_CODE=$(curl -sS -o /tmp/eod-response.json -w "%{http_code}" \
+            -X POST "${BASE}/api/cron/eod-report" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json")
+          cat /tmp/eod-response.json
+          echo ""
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Échec HTTP ${HTTP_CODE}"
+            exit 1
+          fi

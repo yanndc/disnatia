@@ -50,7 +50,10 @@ export async function POST(request: NextRequest) {
 
   const sessionDate = eodReportSessionDate(now);
 
-  if (!force && (await wasEodReportSentForSession(sessionDate))) {
+  if (
+    !force &&
+    (await wasEodReportSentForSession(sessionDate))
+  ) {
     return NextResponse.json({
       skipped: true,
       reason: "already_sent",

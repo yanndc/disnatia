@@ -78,6 +78,67 @@ Si tu modifies le schéma Prisma après avoir lancé `pnpm dev`, relance ensuite
 - **`OPENAI_API_KEY`** : pour `/insights`.
 - **`SITE_ACCESS_PASSWORD`** : optionnel ; si défini → page `/site-lock` (même mot de passe dans Vercel et `.env.local` si tu veux le même flux partout).
 - **Données** : pas de seed automatique ; après alignement des URLs, import CSV sur `/imports`.
+- **Rapport EOD par courriel** : voir section [Rapport fin de journée par courriel](#rapport-fin-de-journée-par-courriel) (variables `RESEND_*`, `EOD_*`, `CRON_SECRET`).
+
+## Rapport fin de journée par courriel
+
+Envoi automatique d’un courriel HTML après chaque **jour ouvré** (lun–ven, heure Toronto), entre **17 h 15 et 19 h 00** — hors week-end, sans calendrier de jours fériés.
+
+### Checklist (dans l’ordre)
+
+1. **Resend** — compte sur [resend.com](https://resend.com), clé API, **domaine expéditeur vérifié** ([Domains](https://resend.com/domains)). L’adresse dans `EOD_REPORT_FROM` doit utiliser ce domaine (ex. `DisnatIA <rapports@tondomaine.com>`).
+2. **Variables** — dans `.env.local` **et** Vercel → Production (puis redéploiement) :
+
+   | Variable | Rôle |
+   |----------|------|
+   | `RESEND_API_KEY` | Clé API Resend (`re_...`) |
+   | `EOD_REPORT_FROM` | Expéditeur (domaine vérifié Resend) |
+   | `EOD_REPORT_TO` | Destinataire (ton courriel) |
+   | `CRON_SECRET` | Secret fort ; même valeur dans **Vercel** (vérif API) et **GitHub Actions** (appel cron) |
+   | `NEXT_PUBLIC_APP_URL` | Optionnel — lien vers l’app dans le courriel |
+
+3. **Base de données** — une fois les variables en place, appliquer la migration (table `eod_report_deliveries`, idempotence) :
+
+   ```bash
+   pnpm prisma migrate deploy
+   ```
+
+4. **GitHub Actions** (pas de Vercel Cron — limite plan Hobby) — secrets du dépôt (**Settings → Secrets and variables → Actions**) :
+
+   | Secret GitHub | Valeur |
+   |---------------|--------|
+   | `CRON_SECRET` | Identique à celui sur Vercel |
+   | `EOD_REPORT_APP_URL` | URL prod sans slash final, ex. `https://disnatia.vercel.app` |
+
+   Workflow : [`.github/workflows/eod-report-cron.yml`](.github/workflows/eod-report-cron.yml) — lun–ven 22 h 30 UTC, plus **Run workflow** manuel (`workflow_dispatch`). Redéployer Vercel après les variables ; le workflow s’active au prochain push sur la branche par défaut.
+
+5. **Vérification** — en prod, le premier envoi part seul dans la fenêtre horaire. Pour tester tout de suite en local :
+
+   ```bash
+   pnpm dev
+   ```
+
+   ```bash
+   curl -X POST "http://localhost:3001/api/cron/eod-report?force=1" ^
+     -H "Authorization: Bearer VOTRE_CRON_SECRET"
+   ```
+
+   (`?force=1` uniquement si `NODE_ENV=development` — ignore la fenêtre 17 h 15–19 h ; en prod, pas de raccourci.)
+
+### Comportement
+
+- **Contenu** : valeur totale CAD, P&L jour et dernière séance, tableau par compte, liste des positions, qualité des cotations (aligné dashboard).
+- **Données** : rafraîchit les cours live + clôtures de séance avant génération du rapport.
+- **Doublon** : un seul envoi par date de séance (`referenceTradingSessionDay`, Toronto) ; second appel → `{ "skipped": true, "reason": "already_sent" }`.
+- **Hors fenêtre / week-end** : `{ "skipped": true, "reason": "hors_fenetre_envoi" }` (normal si tu appelles le cron à la main en dehors des heures).
+- **Route cron** : `/api/cron/` est exclue du verrou `SITE_ACCESS_PASSWORD` ; la sécurité repose sur `CRON_SECRET`.
+
+### Fichiers utiles
+
+- Route : [`src/app/api/cron/eod-report/route.ts`](src/app/api/cron/eod-report/route.ts)
+- Logique envoi : [`src/features/reports/send-eod-report.ts`](src/features/reports/send-eod-report.ts)
+- Template courriel : [`src/emails/eod-report-email.tsx`](src/emails/eod-report-email.tsx)
+- Séance / fenêtre horaire : [`src/lib/market/equity-session.ts`](src/lib/market/equity-session.ts) (`shouldSendEodReport`)
 
 ## Importer un CSV Disnat
 

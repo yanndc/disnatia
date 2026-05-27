@@ -915,14 +915,14 @@ export const PERFORMANCE_PERIODS = PERIOD_META;
 
 export function signedGainClass(value: number | null): string {
   if (value === null) return "text-slate-400";
-  if (value > 0) return "text-emerald-400";
-  if (value < 0) return "text-rose-400";
-  return "text-slate-300";
+  if (value > 0) return "text-emerald-600";
+  if (value < 0) return "text-rose-600";
+  return "text-slate-600";
 }
 
 export function signedGainBg(value: number | null): string {
-  if (value === null) return "bg-white/5";
-  if (value > 0) return "bg-emerald-500/15 ring-emerald-400/30";
-  if (value < 0) return "bg-rose-500/15 ring-rose-400/30";
-  return "bg-white/5";
+  if (value === null) return "bg-slate-50";
+  if (value > 0) return "bg-emerald-50 ring-emerald-200";
+  if (value < 0) return "bg-rose-50 ring-rose-200";
+  return "bg-slate-50";
 }
