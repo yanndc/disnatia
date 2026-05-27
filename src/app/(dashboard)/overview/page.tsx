@@ -7,6 +7,8 @@ import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button"
 import { getPortfolioSummary } from "@/features/portfolio/queries";
 import { formatPostgresConnectionErrorDetail } from "@/lib/db/postgres-error-for-dev";
 import { getPostgresDeployHint } from "@/lib/db/postgres-deploy-hint";
+import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
+import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
 import { TopPositionsKpiCard } from "@/features/portfolio/top-positions-kpi-card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
@@ -14,8 +16,14 @@ export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
   let summary: Awaited<ReturnType<typeof getPortfolioSummary>>;
+  let performancePayload: Awaited<
+    ReturnType<typeof getPerformanceIndicatorPayload>
+  > | null = null;
   try {
-    summary = await getPortfolioSummary();
+    [summary, performancePayload] = await Promise.all([
+      getPortfolioSummary(),
+      getPerformanceIndicatorPayload().catch(() => null),
+    ]);
   } catch (e) {
     console.error("[overview] getPortfolioSummary", e);
     const hint = getPostgresDeployHint();
@@ -111,6 +119,10 @@ export default async function OverviewPage() {
           </div>
         </div>
       </section>
+
+      {performancePayload && performancePayload.accounts.length > 0 ? (
+        <PerformanceIndicatorCard payload={performancePayload} />
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <PortfolioCompositionKpiCard
