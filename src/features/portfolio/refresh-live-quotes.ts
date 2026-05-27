@@ -3,6 +3,7 @@ import { loadHoldingsForDashboard } from "@/features/portfolio/holdings-display-
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import { disnatTickerToStooqSymbol, fetchStooqLastClose } from "@/lib/market/stooq-quote";
 import { fetchYahooQuotesBySymbol } from "@/lib/market/yahoo-quote";
+import { persistQuoteSessionCloses } from "@/features/portfolio/daily-close-prices";
 
 export type RefreshLiveQuotesResult = {
   ok: boolean;
@@ -101,6 +102,9 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
         yahooSymbol: sourceSymbol,
       },
     });
+    if (row) {
+      await persistQuoteSessionCloses(ticker, currency, sourceSymbol, row, now);
+    }
     quotesUpserted += 1;
   }
 

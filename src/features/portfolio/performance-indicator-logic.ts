@@ -26,6 +26,7 @@ import {
   formatFlowAdjustmentNote,
   netExternalFlowsCad,
 } from "./performance-cash-flows";
+import { dailyCloseKey } from "./daily-close-prices";
 
 const PERIOD_META: Record<
   Exclude<PerformancePeriodId, "day">,
@@ -114,6 +115,236 @@ function snapshotValueAtDate(
   return {
     valueCad: toCad(hit.totalValueNative, hit.currency, usdToCad),
     asOf: hit.asOf,
+  };
+}
+
+/** Vrai si baseline et fin résolvent au même snapshot (delta = 0 trompeur). */
+function snapshotsDegenerateForPeriod(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  bounds: { baselineLookup: string | null; end: string },
+): boolean {
+  if (!bounds.baselineLookup) return true;
+  let withBoth = 0;
+  let sameDate = 0;
+  for (const key of accountKeys) {
+    const base = snapshotValueAtDate(
+      key,
+      bounds.baselineLookup,
+      payload.snapshots,
+      payload.usdToCad,
+    );
+    const end = snapshotValueAtDate(
+      key,
+      bounds.end,
+      payload.snapshots,
+      payload.usdToCad,
+    );
+    if (!base || !end) continue;
+    withBoth++;
+    if (base.asOf === end.asOf) sameDate++;
+  }
+  return withBoth > 0 && sameDate === withBoth;
+}
+
+function closePriceAtDate(
+  ticker: string,
+  currency: string,
+  date: string,
+  dailyCloses: Record<string, number>,
+): number | null {
+  const key = dailyCloseKey(ticker, currency, date);
+  const value = dailyCloses[key];
+  return value != null && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/** Séance précédente avec clôture connue (gère jours fériés boursiers). */
+function priorCloseDateForTicker(
+  sessionEnd: string,
+  ticker: string,
+  currency: string,
+  dailyCloses: Record<string, number>,
+  maxSteps = 8,
+): string | null {
+  let cursor = parseIsoDate(sessionEnd);
+  for (let i = 0; i < maxSteps; i++) {
+    cursor = previousTradingDay(cursor, 1);
+    const iso = isoDate(cursor);
+    if (closePriceAtDate(ticker, currency, iso, dailyCloses) !== null) {
+      return iso;
+    }
+  }
+  return null;
+}
+
+function computeYesterdayFromSessionCloses(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  bounds: {
+    start: string | null;
+    end: string;
+    baselineLookup: string | null;
+  },
+): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> & {
+  usable: boolean;
+} {
+  if (!bounds.baselineLookup || !bounds.start) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      currentCad: 0,
+      baselineCad: null,
+      baselineDate: bounds.baselineLookup,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: null,
+    };
+  }
+
+  const disnatKeys = accountKeys.filter((k) => {
+    const acc = payload.accounts.find((a) => a.accountKey === k);
+    return acc && !acc.isExternal;
+  });
+
+  if (disnatKeys.length === 0) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      currentCad: accountKeys.reduce(
+        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+        0,
+      ),
+      baselineCad: null,
+      baselineDate: bounds.baselineLookup,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: "P&L jour disponible uniquement sur les titres Disnat avec cotation.",
+    };
+  }
+
+  let gain = 0;
+  let prior = 0;
+  let hasGain = false;
+  let hasPrior = false;
+  let pricedLines = 0;
+  let incomplete = false;
+  const coveredKeys = new Set<string>();
+
+  for (const key of disnatKeys) {
+    const rows = payload.holdings.filter(
+      (h) => h.accountKey === key && h.quantity > 0,
+    );
+    if (rows.length === 0) continue;
+
+    const acc = payload.accounts.find((a) => a.accountKey === key);
+    if (!acc) continue;
+
+    let accountGain = 0;
+    let accountPrior = 0;
+    let accountPriced = 0;
+
+    for (const row of rows) {
+      const endClose = closePriceAtDate(
+        row.ticker,
+        row.currency,
+        bounds.end,
+        payload.dailyCloses,
+      );
+      const baseDate =
+        priorCloseDateForTicker(
+          bounds.end,
+          row.ticker,
+          row.currency,
+          payload.dailyCloses,
+        ) ?? bounds.baselineLookup;
+      const baseClose =
+        baseDate != null
+          ? closePriceAtDate(
+              row.ticker,
+              row.currency,
+              baseDate,
+              payload.dailyCloses,
+            )
+          : null;
+      if (endClose === null || baseClose === null) {
+        incomplete = true;
+        continue;
+      }
+      accountPriced++;
+      accountGain += row.quantity * (endClose - baseClose);
+      accountPrior += row.quantity * baseClose;
+    }
+
+    if (accountPriced === 0) continue;
+    coveredKeys.add(key);
+    pricedLines += accountPriced;
+    hasGain = true;
+    gain += toCad(accountGain, acc.currency, payload.usdToCad);
+    if (accountPrior > 0) {
+      hasPrior = true;
+      prior += toCad(accountPrior, acc.currency, payload.usdToCad);
+    }
+  }
+
+  const currentCad = accountKeys.reduce(
+    (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+    0,
+  );
+
+  if (!hasGain || pricedLines === 0) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      currentCad,
+      baselineCad: hasPrior ? prior : null,
+      baselineDate: bounds.baselineLookup,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: "Clôtures de séance indisponibles pour calculer le P&L d'hier.",
+    };
+  }
+
+  const flowAdjustmentCad = netExternalFlowsCad(
+    payload.cashFlows ?? [],
+    [...coveredKeys],
+    bounds.start,
+    bounds.end,
+  );
+  const gainCad = gain - flowAdjustmentCad;
+  const flowNote = formatFlowAdjustmentNote(flowAdjustmentCad);
+
+  return {
+    usable: true,
+    gainCad,
+    gainPct: hasPrior && prior > 0 ? (gainCad / prior) * 100 : null,
+    currentCad,
+    baselineCad: hasPrior ? prior : null,
+    baselineDate: bounds.baselineLookup,
+    periodStart: bounds.start,
+    periodEnd: bounds.end,
+    method: "session-closes",
+    accountsIncluded: accountKeys.length,
+    accountsWithBaseline: coveredKeys.size,
+    incomplete,
+    note: joinNotes(
+      incomplete ? "P&L partiel : clôture absente sur au moins une ligne titre." : null,
+      flowNote,
+    ),
   };
 }
 
@@ -406,11 +637,28 @@ function computeYesterdayPeriod(
   const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
   const now = parseIsoDate(payload.asOfNow);
   const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
+
+  const fromCloses = computeYesterdayFromSessionCloses(
+    accountKeys,
+    payload,
+    bounds,
+  );
+  if (fromCloses.usable) {
+    const { usable: _u, ...result } = fromCloses;
+    return {
+      periodId: "yesterday",
+      label: meta.label,
+      shortLabel: meta.shortLabel,
+      ...result,
+    };
+  }
+
+  const degenerate = snapshotsDegenerateForPeriod(accountKeys, payload, bounds);
   const calc = computeAdjustedSnapshotGain(accountKeys, payload, bounds, {
     endFromSnapshot: true,
   });
 
-  if (calc.withEnd === 0 || calc.withBaseline === 0) {
+  if (calc.withEnd === 0 || calc.withBaseline === 0 || degenerate) {
     return {
       periodId: "yesterday",
       label: meta.label,
@@ -427,6 +675,7 @@ function computeYesterdayPeriod(
       accountsWithBaseline: calc.withBaseline,
       incomplete: true,
       note:
+        fromCloses.note ??
         "Snapshot introuvable pour la séance d'hier — importe un fichier portefeuille daté ou saisis une valeur externe.",
     };
   }

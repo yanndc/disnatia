@@ -47,11 +47,22 @@ export type PerformanceCashFlow = {
   amountCad: number;
 };
 
+export type PerformanceHoldingRow = {
+  accountKey: string;
+  ticker: string;
+  currency: string;
+  quantity: number;
+};
+
 export type PerformanceIndicatorPayload = {
   accounts: PerformanceAccountRef[];
   currentByAccount: Record<string, PerformanceAccountCurrent>;
   snapshots: PerformanceSnapshotPoint[];
   cashFlows: PerformanceCashFlow[];
+  /** Positions projetées pour calcul P&L titres par séance */
+  holdings: PerformanceHoldingRow[];
+  /** Clé ticker|currency|date → clôture */
+  dailyCloses: Record<string, number>;
   usdToCad: number | null;
   usdToCadDate: string | null;
   availableYears: number[];
@@ -70,8 +81,8 @@ export type PerformancePeriodResult = {
   baselineDate: string | null;
   periodStart: string | null;
   periodEnd: string | null;
-  /** live-quotes = séance en cours ; snapshot-delta = historique imports/snapshots */
-  method: "live-quotes" | "snapshot-delta" | "unavailable";
+  /** live-quotes = séance en cours ; session-closes = clôtures Yahoo ; snapshot-delta = historique imports */
+  method: "live-quotes" | "session-closes" | "snapshot-delta" | "unavailable";
   accountsIncluded: number;
   accountsWithBaseline: number;
   incomplete: boolean;

@@ -6,7 +6,7 @@ const TORONTO_TZ = "America/Toronto";
 const SESSION_OPEN_MINUTES = 9 * 60 + 30;
 const SESSION_CLOSE_MINUTES = 16 * 60;
 
-function isoDateInToronto(now: Date): string {
+export function isoDateInToronto(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TORONTO_TZ,
     year: "numeric",

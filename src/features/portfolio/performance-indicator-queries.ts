@@ -12,13 +12,23 @@ import {
 } from "./live-enrichment";
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { makeAccountKey } from "./upsert-portfolio-state";
+import {
+  backfillDailyClosesForPairs,
+  dailyCloseKey,
+  loadDailyCloseMap,
+  pairsMissingCloses,
+  yesterdayCloseDates,
+  yahooSymbolForPair,
+} from "./daily-close-prices";
 import type {
   PerformanceAccountCurrent,
   PerformanceAccountRef,
   PerformanceCashFlow,
+  PerformanceHoldingRow,
   PerformanceIndicatorPayload,
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
+import { isoDateInToronto } from "@/lib/market/equity-session";
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = normalizeCurrency(currency);
@@ -27,7 +37,7 @@ function toCad(value: number, currency: string, usdToCad: number | null): number
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return isoDateInToronto(d);
 }
 
 async function loadQuotesForHoldings(
@@ -262,11 +272,56 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     });
   }
 
+  const performanceHoldings: PerformanceHoldingRow[] = holdings
+    .filter((h) => h.quantity > 0)
+    .map((h) => ({
+      accountKey: h.accountKey,
+      ticker: h.ticker.toUpperCase(),
+      currency: normalizeCurrency(h.currency),
+      quantity: h.quantity,
+    }));
+
+  const { sessionEnd, sessionStart } = yesterdayCloseDates(new Date());
+  const closeFrom = sessionStart;
+  const closeTo = isoDate(new Date());
+
+  let closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
+  const missingPairs = pairsMissingCloses(
+    performanceHoldings,
+    closeMap,
+    [sessionEnd],
+  );
+  if (missingPairs.length > 0) {
+    await backfillDailyClosesForPairs(
+      missingPairs.map((p) => ({
+        ...p,
+        yahooSymbol: yahooSymbolForPair(p.ticker, p.currency),
+      })),
+    );
+    closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
+  }
+
+  const dailyCloses: Record<string, number> = {};
+  for (const [key, value] of closeMap) {
+    dailyCloses[key] = value;
+  }
+  for (const q of quotes) {
+    const prevDay = sessionEnd;
+    if (q.previousClose != null && q.previousClose > 0) {
+      const k = dailyCloseKey(q.ticker, q.currency, prevDay);
+      if (dailyCloses[k] === undefined) {
+        dailyCloses[k] = q.previousClose;
+      }
+    }
+  }
+
   return {
     accounts,
     currentByAccount,
     snapshots,
     cashFlows,
+    holdings: performanceHoldings,
+    dailyCloses,
     usdToCad,
     usdToCadDate: fxRow?.rateDate ? isoDate(fxRow.rateDate) : null,
     availableYears,
