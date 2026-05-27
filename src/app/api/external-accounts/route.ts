@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { buildInitialMetadata } from "@/lib/portfolio/external-account-metadata";
 import { externalProviderPreset } from "@/lib/portfolio/external-account-providers";
 import { listExternalAccountsWithLatest } from "@/features/portfolio/external-accounts-queries";
+import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 
 const createBodySchema = z.object({
   provider: z.enum(["desjardins_erc_reer_collectif", "other"]),
@@ -69,8 +70,7 @@ export async function POST(request: Request) {
     owner: ownerRaw,
     initialSnapshot,
   } = parsed.data;
-  const owner =
-    ownerRaw && String(ownerRaw).trim().length > 0 ? String(ownerRaw).trim() : null;
+  const owner = sanitizePortfolioOwner(ownerRaw);
   const currency = (currencyRaw ?? "CAD").trim().toUpperCase();
 
   const preset = externalProviderPreset(provider);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { mergeExternalAccountMetadata } from "@/lib/portfolio/external-account-metadata";
 
 const patchSchema = z.object({
@@ -77,7 +78,10 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       data.portalUrl = d.portalUrl === null || d.portalUrl === "" ? null : d.portalUrl;
     }
     if (d.owner !== undefined) {
-      data.owner = d.owner === null || String(d.owner).trim() === "" ? null : String(d.owner).trim();
+      data.owner =
+        d.owner === null || String(d.owner).trim() === ""
+          ? null
+          : sanitizePortfolioOwner(String(d.owner));
     }
     if (Object.keys(metaPatch).length > 0) {
       const merged = mergeExternalAccountMetadata(existing.metadata, metaPatch);

@@ -1,4 +1,11 @@
-export type PerformancePeriodId = "day" | "week" | "month" | "ytd" | "year" | "all";
+export type PerformancePeriodId =
+  | "day"
+  | "yesterday"
+  | "week"
+  | "month"
+  | "ytd"
+  | "year"
+  | "all";
 
 export type PerformanceScopePreset = "all" | "disnat" | "external" | "custom";
 

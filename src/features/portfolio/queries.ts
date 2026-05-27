@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { sanitizePortfolioOwner, portfolioOwnerKey, portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
 import {
@@ -281,45 +281,68 @@ export async function getPortfolioSummary() {
     ] as string[]),
   ].slice(0, 24);
 
-  const ownerBreakdownMap = accountStates.reduce(
-    (acc, a) => {
-      const owner = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
-      if (!acc[owner]) acc[owner] = { totalValue: 0, cashValue: 0, marketValue: 0, accountCount: 0 };
-      if (usdToCad !== null) {
-        acc[owner].totalValue += toCadEquivalent(a.totalValue, a.currency, usdToCad);
-        acc[owner].cashValue += toCadEquivalent(a.cashValue, a.currency, usdToCad);
-        acc[owner].marketValue += toCadEquivalent(a.marketValue, a.currency, usdToCad);
-      } else {
-        acc[owner].totalValue += a.totalValue;
-        acc[owner].cashValue += a.cashValue;
-        acc[owner].marketValue += a.marketValue;
-      }
-      acc[owner].accountCount++;
-      return acc;
-    },
-    {} as Record<string, { totalValue: number; cashValue: number; marketValue: number; accountCount: number }>,
-  );
+  const ownerBreakdownMap = new Map<
+    string,
+    {
+      owner: string;
+      totalValue: number;
+      cashValue: number;
+      marketValue: number;
+      accountCount: number;
+    }
+  >();
 
-  for (const a of externalWithValue) {
-    const owner = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
-    if (!ownerBreakdownMap[owner]) {
-      ownerBreakdownMap[owner] = {
+  for (const a of accountStates) {
+    const ownerDisplay = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
+    const ownerKey = portfolioOwnerKey(a.owner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
+    const row =
+      ownerBreakdownMap.get(ownerKey) ??
+      {
+        owner: ownerDisplay,
         totalValue: 0,
         cashValue: 0,
         marketValue: 0,
         accountCount: 0,
       };
+    if (usdToCad !== null) {
+      row.totalValue += toCadEquivalent(a.totalValue, a.currency, usdToCad);
+      row.cashValue += toCadEquivalent(a.cashValue, a.currency, usdToCad);
+      row.marketValue += toCadEquivalent(a.marketValue, a.currency, usdToCad);
+    } else {
+      row.totalValue += a.totalValue;
+      row.cashValue += a.cashValue;
+      row.marketValue += a.marketValue;
     }
-    const v = a.latestSnapshot!.totalValue;
-    const add = usdToCad !== null ? toCadEquivalent(v, a.currency, usdToCad) : v;
-    ownerBreakdownMap[owner].totalValue += add;
-    ownerBreakdownMap[owner].marketValue += add;
-    ownerBreakdownMap[owner].accountCount++;
+    row.accountCount++;
+    ownerBreakdownMap.set(ownerKey, row);
   }
 
-  const ownerBreakdown = Object.entries(ownerBreakdownMap).map(([owner, data]) => ({
-    owner,
-    ...data,
+  for (const a of externalWithValue) {
+    const ownerDisplay = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
+    const ownerKey = portfolioOwnerKey(a.owner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
+    const row =
+      ownerBreakdownMap.get(ownerKey) ??
+      {
+        owner: ownerDisplay,
+        totalValue: 0,
+        cashValue: 0,
+        marketValue: 0,
+        accountCount: 0,
+      };
+    const v = a.latestSnapshot!.totalValue;
+    const add = usdToCad !== null ? toCadEquivalent(v, a.currency, usdToCad) : v;
+    row.totalValue += add;
+    row.marketValue += add;
+    row.accountCount++;
+    ownerBreakdownMap.set(ownerKey, row);
+  }
+
+  const ownerBreakdown = [...ownerBreakdownMap.values()].map((data) => ({
+    owner: data.owner,
+    totalValue: data.totalValue,
+    cashValue: data.cashValue,
+    marketValue: data.marketValue,
+    accountCount: data.accountCount,
   }));
 
   const aggregatedRows = buildAggregatedTickerRows(
@@ -654,10 +677,13 @@ export async function getTransactions(opts?: {
 
   if (opts?.owner) {
     const ownerAccounts = await prisma.portfolioAccountState.findMany({
-      where: { owner: opts.owner },
-      select: { accountKey: true },
+      select: { accountKey: true, owner: true },
     });
-    where.accountKey = { in: ownerAccounts.map((a) => a.accountKey) };
+    where.accountKey = {
+      in: ownerAccounts
+        .filter((a) => portfolioOwnersMatch(a.owner, opts.owner))
+        .map((a) => a.accountKey),
+    };
   }
 
   if (opts?.accountKey) where.accountKey = opts.accountKey;

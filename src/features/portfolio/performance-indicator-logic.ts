@@ -16,18 +16,35 @@ import type {
   PerformanceScopePreset,
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
+import {
+  previousTradingDay,
+  resolveDayPeriodLabels,
+  yesterdayTradingSessionDay,
+} from "@/lib/market/equity-session";
+import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 
 const PERIOD_META: Record<
-  PerformancePeriodId,
+  Exclude<PerformancePeriodId, "day">,
   { label: string; shortLabel: string }
 > = {
-  day: { label: "Aujourd'hui", shortLabel: "Jour" },
+  yesterday: { label: "Hier", shortLabel: "Hier" },
   week: { label: "Cette semaine", shortLabel: "Sem." },
   month: { label: "Ce mois", shortLabel: "Mois" },
   ytd: { label: "Année à ce jour", shortLabel: "AAJ" },
   year: { label: "Par année", shortLabel: "Année" },
   all: { label: "Depuis le début", shortLabel: "Total" },
 };
+
+export function resolvePeriodMeta(
+  periodId: PerformancePeriodId,
+  asOfNow?: string,
+): { label: string; shortLabel: string } {
+  if (periodId === "day") {
+    const now = asOfNow ? parseIsoDate(asOfNow) : new Date();
+    return resolveDayPeriodLabels(now);
+  }
+  return PERIOD_META[periodId];
+}
 
 function isoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -58,7 +75,7 @@ export function resolveActiveAccountKeys(
   if (owner) {
     keys = keys.filter((k) => {
       const acc = accounts.find((a) => a.accountKey === k);
-      return acc?.owner === owner;
+      return portfolioOwnersMatch(acc?.owner, owner);
     });
   }
 
@@ -107,6 +124,12 @@ export function resolvePeriodBounds(
   switch (periodId) {
     case "day":
       return { start: end, end, baselineLookup: null };
+    case "yesterday": {
+      const sessionEnd = yesterdayTradingSessionDay(now);
+      const sessionEndIso = isoDate(sessionEnd);
+      const baseline = isoDate(previousTradingDay(sessionEnd, 1));
+      return { start: sessionEndIso, end: sessionEndIso, baselineLookup: baseline };
+    }
     case "week": {
       const start = isoDate(
         startOfWeek(now, { weekStartsOn: 1, locale: frCA }),
@@ -248,13 +271,108 @@ function computeDayPeriod(
   };
 }
 
+function computeYesterdayPeriod(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+): PerformancePeriodResult {
+  const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
+  const now = parseIsoDate(payload.asOfNow);
+  const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
+
+  let endCad = 0;
+  let baselineCad = 0;
+  let withEnd = 0;
+  let withBaseline = 0;
+  let latestEndDate: string | null = null;
+  let latestBaselineDate: string | null = null;
+
+  for (const key of accountKeys) {
+    const endSnap = bounds.end
+      ? snapshotValueAtDate(key, bounds.end, payload.snapshots, payload.usdToCad)
+      : null;
+    if (endSnap) {
+      endCad += endSnap.valueCad;
+      withEnd++;
+      if (!latestEndDate || endSnap.asOf > latestEndDate) {
+        latestEndDate = endSnap.asOf;
+      }
+    }
+
+    const baseSnap =
+      bounds.baselineLookup
+        ? snapshotValueAtDate(
+            key,
+            bounds.baselineLookup,
+            payload.snapshots,
+            payload.usdToCad,
+          )
+        : null;
+    if (baseSnap) {
+      baselineCad += baseSnap.valueCad;
+      withBaseline++;
+      if (!latestBaselineDate || baseSnap.asOf > latestBaselineDate) {
+        latestBaselineDate = baseSnap.asOf;
+      }
+    }
+  }
+
+  const incomplete =
+    withEnd < accountKeys.length || withBaseline < accountKeys.length;
+
+  if (withEnd === 0 || withBaseline === 0) {
+    return {
+      periodId: "yesterday",
+      label: meta.label,
+      shortLabel: meta.shortLabel,
+      gainCad: null,
+      gainPct: null,
+      currentCad: endCad,
+      baselineCad: withBaseline > 0 ? baselineCad : null,
+      baselineDate: latestBaselineDate,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: withBaseline,
+      incomplete: true,
+      note:
+        "Snapshot introuvable pour la séance d'hier — importe un fichier portefeuille daté ou saisis une valeur externe.",
+    };
+  }
+
+  const gainCad = endCad - baselineCad;
+  const gainPct = baselineCad > 0 ? (gainCad / baselineCad) * 100 : null;
+
+  return {
+    periodId: "yesterday",
+    label: meta.label,
+    shortLabel: meta.shortLabel,
+    gainCad,
+    gainPct,
+    currentCad: endCad,
+    baselineCad,
+    baselineDate: latestBaselineDate,
+    periodStart: bounds.start,
+    periodEnd: bounds.end,
+    method: "snapshot-delta",
+    accountsIncluded: accountKeys.length,
+    accountsWithBaseline: withBaseline,
+    incomplete,
+    note: incomplete
+      ? `Données partielles pour hier (${withEnd}/${accountKeys.length} comptes en fin de séance).`
+      : latestEndDate && bounds.end && latestEndDate < bounds.end
+        ? `Réf. fin de séance au ${latestEndDate} (snapshot le plus récent).`
+        : null,
+  };
+}
+
 function computeSnapshotPeriod(
   periodId: PerformancePeriodId,
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
   selectedYear: number,
 ): PerformancePeriodResult {
-  const meta = PERIOD_META[periodId];
+  const meta = resolvePeriodMeta(periodId, payload.asOfNow);
   const now = parseIsoDate(payload.asOfNow);
   const earliest = earliestSnapshotAmong(accountKeys, payload.snapshots);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
@@ -364,7 +482,7 @@ export function computePeriodResult(
   >,
   periodId: PerformancePeriodId,
 ): PerformancePeriodResult {
-  const meta = PERIOD_META[periodId];
+  const meta = resolvePeriodMeta(periodId, payload.asOfNow);
   const accountKeys = resolveActiveAccountKeys(
     payload.accounts,
     filters.preset,
@@ -398,6 +516,10 @@ export function computePeriodResult(
     return { periodId, label: meta.label, shortLabel: meta.shortLabel, ...day };
   }
 
+  if (periodId === "yesterday") {
+    return computeYesterdayPeriod(accountKeys, payload);
+  }
+
   return computeSnapshotPeriod(
     periodId,
     accountKeys,
@@ -419,6 +541,7 @@ export function computeAllPeriodResults(
 ): PerformancePeriodResult[] {
   const ids: PerformancePeriodId[] = [
     "day",
+    "yesterday",
     "week",
     "month",
     "ytd",

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { TX_CATEGORY_LABELS, TX_CATEGORY_COLORS } from "@/lib/csv/tx-category";
 import type { TxCategory } from "@/generated/prisma/enums";
+import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { TransactionDropzone } from "./transaction-dropzone";
 
 type TxRow = {
@@ -49,7 +50,9 @@ export function TransactionsClient({
   const [txCategory, setTxCategory] = useState(initialFilters?.txCategory ?? "");
   const [ticker, setTicker] = useState(initialFilters?.ticker ?? "");
 
-  const visibleAccounts = owner ? accounts.filter((a) => a.owner === owner) : accounts;
+  const visibleAccounts = owner
+    ? accounts.filter((a) => portfolioOwnersMatch(a.owner, owner))
+    : accounts;
 
   function applyFilters(overrides?: { accountKey?: string; owner?: string; txCategory?: string; ticker?: string }) {
     const own = overrides?.owner ?? owner;

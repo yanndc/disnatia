@@ -6,7 +6,7 @@ import { getAccountsWithStats, getAllPositions } from "@/features/portfolio/quer
 import { getLatestUsdCadRate } from "@/lib/fx/latest-usd-cad-rate";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
 import { EXTERNAL_ACCOUNT_PROVIDERS } from "@/lib/portfolio/external-account-providers";
-import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { sanitizePortfolioOwner, portfolioOwnerKey } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { formatCurrency, normalizeCurrency } from "@/lib/utils";
 import {
   accountDayTitresPnL,
@@ -159,16 +159,18 @@ export default async function ComptesPage() {
   const fx = await getLatestUsdCadRate();
   const usdToCad = fx?.usdToCad ?? null;
 
-  const byOwner = new Map<string, AccountWithStats[]>();
+  const byOwner = new Map<string, { title: string; accounts: AccountWithStats[] }>();
   for (const acc of accounts) {
-    const section = ownerSectionTitle(acc);
-    if (!byOwner.has(section)) byOwner.set(section, []);
-    byOwner.get(section)!.push(acc);
+    const title = ownerSectionTitle(acc);
+    const key = portfolioOwnerKey(acc.owner) ?? title.toLocaleLowerCase("fr-CA");
+    const bucket = byOwner.get(key) ?? { title, accounts: [] };
+    if (!byOwner.has(key)) byOwner.set(key, bucket);
+    bucket.accounts.push(acc);
   }
 
-  const ownerSectionsSorted = [...byOwner.entries()].sort(([a], [b]) =>
-    a.localeCompare(b, "fr-CA"),
-  );
+  const ownerSectionsSorted = [...byOwner.values()]
+    .map((entry) => [entry.title, entry.accounts] as const)
+    .toSorted(([a], [b]) => a.localeCompare(b, "fr-CA"));
 
   const cadAccounts = accounts.filter((a) => normalizeCurrency(a.currency) === "CAD");
   const usdAccounts = accounts.filter((a) => normalizeCurrency(a.currency) === "USD");

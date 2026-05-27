@@ -17,10 +17,11 @@ import {
   computeAllPeriodResults,
   computePeriodResult,
   defaultPerformanceFilters,
-  PERFORMANCE_PERIODS,
+  resolvePeriodMeta,
   signedGainBg,
   signedGainClass,
 } from "./performance-indicator-logic";
+import { uniquePortfolioOwners } from "@/lib/portfolio/sanitize-portfolio-owner";
 import type {
   PerformanceFilterState,
   PerformanceIndicatorPayload,
@@ -80,6 +81,7 @@ const PRESET_LABELS: Record<PerformanceScopePreset, string> = {
 
 const PERIOD_ORDER: PerformancePeriodId[] = [
   "day",
+  "yesterday",
   "week",
   "month",
   "ytd",
@@ -126,13 +128,10 @@ export function PerformanceIndicatorCard({
     saveStoredFilters(filters);
   }, [filters]);
 
-  const owners = useMemo(() => {
-    const set = new Set<string>();
-    for (const a of payload.accounts) {
-      if (a.owner) set.add(a.owner);
-    }
-    return [...set].toSorted();
-  }, [payload.accounts]);
+  const owners = useMemo(
+    () => uniquePortfolioOwners(payload.accounts.map((a) => a.owner)),
+    [payload.accounts],
+  );
 
   const periodResults = useMemo(
     () => computeAllPeriodResults(payload, filters),
@@ -421,7 +420,7 @@ export function PerformanceIndicatorCard({
                     }`}
                   >
                     <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                      {PERFORMANCE_PERIODS[row.periodId].shortLabel}
+                      {row.shortLabel}
                     </p>
                     <p
                       className={`mt-1 text-lg font-semibold tabular-nums ${signedGainClass(row.gainCad)}`}
@@ -432,7 +431,10 @@ export function PerformanceIndicatorCard({
                       {formatGainPct(row.gainPct)}
                     </p>
                     {row.incomplete && row.gainCad !== null ? (
-                      <span className="absolute right-2 top-2 size-1.5 rounded-full bg-amber-400" title="Données partielles" />
+                      <span
+                        className="absolute right-2 top-2 size-1.5 rounded-full bg-amber-400"
+                        title={row.note ?? "Données partielles"}
+                      />
                     ) : null}
                   </button>
                 );
@@ -453,7 +455,7 @@ export function PerformanceIndicatorCard({
                     : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                 }`}
               >
-                {PERFORMANCE_PERIODS[id].label}
+                {resolvePeriodMeta(id, payload.asOfNow).label}
               </button>
             ))}
           </div>

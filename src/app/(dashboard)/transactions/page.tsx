@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TransactionsClient } from "@/features/transactions/transactions-client";
 import { getTransactions, getAccountsWithStats } from "@/features/portfolio/queries";
-import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { uniquePortfolioOwners, sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +24,7 @@ export default async function TransactionsPage({
     getAccountsWithStats().catch(() => []),
   ]);
 
-  const owners = [
-    ...new Set(
-      accounts
-        .map((a) => sanitizePortfolioOwner(a.owner))
-        .filter(Boolean) as string[],
-    ),
-  ].sort();
+  const owners = uniquePortfolioOwners(accounts.map((a) => a.owner));
 
   return (
     <div className="space-y-6">
