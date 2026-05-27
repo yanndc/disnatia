@@ -25,11 +25,9 @@ type SortKey =
   | "quoteChangePerShare"
   | "displayDayGainLoss"
   | "displayMarketValue"
-  | "loanValue"
   | "unrealizedDollar"
   | "unrealizedPct"
-  | "weightPct"
-  | "assetType";
+  | "weightPct";
 
 function toDate(value: Date | string | null) {
   if (!value) return null;
@@ -147,16 +145,12 @@ function rowSortValue(p: EnrichedPosition, key: SortKey): string | number | null
       return p.displayDayGainLoss ?? Number.NEGATIVE_INFINITY;
     case "displayMarketValue":
       return p.displayMarketValue;
-    case "loanValue":
-      return p.loanValue ?? Number.NEGATIVE_INFINITY;
     case "unrealizedDollar":
       return unrealizedDollar(p) ?? Number.NEGATIVE_INFINITY;
     case "unrealizedPct":
       return unrealizedPct(p) ?? Number.NEGATIVE_INFINITY;
     case "weightPct":
       return p.weightPct ?? Number.NEGATIVE_INFINITY;
-    case "assetType":
-      return p.assetType ?? p.sector ?? "";
     default:
       return null;
   }
@@ -312,8 +306,7 @@ export function PositionsTable({
     const isText =
       key === "accountName" ||
       key === "ticker" ||
-      key === "securityName" ||
-      key === "assetType";
+      key === "securityName";
     setSortDesc(!isText);
   }
 
@@ -412,7 +405,7 @@ export function PositionsTable({
         <div key={currency} className="space-y-2">
           <h3 className="text-base font-semibold text-slate-900">En {currency}</h3>
           <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
-            <table className="w-full min-w-[1400px] text-left text-sm">
+            <table className="w-full min-w-[1200px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
                   {th("ticker", "Symbole")}
@@ -421,7 +414,6 @@ export function PositionsTable({
                   <th className="whitespace-nowrap px-1 py-1 font-medium" scope="col">
                     Historique
                   </th>
-                  {th("assetType", "Classe")}
                   {th("quantity", "Quantité")}
                   {th("averageCost", "Coût moyen")}
                   {th("totalCost", "Coût total")}
@@ -429,7 +421,6 @@ export function PositionsTable({
                   {th("quoteChangePerShare", "Variation")}
                   {th("displayDayGainLoss", "Jour")}
                   {th("displayMarketValue", "Valeur")}
-                  {th("loanValue", "Emprunt")}
                   {th("unrealizedDollar", "Non réalisé $")}
                   {th("unrealizedPct", "Non réalisé %")}
                   {th("weightPct", "% PF")}
@@ -442,9 +433,6 @@ export function PositionsTable({
                   const uDollar = unrealizedDollar(p);
                   const uPct = unrealizedPct(p);
                   const cur = normalizeCurrency(p.currency);
-                  const assetLabel = [p.assetType, p.sector]
-                    .filter(Boolean)
-                    .join(" · ");
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50">
@@ -486,9 +474,6 @@ export function PositionsTable({
                         ) : (
                           <span className="text-xs text-slate-400">—</span>
                         )}
-                      </td>
-                      <td className="max-w-[160px] px-1 py-1 text-xs text-slate-600">
-                        {assetLabel || "—"}
                       </td>
                       <td className="px-1 py-1 text-slate-700 tabular-nums">
                         {formatNumber(p.quantity, 4)}
@@ -537,13 +522,6 @@ export function PositionsTable({
                       </td>
                       <td className="px-1 py-1 font-medium text-slate-900 tabular-nums">
                         {formatCurrencyDetailed(p.displayMarketValue, cur, 2)}
-                      </td>
-                      <td className="px-1 py-1 text-slate-700 tabular-nums">
-                        {p.loanValue !== null && Number.isFinite(p.loanValue) ? (
-                          formatCurrencyDetailed(p.loanValue, cur, 2)
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
                       </td>
                       <td className="px-1 py-1 tabular-nums">
                         <SignedCurrencyDetail value={uDollar} currency={cur} />

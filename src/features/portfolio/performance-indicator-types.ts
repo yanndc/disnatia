@@ -35,10 +35,23 @@ export type PerformanceAccountCurrent = {
   dayPriorCad: number | null;
 };
 
+export type PerformanceCashFlow = {
+  accountKey: string;
+  /** ISO date (YYYY-MM-DD) */
+  tradeDate: string;
+  txCategory:
+    | "CONTRIBUTION"
+    | "TRANSFER_IN"
+    | "TRANSFER_OUT"
+    | "INTERNAL_TRANSFER";
+  amountCad: number;
+};
+
 export type PerformanceIndicatorPayload = {
   accounts: PerformanceAccountRef[];
   currentByAccount: Record<string, PerformanceAccountCurrent>;
   snapshots: PerformanceSnapshotPoint[];
+  cashFlows: PerformanceCashFlow[];
   usdToCad: number | null;
   usdToCadDate: string | null;
   availableYears: number[];

@@ -22,6 +22,10 @@ import {
   yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
+import {
+  formatFlowAdjustmentNote,
+  netExternalFlowsCad,
+} from "./performance-cash-flows";
 
 const PERIOD_META: Record<
   Exclude<PerformancePeriodId, "day">,
@@ -271,33 +275,44 @@ function computeDayPeriod(
   };
 }
 
-function computeYesterdayPeriod(
+function joinNotes(...parts: (string | null | undefined)[]): string | null {
+  const merged = parts.filter((p): p is string => Boolean(p));
+  return merged.length > 0 ? merged.join(" ") : null;
+}
+
+function computeAdjustedSnapshotGain(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
-): PerformancePeriodResult {
-  const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
-  const now = parseIsoDate(payload.asOfNow);
-  const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
-
-  let endCad = 0;
+  bounds: {
+    start: string | null;
+    end: string;
+    baselineLookup: string | null;
+  },
+  options: {
+    /** Si true, la valeur de fin vient d'un snapshot (ex. hier) plutôt que du live. */
+    endFromSnapshot?: boolean;
+  } = {},
+): {
+  currentCad: number;
+  baselineCad: number;
+  withBaseline: number;
+  withEnd: number;
+  latestBaselineDate: string | null;
+  gainCad: number | null;
+  gainPct: number | null;
+  flowAdjustmentCad: number;
+  incomplete: boolean;
+  note: string | null;
+} {
+  const endFromSnapshot = options.endFromSnapshot ?? false;
+  let currentCad = 0;
   let baselineCad = 0;
-  let withEnd = 0;
   let withBaseline = 0;
-  let latestEndDate: string | null = null;
+  let withEnd = 0;
   let latestBaselineDate: string | null = null;
+  const coveredKeys: string[] = [];
 
   for (const key of accountKeys) {
-    const endSnap = bounds.end
-      ? snapshotValueAtDate(key, bounds.end, payload.snapshots, payload.usdToCad)
-      : null;
-    if (endSnap) {
-      endCad += endSnap.valueCad;
-      withEnd++;
-      if (!latestEndDate || endSnap.asOf > latestEndDate) {
-        latestEndDate = endSnap.asOf;
-      }
-    }
-
     const baseSnap =
       bounds.baselineLookup
         ? snapshotValueAtDate(
@@ -307,62 +322,131 @@ function computeYesterdayPeriod(
             payload.usdToCad,
           )
         : null;
-    if (baseSnap) {
-      baselineCad += baseSnap.valueCad;
-      withBaseline++;
-      if (!latestBaselineDate || baseSnap.asOf > latestBaselineDate) {
-        latestBaselineDate = baseSnap.asOf;
+    if (!baseSnap) continue;
+
+    let endValueCad: number | null = null;
+    if (endFromSnapshot && bounds.end) {
+      const endSnap = snapshotValueAtDate(
+        key,
+        bounds.end,
+        payload.snapshots,
+        payload.usdToCad,
+      );
+      if (endSnap) {
+        endValueCad = endSnap.valueCad;
+        withEnd++;
       }
+    } else {
+      endValueCad = payload.currentByAccount[key]?.totalCad ?? null;
+      if (endValueCad !== null) withEnd++;
+    }
+
+    if (endValueCad === null) continue;
+
+    coveredKeys.push(key);
+    baselineCad += baseSnap.valueCad;
+    currentCad += endValueCad;
+    withBaseline++;
+    if (!latestBaselineDate || baseSnap.asOf > latestBaselineDate) {
+      latestBaselineDate = baseSnap.asOf;
     }
   }
 
   const incomplete =
-    withEnd < accountKeys.length || withBaseline < accountKeys.length;
+    withBaseline < accountKeys.length || withEnd < accountKeys.length;
 
-  if (withEnd === 0 || withBaseline === 0) {
+  if (withBaseline === 0 || withEnd === 0 || !bounds.start) {
+    return {
+      currentCad,
+      baselineCad,
+      withBaseline,
+      withEnd,
+      latestBaselineDate,
+      gainCad: null,
+      gainPct: null,
+      flowAdjustmentCad: 0,
+      incomplete: true,
+      note: null,
+    };
+  }
+
+  const flowAdjustmentCad = netExternalFlowsCad(
+    payload.cashFlows ?? [],
+    coveredKeys,
+    bounds.start,
+    bounds.end,
+  );
+  const rawGain = currentCad - baselineCad;
+  const gainCad = rawGain - flowAdjustmentCad;
+  const gainPct = baselineCad > 0 ? (gainCad / baselineCad) * 100 : null;
+
+  const partialNote = incomplete
+    ? `Baseline partielle (${withBaseline}/${accountKeys.length} comptes avec référence).`
+    : null;
+  const flowNote = formatFlowAdjustmentNote(flowAdjustmentCad);
+
+  return {
+    currentCad,
+    baselineCad,
+    withBaseline,
+    withEnd,
+    latestBaselineDate,
+    gainCad,
+    gainPct,
+    flowAdjustmentCad,
+    incomplete,
+    note: joinNotes(partialNote, flowNote),
+  };
+}
+
+function computeYesterdayPeriod(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+): PerformancePeriodResult {
+  const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
+  const now = parseIsoDate(payload.asOfNow);
+  const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
+  const calc = computeAdjustedSnapshotGain(accountKeys, payload, bounds, {
+    endFromSnapshot: true,
+  });
+
+  if (calc.withEnd === 0 || calc.withBaseline === 0) {
     return {
       periodId: "yesterday",
       label: meta.label,
       shortLabel: meta.shortLabel,
       gainCad: null,
       gainPct: null,
-      currentCad: endCad,
-      baselineCad: withBaseline > 0 ? baselineCad : null,
-      baselineDate: latestBaselineDate,
+      currentCad: calc.currentCad,
+      baselineCad: calc.withBaseline > 0 ? calc.baselineCad : null,
+      baselineDate: calc.latestBaselineDate,
       periodStart: bounds.start,
       periodEnd: bounds.end,
       method: "unavailable",
       accountsIncluded: accountKeys.length,
-      accountsWithBaseline: withBaseline,
+      accountsWithBaseline: calc.withBaseline,
       incomplete: true,
       note:
         "Snapshot introuvable pour la séance d'hier — importe un fichier portefeuille daté ou saisis une valeur externe.",
     };
   }
 
-  const gainCad = endCad - baselineCad;
-  const gainPct = baselineCad > 0 ? (gainCad / baselineCad) * 100 : null;
-
   return {
     periodId: "yesterday",
     label: meta.label,
     shortLabel: meta.shortLabel,
-    gainCad,
-    gainPct,
-    currentCad: endCad,
-    baselineCad,
-    baselineDate: latestBaselineDate,
+    gainCad: calc.gainCad,
+    gainPct: calc.gainPct,
+    currentCad: calc.currentCad,
+    baselineCad: calc.baselineCad,
+    baselineDate: calc.latestBaselineDate,
     periodStart: bounds.start,
     periodEnd: bounds.end,
     method: "snapshot-delta",
     accountsIncluded: accountKeys.length,
-    accountsWithBaseline: withBaseline,
-    incomplete,
-    note: incomplete
-      ? `Données partielles pour hier (${withEnd}/${accountKeys.length} comptes en fin de séance).`
-      : latestEndDate && bounds.end && latestEndDate < bounds.end
-        ? `Réf. fin de séance au ${latestEndDate} (snapshot le plus récent).`
-        : null,
+    accountsWithBaseline: calc.withBaseline,
+    incomplete: calc.incomplete,
+    note: calc.note,
   };
 }
 
@@ -377,19 +461,17 @@ function computeSnapshotPeriod(
   const earliest = earliestSnapshotAmong(accountKeys, payload.snapshots);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
 
-  let currentCad = 0;
-  for (const key of accountKeys) {
-    currentCad += payload.currentByAccount[key]?.totalCad ?? 0;
-  }
-
-  if (!bounds.baselineLookup) {
+  if (!bounds.baselineLookup || !bounds.start) {
     return {
       periodId,
       label: meta.label,
       shortLabel: meta.shortLabel,
       gainCad: null,
       gainPct: null,
-      currentCad,
+      currentCad: accountKeys.reduce(
+        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+        0,
+      ),
       baselineCad: null,
       baselineDate: null,
       periodStart: bounds.start,
@@ -402,35 +484,20 @@ function computeSnapshotPeriod(
     };
   }
 
-  let baselineCad = 0;
-  let withBaseline = 0;
-  let latestBaselineDate: string | null = null;
+  const calc = computeAdjustedSnapshotGain(accountKeys, payload, {
+    start: bounds.start,
+    end: bounds.end,
+    baselineLookup: bounds.baselineLookup,
+  });
 
-  for (const key of accountKeys) {
-    const snap = snapshotValueAtDate(
-      key,
-      bounds.baselineLookup,
-      payload.snapshots,
-      payload.usdToCad,
-    );
-    if (snap) {
-      baselineCad += snap.valueCad;
-      withBaseline++;
-      if (!latestBaselineDate || snap.asOf > latestBaselineDate) {
-        latestBaselineDate = snap.asOf;
-      }
-    }
-  }
-
-  const incomplete = withBaseline < accountKeys.length;
-  if (withBaseline === 0) {
+  if (calc.withBaseline === 0) {
     return {
       periodId,
       label: meta.label,
       shortLabel: meta.shortLabel,
       gainCad: null,
       gainPct: null,
-      currentCad,
+      currentCad: calc.currentCad,
       baselineCad: null,
       baselineDate: null,
       periodStart: bounds.start,
@@ -446,27 +513,22 @@ function computeSnapshotPeriod(
     };
   }
 
-  const gainCad = currentCad - baselineCad;
-  const gainPct = baselineCad > 0 ? (gainCad / baselineCad) * 100 : null;
-
   return {
     periodId,
     label: meta.label,
     shortLabel: meta.shortLabel,
-    gainCad,
-    gainPct,
-    currentCad,
-    baselineCad,
-    baselineDate: latestBaselineDate,
+    gainCad: calc.gainCad,
+    gainPct: calc.gainPct,
+    currentCad: calc.currentCad,
+    baselineCad: calc.baselineCad,
+    baselineDate: calc.latestBaselineDate,
     periodStart: bounds.start,
     periodEnd: bounds.end,
     method: "snapshot-delta",
     accountsIncluded: accountKeys.length,
-    accountsWithBaseline: withBaseline,
-    incomplete,
-    note: incomplete
-      ? `Baseline partielle (${withBaseline}/${accountKeys.length} comptes).`
-      : null,
+    accountsWithBaseline: calc.withBaseline,
+    incomplete: calc.incomplete,
+    note: calc.note,
   };
 }
 

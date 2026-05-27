@@ -16,7 +16,7 @@ function formatDuration(durationMs: number) {
     : `${(durationMs / 1_000).toLocaleString("fr-CA", { maximumFractionDigits: 1 })} s`;
 }
 
-export function RefreshQuotesButton() {
+export function RefreshQuotesButton({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [refreshState, setRefreshState] = useState<RefreshState>({ status: "idle" });
@@ -56,20 +56,24 @@ export function RefreshQuotesButton() {
   }
 
   return (
-    <div className="space-y-2 sm:text-right">
+    <div className={compact ? "inline-flex flex-col items-start gap-1" : "space-y-2 sm:text-right"}>
       <Button
         type="button"
         variant="secondary"
-        className="h-9 px-3 text-sm"
+        className={
+          compact
+            ? "h-7 px-2.5 text-xs text-slate-300 hover:text-white"
+            : "h-9 px-3 text-sm"
+        }
         disabled={pending}
         onClick={() => void onRefresh()}
       >
-        {pending ? "Mise à jour…" : "Actualiser les cours"}
+        {pending ? "Mise à jour…" : compact ? "Actualiser cours" : "Actualiser les cours"}
       </Button>
-      {pending ? (
+      {!compact && pending ? (
         <p className="text-xs text-slate-500">Yahoo puis Stooq…</p>
       ) : null}
-      {refreshState.status === "success" ? (
+      {!compact && refreshState.status === "success" ? (
         <p className="max-w-sm text-xs leading-relaxed text-slate-500">
           Dernier test OK en {formatDuration(refreshState.durationMs)} ·{" "}
           {refreshState.result.quotesUpserted}/{refreshState.result.positionsConsidered} cours mis à
@@ -86,7 +90,7 @@ export function RefreshQuotesButton() {
           {refreshState.result.message ? ` · ${refreshState.result.message}` : ""}
         </p>
       ) : null}
-      {refreshState.status === "error" ? (
+      {!compact && refreshState.status === "error" ? (
         <p className="max-w-sm text-xs leading-relaxed text-red-600">
           Échec après {formatDuration(refreshState.durationMs)} · {refreshState.message}
         </p>

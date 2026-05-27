@@ -15,6 +15,7 @@ import { makeAccountKey } from "./upsert-portfolio-state";
 import type {
   PerformanceAccountCurrent,
   PerformanceAccountRef,
+  PerformanceCashFlow,
   PerformanceIndicatorPayload,
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
@@ -52,7 +53,7 @@ async function loadQuotesForHoldings(
 }
 
 export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndicatorPayload> {
-  const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots] =
+  const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots, txFlows] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
         orderBy: [{ owner: "asc" }, { accountType: "asc" }],
@@ -86,6 +87,22 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
           externalAccount: {
             select: { accountKey: true, currency: true },
           },
+        },
+      }),
+      prisma.portfolioTransactionLine.findMany({
+        where: {
+          accountKey: { not: null },
+          tradeDate: { not: null },
+          txCategory: {
+            in: ["CONTRIBUTION", "TRANSFER_IN", "TRANSFER_OUT", "INTERNAL_TRANSFER"],
+          },
+        },
+        select: {
+          accountKey: true,
+          tradeDate: true,
+          txCategory: true,
+          amount: true,
+          currency: true,
         },
       }),
     ]);
@@ -232,10 +249,24 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       ? new Date(Math.max(...quotes.map((q) => q.fetchedAt.getTime()))).toISOString()
       : null;
 
+  const cashFlows: PerformanceCashFlow[] = [];
+  for (const tx of txFlows) {
+    if (!tx.accountKey || !tx.tradeDate || !tx.txCategory) continue;
+    const amount = tx.amount;
+    if (amount === null || !Number.isFinite(amount) || Math.abs(amount) < 0.01) continue;
+    cashFlows.push({
+      accountKey: tx.accountKey,
+      tradeDate: isoDate(tx.tradeDate),
+      txCategory: tx.txCategory as PerformanceCashFlow["txCategory"],
+      amountCad: toCad(amount, tx.currency ?? "CAD", usdToCad),
+    });
+  }
+
   return {
     accounts,
     currentByAccount,
     snapshots,
+    cashFlows,
     usdToCad,
     usdToCadDate: fxRow?.rateDate ? isoDate(fxRow.rateDate) : null,
     availableYears,

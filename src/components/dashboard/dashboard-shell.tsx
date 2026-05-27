@@ -1,24 +1,7 @@
 import Link from "next/link";
 import { DisnatiaLogo } from "@/components/brand/disnatia-logo";
-import {
-  FileUp,
-  LayoutDashboard,
-  Sparkles,
-  Table2,
-  Landmark,
-  ArrowLeftRight,
-  TrendingUp,
-} from "lucide-react";
-
-const navigation = [
-  { href: "/overview", label: "Vue d'ensemble", icon: LayoutDashboard },
-  { href: "/comptes", label: "Comptes", icon: Landmark },
-  { href: "/positions", label: "Positions", icon: Table2 },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/revenus", label: "Revenus", icon: TrendingUp },
-  { href: "/imports", label: "Imports", icon: FileUp },
-  { href: "/insights", label: "Discuter avec Berta", icon: Sparkles },
-];
+import { dashboardNavigation } from "@/components/dashboard/dashboard-navigation";
+import { MobileNav } from "@/components/dashboard/mobile-nav";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
@@ -29,7 +12,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-slate-500">Assistant portefeuille DisnatIA</p>
         </Link>
         <nav className="mt-8 space-y-1">
-          {navigation.map((item) => (
+          {dashboardNavigation.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -42,18 +25,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-5 py-4 backdrop-blur lg:hidden">
-          <div className="mx-auto flex max-w-7xl items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Dashboard portefeuille
-              </p>
+        <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+            <Link href="/overview" className="min-w-0">
               <DisnatiaLogo className="h-6 w-auto max-w-[9rem] text-slate-950" />
-            </div>
-            <div className="text-right text-xs text-slate-500">
-              <p>Mono-utilisateur V1</p>
-              <p>Données persistées via Prisma</p>
-            </div>
+            </Link>
+            <MobileNav items={dashboardNavigation} />
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-5 py-6">{children}</main>

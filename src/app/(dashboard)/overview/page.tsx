@@ -97,25 +97,27 @@ export default async function OverviewPage() {
   return (
     <div className="space-y-8">
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-sm">
-        <div className="relative isolate p-6 sm:p-8">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.28),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.18),transparent_30%)]" />
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-100">
-              <span className="rounded-full bg-white/10 px-3 py-1">Tableau de bord</span>
-              <span className="rounded-full bg-white/10 px-3 py-1">{quoteCoverageLabel}</span>
+        <div className="relative isolate p-5 sm:p-7">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.22),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.14),transparent_30%)]" />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Tableau de bord
+              </p>
+              <h2 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+                Vue d&apos;ensemble du portefeuille
+              </h2>
+              <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                <span>Réf. {referenceLabel}</span>
+                <span aria-hidden>·</span>
+                <span>Import {importLabel}</span>
+                <span aria-hidden>·</span>
+                <span className="text-slate-400">Cours {quotesLabel}</span>
+                <span aria-hidden>·</span>
+                <span>{quoteCoverageLabel}</span>
+              </p>
             </div>
-            <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-              Vue d&apos;ensemble du portefeuille
-            </h2>
-
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <div className="grid flex-1 gap-3 text-sm sm:grid-cols-3 min-w-[12rem]">
-                <InfoPill label="Référence" value={referenceLabel} />
-                <InfoPill label="Dernier import" value={importLabel} />
-                <InfoPill label="Cours" value={quotesLabel} />
-              </div>
-              <RefreshQuotesButton />
-            </div>
+            <RefreshQuotesButton compact />
           </div>
         </div>
       </section>
@@ -164,15 +166,6 @@ export default async function OverviewPage() {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function InfoPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
-      <p className="text-xs text-slate-400">{label}</p>
-      <p className="mt-1 font-medium text-white">{value}</p>
     </div>
   );
 }
