@@ -339,7 +339,7 @@ function OwnerAccountsTableFooter({
 
 export type ComptesPageClientProps = {
   accounts: AccountWithStats[];
-  ownerSectionsSorted: [string, AccountWithStats[]][];
+  ownerSectionsSorted: readonly (readonly [string, AccountWithStats[]])[];
   cadEncaisse: number;
   cadTitres: number;
   cadTotal: number;

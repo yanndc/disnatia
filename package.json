@@ -7,6 +7,7 @@
     "build": "node scripts/vercel-build.cjs",
     "start": "next start",
     "lint": "eslint",
+    "icons": "node scripts/generate-icons.cjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -48,7 +49,9 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "prisma": "^7.8.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
+    "to-ico": "^1.1.5",
     "typescript": "^5"
   }
 }
