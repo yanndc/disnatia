@@ -110,3 +110,8 @@ export type ExternalPortfolioAccount = Prisma.ExternalPortfolioAccountModel
  * 
  */
 export type ExternalAccountSnapshot = Prisma.ExternalAccountSnapshotModel
+/**
+ * Model EodReportDelivery
+ * Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
+ */
+export type EodReportDelivery = Prisma.EodReportDeliveryModel

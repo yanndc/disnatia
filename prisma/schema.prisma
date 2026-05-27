@@ -380,3 +380,12 @@ model ExternalAccountSnapshot {
   @@index([asOfDate])
   @@map("external_account_snapshots")
 }
+
+/// Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
+model EodReportDelivery {
+  sessionDate String   @id
+  sentAt      DateTime @default(now())
+  recipient   String
+
+  @@map("eod_report_deliveries")
+}

@@ -28,6 +28,10 @@ import type {
   PerformanceIndicatorPayload,
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
+import {
+  loadPerformanceAccountHistory,
+  loadPerformanceDailyTotalsCad,
+} from "./performance-history-loader";
 import { isoDateInToronto } from "@/lib/market/equity-session";
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
@@ -249,8 +253,20 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   const yearSet = new Set<number>();
   const nowYear = new Date().getFullYear();
   yearSet.add(nowYear);
+
+  const [historyPoints, dailyTotalsCad] = await Promise.all([
+    loadPerformanceAccountHistory(),
+    loadPerformanceDailyTotalsCad(usdToCad),
+  ]);
+
   for (const s of snapshots) {
     yearSet.add(Number(s.asOf.slice(0, 4)));
+  }
+  for (const h of historyPoints) {
+    yearSet.add(Number(h.asOf.slice(0, 4)));
+  }
+  for (const d of dailyTotalsCad) {
+    yearSet.add(Number(d.date.slice(0, 4)));
   }
   const availableYears = [...yearSet].toSorted((a, b) => b - a);
 
@@ -323,6 +339,8 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     accounts,
     currentByAccount,
     snapshots,
+    historyPoints,
+    dailyTotalsCad,
     cashFlows,
     holdings: performanceHoldings,
     dailyCloses,

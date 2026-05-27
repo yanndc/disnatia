@@ -399,7 +399,8 @@ export const ModelName = {
   BertaAgentRules: 'BertaAgentRules',
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
-  ExternalAccountSnapshot: 'ExternalAccountSnapshot'
+  ExternalAccountSnapshot: 'ExternalAccountSnapshot',
+  EodReportDelivery: 'EodReportDelivery'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -415,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1603,6 +1604,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    EodReportDelivery: {
+      payload: Prisma.$EodReportDeliveryPayload<ExtArgs>
+      fields: Prisma.EodReportDeliveryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EodReportDeliveryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EodReportDeliveryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>
+        }
+        findFirst: {
+          args: Prisma.EodReportDeliveryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EodReportDeliveryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>
+        }
+        findMany: {
+          args: Prisma.EodReportDeliveryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>[]
+        }
+        create: {
+          args: Prisma.EodReportDeliveryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>
+        }
+        createMany: {
+          args: Prisma.EodReportDeliveryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EodReportDeliveryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>[]
+        }
+        delete: {
+          args: Prisma.EodReportDeliveryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>
+        }
+        update: {
+          args: Prisma.EodReportDeliveryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>
+        }
+        deleteMany: {
+          args: Prisma.EodReportDeliveryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EodReportDeliveryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EodReportDeliveryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>[]
+        }
+        upsert: {
+          args: Prisma.EodReportDeliveryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EodReportDeliveryPayload>
+        }
+        aggregate: {
+          args: Prisma.EodReportDeliveryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEodReportDelivery>
+        }
+        groupBy: {
+          args: Prisma.EodReportDeliveryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EodReportDeliveryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EodReportDeliveryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EodReportDeliveryCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1898,6 +1973,15 @@ export const ExternalAccountSnapshotScalarFieldEnum = {
 } as const
 
 export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
+
+
+export const EodReportDeliveryScalarFieldEnum = {
+  sessionDate: 'sessionDate',
+  sentAt: 'sentAt',
+  recipient: 'recipient'
+} as const
+
+export type EodReportDeliveryScalarFieldEnum = (typeof EodReportDeliveryScalarFieldEnum)[keyof typeof EodReportDeliveryScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2226,6 +2310,7 @@ export type GlobalOmitConfig = {
   usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
   externalPortfolioAccount?: Prisma.ExternalPortfolioAccountOmit
   externalAccountSnapshot?: Prisma.ExternalAccountSnapshotOmit
+  eodReportDelivery?: Prisma.EodReportDeliveryOmit
 }
 
 /* Types for Logging */

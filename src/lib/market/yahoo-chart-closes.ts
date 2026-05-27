@@ -28,10 +28,31 @@ type YahooChartPayload = {
   };
 };
 
-/** Dernières séances (jusqu'à ~10 jours calendaires) depuis l'API chart Yahoo. */
+export type YahooChartRange =
+  | "10d"
+  | "1mo"
+  | "3mo"
+  | "6mo"
+  | "1y"
+  | "2y"
+  | "5y"
+  | "10y"
+  | "max";
+
+/** Choix du range Yahoo selon l'ancienneté de la première détention. */
+export function pickYahooChartRange(fromDate: Date): YahooChartRange {
+  const years =
+    (Date.now() - fromDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  if (years <= 1.2) return "2y";
+  if (years <= 5.5) return "5y";
+  if (years <= 10.5) return "10y";
+  return "max";
+}
+
+/** Clôtures journalières depuis l'API chart Yahoo (`range` = 10d … max). */
 export async function fetchYahooChartDailyCloses(
   symbol: string,
-  range = "10d",
+  range: YahooChartRange | string = "10d",
 ): Promise<DailyClosePoint[]> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     symbol,

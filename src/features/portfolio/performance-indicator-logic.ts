@@ -26,7 +26,7 @@ import {
   formatFlowAdjustmentNote,
   netExternalFlowsCad,
 } from "./performance-cash-flows";
-import { dailyCloseKey } from "./daily-close-prices";
+import { dailyCloseKey } from "./daily-close-key";
 
 const PERIOD_META: Record<
   Exclude<PerformancePeriodId, "day">,
@@ -123,6 +123,34 @@ function snapshotValueAtDate(
   };
 }
 
+function portfolioValueAtDate(
+  accountKey: string,
+  targetDate: string,
+  payload: PerformanceIndicatorPayload,
+): { valueCad: number; asOf: string; fromHistory: boolean } | null {
+  const history = snapshotValueAtDate(
+    accountKey,
+    targetDate,
+    payload.historyPoints ?? [],
+    payload.usdToCad,
+  );
+  const snap = snapshotValueAtDate(
+    accountKey,
+    targetDate,
+    payload.snapshots,
+    payload.usdToCad,
+  );
+  if (history && snap) {
+    if (history.asOf >= snap.asOf) {
+      return { ...history, fromHistory: true };
+    }
+    return { ...snap, fromHistory: false };
+  }
+  if (history) return { ...history, fromHistory: true };
+  if (snap) return { ...snap, fromHistory: false };
+  return null;
+}
+
 /** Vrai si baseline et fin résolvent au même snapshot (delta = 0 trompeur). */
 function snapshotsDegenerateForPeriod(
   accountKeys: string[],
@@ -133,18 +161,8 @@ function snapshotsDegenerateForPeriod(
   let withBoth = 0;
   let sameDate = 0;
   for (const key of accountKeys) {
-    const base = snapshotValueAtDate(
-      key,
-      bounds.baselineLookup,
-      payload.snapshots,
-      payload.usdToCad,
-    );
-    const end = snapshotValueAtDate(
-      key,
-      bounds.end,
-      payload.snapshots,
-      payload.usdToCad,
-    );
+    const base = portfolioValueAtDate(key, bounds.baselineLookup, payload);
+    const end = portfolioValueAtDate(key, bounds.end, payload);
     if (!base || !end) continue;
     withBoth++;
     if (base.asOf === end.asOf) sameDate++;
@@ -409,13 +427,18 @@ export function resolvePeriodBounds(
   }
 }
 
-function earliestSnapshotAmong(
+function earliestHistoryAmong(
   accountKeys: string[],
-  snapshots: PerformanceSnapshotPoint[],
+  payload: PerformanceIndicatorPayload,
 ): string | null {
-  const dates = snapshots
-    .filter((s) => accountKeys.includes(s.accountKey))
-    .map((s) => s.asOf);
+  const dates = [
+    ...(payload.historyPoints ?? [])
+      .filter((s) => accountKeys.includes(s.accountKey))
+      .map((s) => s.asOf),
+    ...payload.snapshots
+      .filter((s) => accountKeys.includes(s.accountKey))
+      .map((s) => s.asOf),
+  ];
   if (dates.length === 0) return null;
   return dates.toSorted()[0] ?? null;
 }
@@ -539,6 +562,7 @@ function computeAdjustedSnapshotGain(
   flowAdjustmentCad: number;
   incomplete: boolean;
   note: string | null;
+  usedHistory: boolean;
 } {
   const endFromSnapshot = options.endFromSnapshot ?? false;
   let currentCad = 0;
@@ -548,32 +572,32 @@ function computeAdjustedSnapshotGain(
   let latestBaselineDate: string | null = null;
   const coveredKeys: string[] = [];
 
+  let withHistory = 0;
+
   for (const key of accountKeys) {
     const baseSnap =
       bounds.baselineLookup
-        ? snapshotValueAtDate(
-            key,
-            bounds.baselineLookup,
-            payload.snapshots,
-            payload.usdToCad,
-          )
+        ? portfolioValueAtDate(key, bounds.baselineLookup, payload)
         : null;
     if (!baseSnap) continue;
 
     let endValueCad: number | null = null;
+    let endFromHistory = false;
     if (endFromSnapshot && bounds.end) {
-      const endSnap = snapshotValueAtDate(
-        key,
-        bounds.end,
-        payload.snapshots,
-        payload.usdToCad,
-      );
+      const endSnap = portfolioValueAtDate(key, bounds.end, payload);
       if (endSnap) {
         endValueCad = endSnap.valueCad;
+        endFromHistory = endSnap.fromHistory;
         withEnd++;
       }
     } else {
-      endValueCad = payload.currentByAccount[key]?.totalCad ?? null;
+      const acc = payload.accounts.find((a) => a.accountKey === key);
+      const cur = payload.currentByAccount[key];
+      if (acc?.isExternal) {
+        endValueCad = cur?.totalCad ?? null;
+      } else {
+        endValueCad = cur?.positionsCad ?? cur?.totalCad ?? null;
+      }
       if (endValueCad !== null) withEnd++;
     }
 
@@ -583,6 +607,8 @@ function computeAdjustedSnapshotGain(
     baselineCad += baseSnap.valueCad;
     currentCad += endValueCad;
     withBaseline++;
+    if (baseSnap.fromHistory) withHistory++;
+    if (endFromHistory) withHistory++;
     if (!latestBaselineDate || baseSnap.asOf > latestBaselineDate) {
       latestBaselineDate = baseSnap.asOf;
     }
@@ -603,6 +629,7 @@ function computeAdjustedSnapshotGain(
       flowAdjustmentCad: 0,
       incomplete: true,
       note: null,
+      usedHistory: false,
     };
   }
 
@@ -632,6 +659,7 @@ function computeAdjustedSnapshotGain(
     flowAdjustmentCad,
     incomplete,
     note: joinNotes(partialNote, flowNote),
+    usedHistory: withHistory > 0,
   };
 }
 
@@ -712,7 +740,7 @@ function computeSnapshotPeriod(
 ): PerformancePeriodResult {
   const meta = resolvePeriodMeta(periodId, payload.asOfNow);
   const now = sessionClockForBounds();
-  const earliest = earliestSnapshotAmong(accountKeys, payload.snapshots);
+  const earliest = earliestHistoryAmong(accountKeys, payload);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
 
   if (!bounds.baselineLookup || !bounds.start) {
@@ -734,7 +762,7 @@ function computeSnapshotPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: true,
-      note: "Aucun snapshot historique pour cette portée.",
+      note: "Aucun historique pour cette portée — lance le backfill historique de marché.",
     };
   }
 
@@ -762,8 +790,8 @@ function computeSnapshotPeriod(
       incomplete: true,
       note:
         periodId === "all"
-          ? "Importe des snapshots portefeuille ou saisis des valeurs externes pour activer l'historique."
-          : "Snapshot de départ introuvable — importe un fichier portefeuille antérieur à cette période.",
+          ? "Lance le backfill historique de marché ou importe des snapshots portefeuille."
+          : "Historique de départ introuvable — lance le backfill historique de marché.",
     };
   }
 
@@ -778,7 +806,7 @@ function computeSnapshotPeriod(
     baselineDate: calc.latestBaselineDate,
     periodStart: bounds.start,
     periodEnd: bounds.end,
-    method: "snapshot-delta",
+    method: calc.usedHistory ? "holdings-history" : "snapshot-delta",
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: calc.withBaseline,
     incomplete: calc.incomplete,

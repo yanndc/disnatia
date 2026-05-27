@@ -91,6 +91,8 @@ export function ImportsClient({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [backfillBusy, setBackfillBusy] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyResult, setHistoryResult] = useState<string | null>(null);
   const [ownerMap, setOwnerMap] = useState<Map<string, string>>(() => new Map());
   const [tab, setTab] = useState<ImportsTab>("disnat");
   const form = useForm<ImportForm>({
@@ -190,6 +192,47 @@ export function ImportsClient({
       );
     } finally {
       setBackfillBusy(false);
+    }
+  }
+
+  async function runBackfillMarketHistory() {
+    setHistoryBusy(true);
+    setHistoryResult(null);
+    try {
+      const response = await fetch("/api/portfolio/backfill-market-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: false, recomputeDailyValues: true }),
+      });
+      type HistoryJson = {
+        message?: string;
+        ok?: boolean;
+        tickersProcessed?: number;
+        pricesUpserted?: number;
+        dailyValuesUpserted?: number;
+      };
+      let payload: HistoryJson = {};
+      try {
+        payload = (await response.json()) as HistoryJson;
+      } catch {
+        payload = {};
+      }
+      if (!response.ok || payload.ok === false) {
+        setHistoryResult(
+          (payload as { message?: string }).message ?? `Échec (${response.status}).`,
+        );
+        return;
+      }
+      setHistoryResult(
+        payload.message ??
+          `${payload.tickersProcessed ?? 0} titre(s), ${payload.pricesUpserted ?? 0} clôtures, ${payload.dailyValuesUpserted ?? 0} valeurs jour.`,
+      );
+    } catch (cause) {
+      setHistoryResult(
+        cause instanceof Error ? cause.message : "Erreur réseau.",
+      );
+    } finally {
+      setHistoryBusy(false);
     }
   }
 
@@ -497,6 +540,34 @@ export function ImportsClient({
 
       {tab === "followup" ? (
         <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Historique de marché (performance)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-slate-600">
+            Télécharge les clôtures Yahoo pour chaque titre sur toute sa période de détention
+            (plusieurs années) et recalcule les valeurs journalières du portefeuille. À lancer après
+            le recalcul portefeuille ou lors d&apos;un nouvel import d&apos;historique.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={historyBusy}
+            onClick={() => void runBackfillMarketHistory()}
+            className="gap-2"
+          >
+            <RefreshCw className={`size-4 ${historyBusy ? "animate-spin" : ""}`} />
+            {historyBusy ? "Backfill historique…" : "Backfill historique de marché"}
+          </Button>
+          {historyResult ? (
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+              {historyResult}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Recalcul portefeuille</CardTitle>

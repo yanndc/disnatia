@@ -66,7 +66,8 @@ export const ModelName = {
   BertaAgentRules: 'BertaAgentRules',
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
-  ExternalAccountSnapshot: 'ExternalAccountSnapshot'
+  ExternalAccountSnapshot: 'ExternalAccountSnapshot',
+  EodReportDelivery: 'EodReportDelivery'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -341,6 +342,15 @@ export const ExternalAccountSnapshotScalarFieldEnum = {
 } as const
 
 export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
+
+
+export const EodReportDeliveryScalarFieldEnum = {
+  sessionDate: 'sessionDate',
+  sentAt: 'sentAt',
+  recipient: 'recipient'
+} as const
+
+export type EodReportDeliveryScalarFieldEnum = (typeof EodReportDeliveryScalarFieldEnum)[keyof typeof EodReportDeliveryScalarFieldEnum]
 
 
 export const SortOrder = {

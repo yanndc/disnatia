@@ -49,9 +49,31 @@ function torontoClock(now: Date): { day: number; minutes: number } {
   };
 }
 
-function isTradingDay(now: Date): boolean {
+/** Jour ouvré actions (lun–ven, heure de Toronto). */
+export function isTradingDay(now: Date): boolean {
   const { day } = torontoClock(now);
   return day >= 1 && day <= 5;
+}
+
+/** Jour ouvré pour une date ISO `YYYY-MM-DD` (interprétée en calendrier local). */
+export function isTradingDayDate(isoDate: string): boolean {
+  return isTradingDay(parseIsoDateLocal(isoDate));
+}
+
+const EOD_REPORT_WINDOW_START_MINUTES = 17 * 60 + 15;
+const EOD_REPORT_WINDOW_END_MINUTES = 19 * 60;
+
+/**
+ * Fenêtre d'envoi du rapport EOD : jour ouvré Toronto, entre 17 h 15 et 19 h
+ * (après clôture 16 h, marge pour cotations / clôtures).
+ */
+export function shouldSendEodReport(now = new Date()): boolean {
+  if (!isTradingDay(now)) return false;
+  const { minutes } = torontoClock(now);
+  return (
+    minutes >= EOD_REPORT_WINDOW_START_MINUTES &&
+    minutes < EOD_REPORT_WINDOW_END_MINUTES
+  );
 }
 
 /** Séance actions en cours (lun–ven, 9 h 30–16 h, heure de Toronto). */

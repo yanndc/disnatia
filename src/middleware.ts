@@ -12,7 +12,8 @@ export async function middleware(request: NextRequest) {
 
   if (
     pathname.startsWith("/site-lock") ||
-    pathname.startsWith("/api/site-access")
+    pathname.startsWith("/api/site-access") ||
+    pathname.startsWith("/api/cron/")
   ) {
     return NextResponse.next();
   }
