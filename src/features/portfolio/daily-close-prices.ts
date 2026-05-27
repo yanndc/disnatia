@@ -121,48 +121,84 @@ export async function persistQuoteSessionCloses(
 export async function backfillDailyClosesForPairs(
   pairs: { ticker: string; currency: string; yahooSymbol: string }[],
 ): Promise<number> {
-  const chunkSize = 6;
+  const chartCloses = await fetchChartClosesInMemory(pairs);
   let upserted = 0;
 
-  for (let i = 0; i < pairs.length; i += chunkSize) {
-    const chunk = pairs.slice(i, i + chunkSize);
+  for (const [key, close] of chartCloses) {
+    const [ticker, currency, date] = key.split("|");
+    const yahooSymbol =
+      pairs.find(
+        (p) =>
+          p.ticker.toUpperCase() === ticker &&
+          p.currency.toUpperCase() === currency,
+      )?.yahooSymbol ?? null;
+    await prisma.portfolioDailyPrice.upsert({
+      where: {
+        ticker_currency_priceDate: {
+          ticker: ticker!,
+          currency: currency!,
+          priceDate: parseIsoDateLocal(date!),
+        },
+      },
+      create: {
+        ticker: ticker!,
+        currency: currency!,
+        priceDate: parseIsoDateLocal(date!),
+        closePrice: close,
+        source: "yahoo-chart",
+        yahooSymbol,
+      },
+      update: {
+        closePrice: close,
+        source: "yahoo-chart",
+        yahooSymbol,
+      },
+    });
+    upserted += 1;
+  }
+
+  return upserted;
+}
+
+/** Charge les clôtures Yahoo (10 j) en parallèle, sans écriture DB. */
+export async function fetchChartClosesInMemory(
+  pairs: { ticker: string; currency: string; yahooSymbol: string }[],
+): Promise<Map<DailyCloseKey, number>> {
+  const unique = [
+    ...new Map(
+      pairs.map((p) => [
+        `${p.ticker.toUpperCase()}|${p.currency.toUpperCase()}`,
+        {
+          ticker: p.ticker.toUpperCase(),
+          currency: p.currency.toUpperCase(),
+          yahooSymbol: p.yahooSymbol,
+        },
+      ]),
+    ).values(),
+  ];
+
+  const chunkSize = 6;
+  const map = new Map<DailyCloseKey, number>();
+
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
     const batches = await Promise.all(
       chunk.map(async ({ ticker, currency, yahooSymbol }) => {
         const points = await fetchYahooChartDailyCloses(yahooSymbol);
-        return points.map((point) => ({ ticker, currency, yahooSymbol, point }));
+        return points.map((point) => ({
+          key: dailyCloseKey(ticker, currency, point.date),
+          close: point.close,
+        }));
       }),
     );
-
     for (const rows of batches) {
-      for (const { ticker, currency, yahooSymbol, point } of rows) {
-        await prisma.portfolioDailyPrice.upsert({
-          where: {
-            ticker_currency_priceDate: {
-              ticker,
-              currency,
-              priceDate: parseIsoDateLocal(point.date),
-            },
-          },
-          create: {
-            ticker,
-            currency,
-            priceDate: parseIsoDateLocal(point.date),
-            closePrice: point.close,
-            source: "yahoo-chart",
-            yahooSymbol,
-          },
-          update: {
-            closePrice: point.close,
-            source: "yahoo-chart",
-            yahooSymbol,
-          },
-        });
-        upserted += 1;
+      for (const { key, close } of rows) {
+        map.set(key, close);
       }
     }
   }
 
-  return upserted;
+  return map;
 }
 
 /** Dates nécessaires pour le P&L « hier » (séance complétée + veille). */
@@ -194,6 +230,42 @@ export function pairsMissingCloses(
     const [ticker, currency] = k.split("|");
     return { ticker: ticker!, currency: currency! };
   });
+}
+
+function closeInMap(
+  closeMap: Map<DailyCloseKey, number>,
+  ticker: string,
+  currency: string,
+  date: string,
+): boolean {
+  return closeMap.has(dailyCloseKey(ticker, currency, date));
+}
+
+/** Paires sans historique suffisant pour le P&L « hier » (fin + veille réelle). */
+export function pairsNeedingChartHistory(
+  pairs: { ticker: string; currency: string }[],
+  closeMap: Map<DailyCloseKey, number>,
+  sessionEnd: string,
+): { ticker: string; currency: string }[] {
+  const out: { ticker: string; currency: string }[] = [];
+  for (const { ticker, currency } of pairs) {
+    if (!closeInMap(closeMap, ticker, currency, sessionEnd)) {
+      out.push({ ticker, currency });
+      continue;
+    }
+    let cursor = parseIsoDateLocal(sessionEnd);
+    let foundPrior = false;
+    for (let i = 0; i < 8; i++) {
+      cursor = previousTradingDay(cursor, 1);
+      const iso = isoDateLocal(cursor);
+      if (closeInMap(closeMap, ticker, currency, iso)) {
+        foundPrior = true;
+        break;
+      }
+    }
+    if (!foundPrior) out.push({ ticker, currency });
+  }
+  return out;
 }
 
 export function yahooSymbolForPair(ticker: string, currency: string): string {

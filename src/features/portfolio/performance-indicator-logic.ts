@@ -60,6 +60,11 @@ function parseIsoDate(s: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
+/** Horloge réelle pour les bornes de séance (évite minuit sur asOfNow). */
+function sessionClockForBounds(): Date {
+  return new Date();
+}
+
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = currency.trim().toUpperCase();
   if (cur === "USD" || cur === "US") {
@@ -635,7 +640,7 @@ function computeYesterdayPeriod(
   payload: PerformanceIndicatorPayload,
 ): PerformancePeriodResult {
   const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
-  const now = parseIsoDate(payload.asOfNow);
+  const now = sessionClockForBounds();
   const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
 
   const fromCloses = computeYesterdayFromSessionCloses(
@@ -706,7 +711,7 @@ function computeSnapshotPeriod(
   selectedYear: number,
 ): PerformancePeriodResult {
   const meta = resolvePeriodMeta(periodId, payload.asOfNow);
-  const now = parseIsoDate(payload.asOfNow);
+  const now = sessionClockForBounds();
   const earliest = earliestSnapshotAmong(accountKeys, payload.snapshots);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
 

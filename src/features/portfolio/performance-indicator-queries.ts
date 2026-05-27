@@ -13,10 +13,10 @@ import {
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { makeAccountKey } from "./upsert-portfolio-state";
 import {
-  backfillDailyClosesForPairs,
   dailyCloseKey,
+  fetchChartClosesInMemory,
   loadDailyCloseMap,
-  pairsMissingCloses,
+  pairsNeedingChartHistory,
   yesterdayCloseDates,
   yahooSymbolForPair,
 } from "./daily-close-prices";
@@ -285,34 +285,38 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   const closeFrom = sessionStart;
   const closeTo = isoDate(new Date());
 
+  const uniquePairs = [
+    ...new Map(
+      performanceHoldings.map((h) => [
+        `${h.ticker}|${h.currency}`,
+        { ticker: h.ticker, currency: h.currency },
+      ]),
+    ).values(),
+  ];
+
   let closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
-  const missingPairs = pairsMissingCloses(
-    performanceHoldings,
-    closeMap,
-    [sessionEnd],
-  );
-  if (missingPairs.length > 0) {
-    await backfillDailyClosesForPairs(
-      missingPairs.map((p) => ({
+  let needingChart = pairsNeedingChartHistory(uniquePairs, closeMap, sessionEnd);
+  if (needingChart.length > 0) {
+    const fetched = await fetchChartClosesInMemory(
+      needingChart.map((p) => ({
         ...p,
         yahooSymbol: yahooSymbolForPair(p.ticker, p.currency),
       })),
     );
-    closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
+    closeMap = new Map([...closeMap, ...fetched]);
+  }
+  for (const q of quotes) {
+    if (q.previousClose != null && q.previousClose > 0) {
+      const key = dailyCloseKey(q.ticker, q.currency, sessionEnd);
+      if (!closeMap.has(key)) {
+        closeMap.set(key, q.previousClose);
+      }
+    }
   }
 
   const dailyCloses: Record<string, number> = {};
   for (const [key, value] of closeMap) {
     dailyCloses[key] = value;
-  }
-  for (const q of quotes) {
-    const prevDay = sessionEnd;
-    if (q.previousClose != null && q.previousClose > 0) {
-      const k = dailyCloseKey(q.ticker, q.currency, prevDay);
-      if (dailyCloses[k] === undefined) {
-        dailyCloses[k] = q.previousClose;
-      }
-    }
   }
 
   return {
