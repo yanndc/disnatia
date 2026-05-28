@@ -59,6 +59,13 @@ export type PerformanceDailyTotalCad = {
   totalCad: number;
 };
 
+/** P&L titres d'une séance (Σ qty × Δ clôture), en CAD. */
+export type PerformanceSessionGain = {
+  date: string;
+  gainCad: number;
+  priorCad: number;
+};
+
 export type PerformanceIndicatorPayload = {
   accounts: PerformanceAccountRef[];
   currentByAccount: Record<string, PerformanceAccountCurrent>;
@@ -67,6 +74,8 @@ export type PerformanceIndicatorPayload = {
   historyPoints: PerformanceSnapshotPoint[];
   /** Valeurs titres agrégées en CAD par jour (portfolio_daily_values). */
   dailyTotalsCad: PerformanceDailyTotalCad[];
+  /** P&L titres par séance boursière (holdings journaliers × clôtures). */
+  sessionGainsByDate: PerformanceSessionGain[];
   cashFlows: PerformanceCashFlow[];
   /** Positions projetées pour calcul P&L titres par séance */
   holdings: PerformanceHoldingRow[];
@@ -90,8 +99,8 @@ export type PerformancePeriodResult = {
   baselineDate: string | null;
   periodStart: string | null;
   periodEnd: string | null;
-  /** live-quotes | session-closes | holdings-history | snapshot-delta | unavailable */
-  method: "live-quotes" | "session-closes" | "holdings-history" | "snapshot-delta" | "unavailable";
+  /** live-quotes | session-closes | session-chain | holdings-history | snapshot-delta | unavailable */
+  method: "live-quotes" | "session-closes" | "session-chain" | "holdings-history" | "snapshot-delta" | "unavailable";
   accountsIncluded: number;
   accountsWithBaseline: number;
   incomplete: boolean;

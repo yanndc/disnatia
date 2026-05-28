@@ -29,10 +29,17 @@ import type {
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
 import {
+  loadDailyTitresSessionGains,
   loadPerformanceAccountHistory,
   loadPerformanceDailyTotalsCad,
 } from "./performance-history-loader";
 import { isoDateInToronto } from "@/lib/market/equity-session";
+import {
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+  subYears,
+} from "date-fns";
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = normalizeCurrency(currency);
@@ -259,6 +266,21 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     loadPerformanceDailyTotalsCad(usdToCad),
   ]);
 
+  const disnatAccountKeys = accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
+  const now = new Date();
+  const sessionGainFromCandidates = [
+    isoDate(startOfYear(subYears(now, 1))),
+    isoDate(startOfWeek(now, { weekStartsOn: 1 })),
+    isoDate(startOfMonth(now)),
+  ];
+  const sessionGainFrom = sessionGainFromCandidates.toSorted()[0] ?? isoDate(startOfYear(now));
+  const sessionGainsByDate = await loadDailyTitresSessionGains(
+    disnatAccountKeys,
+    sessionGainFrom,
+    isoDate(now),
+    usdToCad,
+  );
+
   for (const s of snapshots) {
     yearSet.add(Number(s.asOf.slice(0, 4)));
   }
@@ -341,6 +363,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     snapshots,
     historyPoints,
     dailyTotalsCad,
+    sessionGainsByDate,
     cashFlows,
     holdings: performanceHoldings,
     dailyCloses,

@@ -1,7 +1,6 @@
 import {
   differenceInCalendarDays,
   endOfYear,
-  format,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -17,6 +16,7 @@ import type {
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
 import {
+  isoDateInToronto,
   previousTradingDay,
   resolveDayPeriodLabels,
   yesterdayTradingSessionDay,
@@ -52,7 +52,7 @@ export function resolvePeriodMeta(
 }
 
 function isoDate(d: Date): string {
-  return format(d, "yyyy-MM-dd");
+  return isoDateInToronto(d);
 }
 
 function parseIsoDate(s: string): Date {
@@ -653,6 +653,164 @@ function joinNotes(...parts: (string | null | undefined)[]): string | null {
   return merged.length > 0 ? merged.join(" ") : null;
 }
 
+function canUseSessionChain(
+  periodId: PerformancePeriodId,
+  bounds: { start: string | null },
+  payload: PerformanceIndicatorPayload,
+): boolean {
+  if ((payload.sessionGainsByDate?.length ?? 0) === 0) return false;
+  if (periodId === "all") return true;
+  if (!bounds.start) return false;
+  const first = payload.sessionGainsByDate?.[0]?.date;
+  if (!first) return false;
+  return bounds.start >= first;
+}
+
+function disnatAccountKeysInScope(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+): string[] {
+  return accountKeys.filter(
+    (k) => payload.accounts.find((a) => a.accountKey === k && !a.isExternal),
+  );
+}
+
+function externalAccountKeysInScope(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+): string[] {
+  return accountKeys.filter(
+    (k) => payload.accounts.find((a) => a.accountKey === k && a.isExternal),
+  );
+}
+
+/** P&L titres = somme des séances sur la période (évite de compter les achats comme gains). */
+function computeSessionChainPeriod(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  bounds: { start: string | null; end: string; baselineLookup: string | null },
+  periodId: PerformancePeriodId,
+): {
+  usable: boolean;
+  gainCad: number | null;
+  gainPct: number | null;
+  currentCad: number;
+  baselineCad: number | null;
+  baselineDate: string | null;
+  accountsWithBaseline: number;
+  incomplete: boolean;
+  note: string | null;
+} {
+  if (!bounds.start) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      currentCad: accountKeys.reduce(
+        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+        0,
+      ),
+      baselineCad: null,
+      baselineDate: null,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: null,
+    };
+  }
+
+  const disnatKeys = disnatAccountKeysInScope(accountKeys, payload);
+  const extKeys = externalAccountKeysInScope(accountKeys, payload);
+  const sessions =
+    periodId === "all"
+      ? [...(payload.sessionGainsByDate ?? [])]
+      : (payload.sessionGainsByDate ?? [])
+          .filter((g) => g.date >= bounds.start! && g.date <= bounds.end)
+          .toSorted((a, b) => a.date.localeCompare(b.date));
+  sessions.sort((a, b) => a.date.localeCompare(b.date));
+
+  let gainCad = 0;
+  let priorCad = 0;
+  let hasPrior = false;
+  let incomplete = periodId === "all";
+
+  if (disnatKeys.length > 0) {
+    if (sessions.length === 0) {
+      return {
+        usable: false,
+        gainCad: null,
+        gainPct: null,
+        currentCad: accountKeys.reduce(
+          (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+          0,
+        ),
+        baselineCad: null,
+        baselineDate: null,
+        accountsWithBaseline: 0,
+        incomplete: true,
+        note: null,
+      };
+    }
+    gainCad += sessions.reduce((s, g) => s + g.gainCad, 0);
+    priorCad += sessions[0]!.priorCad;
+    hasPrior = sessions[0]!.priorCad > 0;
+    if (sessions[0]!.date > bounds.start) incomplete = true;
+  }
+
+  if (periodId === "all" && sessions.length > 0) {
+    incomplete = true;
+  }
+
+  if (extKeys.length > 0) {
+    const extCalc = computeAdjustedSnapshotGain(
+      extKeys,
+      payload,
+      bounds,
+      { periodId },
+    );
+    if (extCalc.gainCad !== null) gainCad += extCalc.gainCad;
+    if (extCalc.baselineCad > 0) {
+      priorCad += extCalc.baselineCad;
+      hasPrior = true;
+    }
+    incomplete = incomplete || extCalc.incomplete;
+  }
+
+  const flowKeys = [...disnatKeys, ...extKeys];
+  const flowAdjustmentCad = netExternalFlowsCad(
+    payload.cashFlows ?? [],
+    flowKeys,
+    bounds.start,
+    bounds.end,
+  );
+  gainCad -= flowAdjustmentCad;
+  const flowNote = formatFlowAdjustmentNote(flowAdjustmentCad);
+
+  const currentCad = accountKeys.reduce(
+    (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+    0,
+  );
+
+  return {
+    usable: disnatKeys.length === 0 || sessions.length > 0,
+    gainCad: disnatKeys.length > 0 && sessions.length === 0 ? null : gainCad,
+    gainPct: hasPrior && priorCad > 0 ? (gainCad / priorCad) * 100 : null,
+    currentCad,
+    baselineCad: hasPrior ? priorCad : null,
+    baselineDate: sessions[0]?.date ?? bounds.baselineLookup,
+    accountsWithBaseline:
+      (disnatKeys.length > 0 && sessions.length > 0 ? disnatKeys.length : 0) +
+      extKeys.filter((k) => payload.currentByAccount[k]).length,
+    incomplete,
+    note: joinNotes(
+      periodId === "all" && sessions.length > 0
+        ? `Total titres depuis ${sessions[0]!.date} (historique de séances chargé).`
+        : null,
+      incomplete ? "P&L partiel : historique journalier incomplet sur la période." : null,
+      flowNote,
+    ),
+  };
+}
+
 function computeAdjustedSnapshotGain(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -768,39 +926,29 @@ function computeYesterdayPeriod(
   const now = sessionClockForBounds();
   const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
 
-  const fromHistory = computeAdjustedSnapshotGain(
+  const fromChain = computeSessionChainPeriod(
     accountKeys,
     payload,
     bounds,
-    { endFromSnapshot: true, periodId: "yesterday" },
+    "yesterday",
   );
-  const historyDegenerate = snapshotsDegenerateForPeriod(
-    accountKeys,
-    payload,
-    bounds,
-  );
-  if (
-    fromHistory.withBaseline > 0 &&
-    fromHistory.withEnd > 0 &&
-    fromHistory.gainCad !== null &&
-    !historyDegenerate
-  ) {
+  if (fromChain.usable && fromChain.gainCad !== null) {
     return {
       periodId: "yesterday",
       label: meta.label,
       shortLabel: meta.shortLabel,
-      gainCad: fromHistory.gainCad,
-      gainPct: fromHistory.gainPct,
-      currentCad: fromHistory.currentCad,
-      baselineCad: fromHistory.baselineCad,
-      baselineDate: fromHistory.latestBaselineDate,
+      gainCad: fromChain.gainCad,
+      gainPct: fromChain.gainPct,
+      currentCad: fromChain.currentCad,
+      baselineCad: fromChain.baselineCad,
+      baselineDate: fromChain.baselineDate,
       periodStart: bounds.start,
       periodEnd: bounds.end,
-      method: fromHistory.usedHistory ? "holdings-history" : "snapshot-delta",
+      method: "session-chain",
       accountsIncluded: accountKeys.length,
-      accountsWithBaseline: fromHistory.withBaseline,
-      incomplete: fromHistory.incomplete,
-      note: fromHistory.note,
+      accountsWithBaseline: fromChain.accountsWithBaseline,
+      incomplete: fromChain.incomplete,
+      note: fromChain.note,
     };
   }
 
@@ -922,6 +1070,41 @@ function computeSnapshotPeriod(
       accountsWithBaseline: 0,
       incomplete: true,
       note: "Lance le backfill historique de marché ou importe des snapshots portefeuille.",
+    };
+  }
+
+  const chainBounds = {
+    start: bounds.start,
+    end: bounds.end,
+    baselineLookup: bounds.baselineLookup,
+  };
+  const fromChain = computeSessionChainPeriod(
+    accountKeys,
+    payload,
+    chainBounds,
+    periodId,
+  );
+  if (
+    canUseSessionChain(periodId, bounds, payload) &&
+    fromChain.usable &&
+    fromChain.gainCad !== null
+  ) {
+    return {
+      periodId,
+      label: meta.label,
+      shortLabel: meta.shortLabel,
+      gainCad: fromChain.gainCad,
+      gainPct: fromChain.gainPct,
+      currentCad: fromChain.currentCad,
+      baselineCad: fromChain.baselineCad,
+      baselineDate: fromChain.baselineDate,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: "session-chain",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: fromChain.accountsWithBaseline,
+      incomplete: fromChain.incomplete,
+      note: fromChain.note,
     };
   }
 

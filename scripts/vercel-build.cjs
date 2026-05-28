@@ -44,14 +44,14 @@ if (process.env.VERCEL === "1") {
   }
 }
 
-function run(cmd, args) {
+function run(cmd, args, envOverrides = {}) {
   const r = spawnSync(cmd, args, {
     stdio: "inherit",
     shell: true,
-    env: process.env,
+    env: { ...process.env, ...envOverrides },
   });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
 run("pnpm", ["exec", "prisma", "migrate", "deploy"]);
-run("pnpm", ["exec", "next", "build"]);
+run("pnpm", ["exec", "next", "build"], { NODE_ENV: "production" });
