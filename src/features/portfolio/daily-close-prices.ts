@@ -269,13 +269,13 @@ export async function priorSessionCloseByPair(
   let closeMap = await loadDailyCloseMap(pairs, chartFrom, priorDay);
   const needingChart = pairsMissingCloses(pairs, closeMap, [priorDay]);
   if (needingChart.length > 0) {
-    await backfillDailyClosesForPairs(
+    const fetched = await fetchChartClosesInMemory(
       needingChart.map((p) => ({
         ...p,
         yahooSymbol: yahooSymbolForPair(p.ticker, p.currency),
       })),
     );
-    closeMap = await loadDailyCloseMap(pairs, chartFrom, priorDay);
+    closeMap = new Map([...closeMap, ...fetched]);
   }
 
   const out = new Map<string, number>();

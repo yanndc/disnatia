@@ -14,7 +14,7 @@ export type RunEodReportResult =
   | { skipped: true; reason: string };
 
 export async function runEodReportJob(now = new Date()): Promise<RunEodReportResult> {
-  await refreshLiveQuotesForLatestImport();
+  await refreshLiveQuotesForLatestImport({ recomputeSessionGains: true });
 
   const data = await buildEodReportData(now);
   const html = await render(EodReportEmail({ data }));

@@ -5,12 +5,16 @@ import { disnatTickerToStooqSymbol, fetchStooqLastClose } from "@/lib/market/sto
 import { fetchYahooQuotesBySymbol } from "@/lib/market/yahoo-quote";
 import {
   persistQuoteSessionCloses,
-  priorSessionCloseByPair,
 } from "@/features/portfolio/daily-close-prices";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { isoDateInToronto } from "@/lib/market/equity-session";
 import { recomputeAndPersistSessionGains } from "@/features/portfolio/performance-session-gains";
 import { subDays } from "date-fns";
+
+export type RefreshLiveQuotesOptions = {
+  /** Recalcule les P&L de séance persistés (cron EOD uniquement). */
+  recomputeSessionGains?: boolean;
+};
 
 export type RefreshLiveQuotesResult = {
   ok: boolean;
@@ -59,7 +63,10 @@ function uniqueTickerCurrency(
   return [...map.values()];
 }
 
-export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuotesResult> {
+export async function refreshLiveQuotesForLatestImport(
+  options: RefreshLiveQuotesOptions = {},
+): Promise<RefreshLiveQuotesResult> {
+  const { recomputeSessionGains = false } = options;
   const holdings = await loadHoldingsForDashboard();
 
   if (holdings.length === 0) {
@@ -131,7 +138,11 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
       },
     });
     if (row) {
-      await persistQuoteSessionCloses(ticker, currency, sourceSymbol, row, now);
+      try {
+        await persistQuoteSessionCloses(ticker, currency, sourceSymbol, row, now);
+      } catch {
+        /* clôture journalière optionnelle */
+      }
     }
     quotesUpserted += 1;
   }
@@ -139,19 +150,21 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
   const accountKeys = (
     await prisma.portfolioAccountState.findMany({ select: { accountKey: true } })
   ).map((a) => a.accountKey);
-  if (accountKeys.length > 0 && quotesUpserted > 0) {
-    const fx = await getUsdCadRateNear(now);
-    const to = isoDateInToronto(now);
-    const from = isoDateInToronto(subDays(now, 45));
-    await recomputeAndPersistSessionGains(
-      accountKeys,
-      from,
-      to,
-      fx?.usdToCad ?? null,
-    );
+  if (recomputeSessionGains && accountKeys.length > 0 && quotesUpserted > 0) {
+    try {
+      const fx = await getUsdCadRateNear(now);
+      const to = isoDateInToronto(now);
+      const from = isoDateInToronto(subDays(now, 45));
+      await recomputeAndPersistSessionGains(
+        accountKeys,
+        from,
+        to,
+        fx?.usdToCad ?? null,
+      );
+    } catch {
+      /* ne pas faire échouer le refresh des cours */
+    }
   }
-
-  await priorSessionCloseByPair(pairs);
 
   return {
     ok: true,
