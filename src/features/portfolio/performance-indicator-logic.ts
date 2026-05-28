@@ -1,10 +1,10 @@
 import {
+  differenceInCalendarDays,
   endOfYear,
   format,
   startOfMonth,
   startOfWeek,
   startOfYear,
-  subDays,
 } from "date-fns";
 import { frCA } from "date-fns/locale";
 import type {
@@ -58,6 +58,122 @@ function isoDate(d: Date): string {
 function parseIsoDate(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y!, m! - 1, d!);
+}
+
+/** Écart max (jours calendaires) entre la date cible et le point d'historique résolu. */
+const MAX_HISTORY_LAG_DAYS = 7;
+
+function historyLagDays(resolvedAsOf: string, targetDate: string): number {
+  return differenceInCalendarDays(
+    parseIsoDate(targetDate),
+    parseIsoDate(resolvedAsOf),
+  );
+}
+
+function isFreshHistory(resolvedAsOf: string, targetDate: string): boolean {
+  return historyLagDays(resolvedAsOf, targetDate) <= MAX_HISTORY_LAG_DAYS;
+}
+
+function baselineBeforePeriodStart(startIso: string): string {
+  return isoDate(previousTradingDay(parseIsoDate(startIso), 1));
+}
+
+function firstHistoryDateForAccount(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+): string | null {
+  const dates = (payload.historyPoints ?? [])
+    .filter((s) => s.accountKey === accountKey)
+    .map((s) => s.asOf);
+  if (dates.length === 0) return null;
+  return dates.toSorted()[0] ?? null;
+}
+
+function resolveAccountBaseline(
+  accountKey: string,
+  bounds: { baselineLookup: string | null; start: string | null; end: string },
+  payload: PerformanceIndicatorPayload,
+  periodId: PerformancePeriodId,
+): { valueCad: number; asOf: string; fromHistory: boolean } | null {
+  if (periodId === "all") {
+    const first = firstHistoryDateForAccount(accountKey, payload);
+    if (first) {
+      return portfolioValueAtDate(accountKey, first, payload);
+    }
+    const snap = snapshotValueAtDate(
+      accountKey,
+      bounds.end,
+      payload.snapshots,
+      payload.usdToCad,
+    );
+    if (!snap) return null;
+    return { ...snap, fromHistory: false };
+  }
+
+  if (!bounds.baselineLookup) return null;
+
+  const atBaseline = portfolioValueAtDate(
+    accountKey,
+    bounds.baselineLookup,
+    payload,
+  );
+  if (
+    atBaseline &&
+    isFreshHistory(atBaseline.asOf, bounds.baselineLookup)
+  ) {
+    return atBaseline;
+  }
+
+  const first = firstHistoryDateForAccount(accountKey, payload);
+  if (!first || !bounds.start) return null;
+  if (first > bounds.start) {
+    return portfolioValueAtDate(accountKey, first, payload);
+  }
+
+  return atBaseline;
+}
+
+function resolveAccountEndValue(
+  accountKey: string,
+  bounds: { end: string },
+  payload: PerformanceIndicatorPayload,
+  options: { endFromSnapshot?: boolean },
+): { valueCad: number; fromHistory: boolean } | null {
+  const acc = payload.accounts.find((a) => a.accountKey === accountKey);
+  const cur = payload.currentByAccount[accountKey];
+  const endIsToday =
+    bounds.end === isoDate(sessionClockForBounds()) ||
+    bounds.end === payload.asOfNow.slice(0, 10);
+
+  if (options.endFromSnapshot) {
+    const endSnap = portfolioValueAtDate(accountKey, bounds.end, payload);
+    if (!endSnap || !isFreshHistory(endSnap.asOf, bounds.end)) return null;
+    return { valueCad: endSnap.valueCad, fromHistory: endSnap.fromHistory };
+  }
+
+  if (endIsToday) {
+    if (acc?.isExternal) {
+      return cur ? { valueCad: cur.totalCad, fromHistory: false } : null;
+    }
+    const positionsCad = cur?.positionsCad ?? cur?.totalCad ?? null;
+    return positionsCad !== null
+      ? { valueCad: positionsCad, fromHistory: false }
+      : null;
+  }
+
+  const endSnap = portfolioValueAtDate(accountKey, bounds.end, payload);
+  if (endSnap && isFreshHistory(endSnap.asOf, bounds.end)) {
+    return { valueCad: endSnap.valueCad, fromHistory: endSnap.fromHistory };
+  }
+
+  if (acc?.isExternal) {
+    return cur ? { valueCad: cur.totalCad, fromHistory: false } : null;
+  }
+
+  const positionsCad = cur?.positionsCad ?? cur?.totalCad ?? null;
+  return positionsCad !== null
+    ? { valueCad: positionsCad, fromHistory: false }
+    : null;
 }
 
 /** Horloge réelle pour les bornes de séance (évite minuit sur asOfNow). */
@@ -392,18 +508,15 @@ export function resolvePeriodBounds(
       const start = isoDate(
         startOfWeek(now, { weekStartsOn: 1, locale: frCA }),
       );
-      const baseline = isoDate(subDays(parseIsoDate(start), 1));
-      return { start, end, baselineLookup: baseline };
+      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "month": {
       const start = isoDate(startOfMonth(now));
-      const baseline = isoDate(subDays(parseIsoDate(start), 1));
-      return { start, end, baselineLookup: baseline };
+      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "ytd": {
       const start = isoDate(startOfYear(now));
-      const baseline = isoDate(subDays(parseIsoDate(start), 1));
-      return { start, end, baselineLookup: baseline };
+      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "year": {
       const yearStart = startOfYear(new Date(selectedYear, 0, 1));
@@ -413,16 +526,17 @@ export function resolvePeriodBounds(
           ? endOfYear(yearStart)
           : now;
       const periodEnd = isoDate(yearEndDate);
-      const baseline = isoDate(subDays(yearStart, 1));
-      return { start, end: periodEnd, baselineLookup: baseline };
+      return {
+        start,
+        end: periodEnd,
+        baselineLookup: baselineBeforePeriodStart(start),
+      };
     }
     case "all":
       return {
         start: earliestSnapshotDate,
         end,
-        baselineLookup: earliestSnapshotDate
-          ? isoDate(subDays(parseIsoDate(earliestSnapshotDate), 1))
-          : null,
+        baselineLookup: earliestSnapshotDate,
       };
   }
 }
@@ -550,6 +664,7 @@ function computeAdjustedSnapshotGain(
   options: {
     /** Si true, la valeur de fin vient d'un snapshot (ex. hier) plutôt que du live. */
     endFromSnapshot?: boolean;
+    periodId?: PerformancePeriodId;
   } = {},
 ): {
   currentCad: number;
@@ -565,6 +680,7 @@ function computeAdjustedSnapshotGain(
   usedHistory: boolean;
 } {
   const endFromSnapshot = options.endFromSnapshot ?? false;
+  const periodId = options.periodId ?? "week";
   let currentCad = 0;
   let baselineCad = 0;
   let withBaseline = 0;
@@ -575,40 +691,21 @@ function computeAdjustedSnapshotGain(
   let withHistory = 0;
 
   for (const key of accountKeys) {
-    const baseSnap =
-      bounds.baselineLookup
-        ? portfolioValueAtDate(key, bounds.baselineLookup, payload)
-        : null;
+    const baseSnap = resolveAccountBaseline(key, bounds, payload, periodId);
     if (!baseSnap) continue;
 
-    let endValueCad: number | null = null;
-    let endFromHistory = false;
-    if (endFromSnapshot && bounds.end) {
-      const endSnap = portfolioValueAtDate(key, bounds.end, payload);
-      if (endSnap) {
-        endValueCad = endSnap.valueCad;
-        endFromHistory = endSnap.fromHistory;
-        withEnd++;
-      }
-    } else {
-      const acc = payload.accounts.find((a) => a.accountKey === key);
-      const cur = payload.currentByAccount[key];
-      if (acc?.isExternal) {
-        endValueCad = cur?.totalCad ?? null;
-      } else {
-        endValueCad = cur?.positionsCad ?? cur?.totalCad ?? null;
-      }
-      if (endValueCad !== null) withEnd++;
-    }
-
-    if (endValueCad === null) continue;
+    const endResolved = resolveAccountEndValue(key, bounds, payload, {
+      endFromSnapshot,
+    });
+    if (!endResolved) continue;
 
     coveredKeys.push(key);
     baselineCad += baseSnap.valueCad;
-    currentCad += endValueCad;
+    currentCad += endResolved.valueCad;
     withBaseline++;
+    withEnd++;
     if (baseSnap.fromHistory) withHistory++;
-    if (endFromHistory) withHistory++;
+    if (endResolved.fromHistory) withHistory++;
     if (!latestBaselineDate || baseSnap.asOf > latestBaselineDate) {
       latestBaselineDate = baseSnap.asOf;
     }
@@ -670,6 +767,42 @@ function computeYesterdayPeriod(
   const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
   const now = sessionClockForBounds();
   const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
+
+  const fromHistory = computeAdjustedSnapshotGain(
+    accountKeys,
+    payload,
+    bounds,
+    { endFromSnapshot: true, periodId: "yesterday" },
+  );
+  const historyDegenerate = snapshotsDegenerateForPeriod(
+    accountKeys,
+    payload,
+    bounds,
+  );
+  if (
+    fromHistory.withBaseline > 0 &&
+    fromHistory.withEnd > 0 &&
+    fromHistory.gainCad !== null &&
+    !historyDegenerate
+  ) {
+    return {
+      periodId: "yesterday",
+      label: meta.label,
+      shortLabel: meta.shortLabel,
+      gainCad: fromHistory.gainCad,
+      gainPct: fromHistory.gainPct,
+      currentCad: fromHistory.currentCad,
+      baselineCad: fromHistory.baselineCad,
+      baselineDate: fromHistory.latestBaselineDate,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: fromHistory.usedHistory ? "holdings-history" : "snapshot-delta",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: fromHistory.withBaseline,
+      incomplete: fromHistory.incomplete,
+      note: fromHistory.note,
+    };
+  }
 
   const fromCloses = computeYesterdayFromSessionCloses(
     accountKeys,
@@ -743,7 +876,10 @@ function computeSnapshotPeriod(
   const earliest = earliestHistoryAmong(accountKeys, payload);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
 
-  if (!bounds.baselineLookup || !bounds.start) {
+  if (
+    periodId !== "all" &&
+    (!bounds.baselineLookup || !bounds.start)
+  ) {
     return {
       periodId,
       label: meta.label,
@@ -766,11 +902,39 @@ function computeSnapshotPeriod(
     };
   }
 
-  const calc = computeAdjustedSnapshotGain(accountKeys, payload, {
-    start: bounds.start,
-    end: bounds.end,
-    baselineLookup: bounds.baselineLookup,
-  });
+  if (periodId === "all" && !earliest) {
+    return {
+      periodId,
+      label: meta.label,
+      shortLabel: meta.shortLabel,
+      gainCad: null,
+      gainPct: null,
+      currentCad: accountKeys.reduce(
+        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+        0,
+      ),
+      baselineCad: null,
+      baselineDate: null,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: "Lance le backfill historique de marché ou importe des snapshots portefeuille.",
+    };
+  }
+
+  const calc = computeAdjustedSnapshotGain(
+    accountKeys,
+    payload,
+    {
+      start: bounds.start,
+      end: bounds.end,
+      baselineLookup: bounds.baselineLookup,
+    },
+    { periodId },
+  );
 
   if (calc.withBaseline === 0) {
     return {
