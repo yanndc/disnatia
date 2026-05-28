@@ -71,42 +71,19 @@ function liveQuoteMatchesReference(
   return false;
 }
 
-function sessionDeltaPerShareFromQuote(
-  quote: PortfolioLiveQuote | undefined,
-): number | null {
-  if (!quote) return null;
-  const direct = quote.changeAmount;
-  if (direct !== null && Number.isFinite(direct)) {
-    return direct;
-  }
-  const p = quote.price;
-  const prev = quote.previousClose;
-  if (
-    p !== null &&
-    Number.isFinite(p) &&
-    prev !== null &&
-    Number.isFinite(prev) &&
-    prev > 0
-  ) {
-    return p - prev;
-  }
-  return null;
-}
-
-function sessionPctFromQuote(
-  quote: PortfolioLiveQuote | undefined,
+function sessionPctFromDelta(
   deltaPerShare: number | null,
+  priorClose: number | null,
+  livePrice: number | null,
 ): number | null {
-  if (deltaPerShare === null || !Number.isFinite(deltaPerShare) || !quote) {
+  if (deltaPerShare === null || !Number.isFinite(deltaPerShare)) {
     return null;
   }
-  const prev = quote.previousClose;
-  if (prev !== null && Number.isFinite(prev) && prev > 0) {
-    return (deltaPerShare / prev) * 100;
+  if (priorClose != null && priorClose > 0) {
+    return (deltaPerShare / priorClose) * 100;
   }
-  const p = quote.price;
-  if (p !== null && Number.isFinite(p)) {
-    const inferredPrev = p - deltaPerShare;
+  if (livePrice != null && Number.isFinite(livePrice)) {
+    const inferredPrev = livePrice - deltaPerShare;
     if (inferredPrev > 0) {
       return (deltaPerShare / inferredPrev) * 100;
     }
@@ -118,6 +95,8 @@ export function enrichPositionRow(
   position: PortfolioPosition & { accountKey?: string },
   accountName: string,
   quote: PortfolioLiveQuote | undefined,
+  /** Clôture officielle de la séance précédente (portfolio_daily_prices). */
+  priorSessionClose?: number | null,
 ): EnrichedPosition {
   const disnatMarketValue = position.marketValue;
   const disnatMarketPrice = position.marketPrice ?? null;
@@ -137,13 +116,29 @@ export function enrichPositionRow(
       : disnatMarketValue;
 
   const usesLiveQuote = livePrice != null;
-  const quoteChangePerShare = sessionDeltaPerShareFromQuote(quote);
-  const displayDayGainLoss =
-    quoteChangePerShare !== null && position.quantity > 0
-      ? quoteChangePerShare * position.quantity
+  const priorClose =
+    priorSessionClose != null &&
+    Number.isFinite(priorSessionClose) &&
+    priorSessionClose > 0
+      ? priorSessionClose
       : null;
 
-  const quoteSessionChangePct = sessionPctFromQuote(quote, quoteChangePerShare);
+  const sessionDeltaPerShare =
+    usesLiveQuote && livePrice != null && priorClose != null
+      ? livePrice - priorClose
+      : null;
+
+  const quoteChangePerShare = sessionDeltaPerShare;
+  const displayDayGainLoss =
+    sessionDeltaPerShare !== null && position.quantity > 0
+      ? sessionDeltaPerShare * position.quantity
+      : null;
+
+  const quoteSessionChangePct = sessionPctFromDelta(
+    sessionDeltaPerShare,
+    priorClose,
+    livePrice,
+  );
 
   return {
     ...position,

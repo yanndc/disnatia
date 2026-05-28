@@ -5,6 +5,7 @@ import {
   enrichPositionRow,
   indexQuotesByTickerCurrency,
 } from "@/features/portfolio/live-enrichment";
+import { priorSessionCloseByPair } from "@/features/portfolio/daily-close-prices";
 import { computePeriodResult } from "@/features/portfolio/performance-indicator-logic";
 import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
 import {
@@ -88,11 +89,21 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
   const holdings = await loadHoldingsForDashboard();
   const quotes = await loadQuotesForHoldings(holdings);
   const quoteMap = indexQuotesByTickerCurrency(quotes);
+  const uniquePairs = [
+    ...new Map(
+      holdings.map((h) => [
+        `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`,
+        { ticker: h.ticker.toUpperCase(), currency: h.currency.toUpperCase() },
+      ]),
+    ).values(),
+  ];
+  const priorCloseByPair = await priorSessionCloseByPair(uniquePairs);
   const usdToCad = payload.usdToCad;
 
   const positions: EodReportPositionRow[] = holdings
     .filter((h) => h.quantity > 0)
     .map((h) => {
+      const pairKey = `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`;
       const enriched = enrichPositionRow(
         {
           id: h.id,
@@ -114,7 +125,8 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
           assetType: h.assetType ?? null,
         },
         h.accountName,
-        quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
+        quoteMap.get(pairKey),
+        priorCloseByPair.get(pairKey) ?? null,
       );
 
       const marketValueCad = toCadEquivalent(

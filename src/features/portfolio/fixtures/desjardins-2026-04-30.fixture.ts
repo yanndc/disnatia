@@ -5,38 +5,37 @@ import type {
 } from "@/features/portfolio/performance-indicator-types";
 
 /**
- * Référence Disnat — vue d'ensemble « Total des actifs », au 30 avril 2024.
+ * Référence Disnat — vue d'ensemble « Total des actifs », au 30 avril 2026.
  * Variation = P&L titres du jour (CAD), hors liquidités.
  */
-export const DESJARDINS_2024_04_30 = {
-  asOf: "2024-04-30",
+export const DESJARDINS_2026_04_30 = {
+  asOf: "2026-04-30",
   usdToCad: 1.3779,
   yann: {
-    accountNumber: "5KFZE19",
+    accountNumber: "5KFZE",
     owner: "Yann De Champlain",
-    variationCad: 996.44,
-    titresCad: 169_164.64,
+    variationCad: 1_010.37,
+    titresCad: 169_178.56,
     cashCad: 537.94,
-    totalCad: 169_702.59,
+    totalCad: 169_716.51,
   },
   valerie: {
-    accountNumber: "5L3APB3",
+    accountNumber: "5L3AP",
     owner: "Valerie Degrandpre",
-    variationCad: 367.44,
-    titresCad: 68_909.1,
+    variationCad: 360.8,
+    titresCad: 68_902.47,
     cashCad: 126.85,
-    totalCad: 69_035.95,
+    totalCad: 69_029.32,
   },
   consolidated: {
-    /** Total affiché Disnat (arrondi consolidé). */
-    variationCad: 1_363.89,
-    titresCad: 238_073.75,
+    variationCad: 1_371.17,
+    titresCad: 238_081.03,
     cashCad: 664.79,
-    totalCad: 238_738.54,
+    totalCad: 238_745.82,
   },
 } as const;
 
-const REF = DESJARDINS_2024_04_30;
+const REF = DESJARDINS_2026_04_30;
 
 export function desjardinsAccountKey(accountNumber: string): string {
   return `${accountNumber}|CAD`;
@@ -83,15 +82,15 @@ export function desjardinsPositionsByAccountKey(): Map<string, EnrichedPosition[
     [
       yannKey,
       [
-        positionRow(yannKey, REF.yann.owner, 412.18, 70_000),
-        positionRow(yannKey, REF.yann.owner, 584.26, 99_164.64),
+        positionRow(yannKey, REF.yann.owner, 510.18, 70_000),
+        positionRow(yannKey, REF.yann.owner, 500.19, 99_178.56),
       ],
     ],
     [
       valKey,
       [
-        positionRow(valKey, REF.valerie.owner, 152.44, 30_000),
-        positionRow(valKey, REF.valerie.owner, 215.0, 38_909.1),
+        positionRow(valKey, REF.valerie.owner, 180.4, 30_000),
+        positionRow(valKey, REF.valerie.owner, 180.4, 38_902.47),
       ],
     ],
   ]);
@@ -169,13 +168,12 @@ export function desjardinsPerformancePayload(
     dailyCloses: {},
     usdToCad: REF.usdToCad,
     usdToCadDate: REF.asOf,
-    availableYears: [2024],
+    availableYears: [2026],
     quotesAsOf: `${REF.asOf}T20:00:00.000Z`,
     asOfNow: marketOpen ? `${REF.asOf}T15:00:00` : `${REF.asOf}T22:00:00`,
   };
 }
 
-/** Somme arrondie des variations par compte (logique app). */
 export function sumAccountVariationsCad(
   payload: PerformanceIndicatorPayload,
 ): number {
@@ -188,7 +186,6 @@ export function sumAccountVariationsCad(
   return Math.round(total * 100) / 100;
 }
 
-/** Variation agrégée par titulaire. */
 export function ownerVariationCad(
   payload: PerformanceIndicatorPayload,
   owner: string,

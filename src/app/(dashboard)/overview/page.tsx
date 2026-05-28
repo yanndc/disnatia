@@ -10,6 +10,8 @@ import { getPostgresDeployHint } from "@/lib/db/postgres-deploy-hint";
 import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
 import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
 import { TopPositionsKpiCard } from "@/features/portfolio/top-positions-kpi-card";
+import { SessionTickerMiniReport } from "@/features/portfolio/session-ticker-mini-report";
+import { buildSessionTickerMiniReportFromPayload } from "@/features/portfolio/session-ticker-report-queries";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +96,13 @@ export default async function OverviewPage() {
   const disnatGapValue = summary.disnatLiveTotalValue - summary.disnatReferenceTotalValue;
   const driftIsHigh = summary.driftVsDisnatPct !== null && Math.abs(summary.driftVsDisnatPct) > 5;
 
+  const sessionTickerReport =
+    performancePayload && performancePayload.accounts.length > 0
+      ? await buildSessionTickerMiniReportFromPayload(performancePayload).catch(
+          () => null,
+        )
+      : null;
+
   return (
     <div className="space-y-8">
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-950 shadow-sm">
@@ -118,6 +127,10 @@ export default async function OverviewPage() {
 
       {performancePayload && performancePayload.accounts.length > 0 ? (
         <PerformanceIndicatorCard payload={performancePayload} />
+      ) : null}
+
+      {sessionTickerReport ? (
+        <SessionTickerMiniReport report={sessionTickerReport} />
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

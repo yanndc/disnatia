@@ -18,7 +18,7 @@ function toCad(value: number, currency: string, usdToCad: number | null): number
   return value;
 }
 
-function closeOnOrBefore(
+export function closeOnOrBefore(
   priceByDate: Map<string, number>,
   targetDate: string,
   maxSteps = 8,
@@ -33,7 +33,7 @@ function closeOnOrBefore(
   return null;
 }
 
-function priorCloseDateForSeries(
+export function priorCloseDateForSeries(
   sessionEnd: string,
   priceByDate: Map<string, number>,
   maxSteps = 8,

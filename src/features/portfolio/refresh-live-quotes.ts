@@ -3,7 +3,10 @@ import { loadHoldingsForDashboard } from "@/features/portfolio/holdings-display-
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import { disnatTickerToStooqSymbol, fetchStooqLastClose } from "@/lib/market/stooq-quote";
 import { fetchYahooQuotesBySymbol } from "@/lib/market/yahoo-quote";
-import { persistQuoteSessionCloses } from "@/features/portfolio/daily-close-prices";
+import {
+  persistQuoteSessionCloses,
+  priorSessionCloseByPair,
+} from "@/features/portfolio/daily-close-prices";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { isoDateInToronto } from "@/lib/market/equity-session";
 import { recomputeAndPersistSessionGains } from "@/features/portfolio/performance-session-gains";
@@ -147,6 +150,8 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
       fx?.usdToCad ?? null,
     );
   }
+
+  await priorSessionCloseByPair(pairs);
 
   return {
     ok: true,

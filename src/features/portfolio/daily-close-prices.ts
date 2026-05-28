@@ -64,19 +64,13 @@ export async function persistQuoteSessionCloses(
   now = new Date(),
 ): Promise<void> {
   const sessionDay = isoDateInToronto(now);
-  const prevDay = isoDateLocal(previousTradingDay(parseIsoDateLocal(sessionDay), 1));
 
   const upserts: { date: string; close: number }[] = [];
   if (row.price != null && Number.isFinite(row.price) && row.price > 0) {
     upserts.push({ date: sessionDay, close: row.price });
   }
-  if (
-    row.previousClose != null &&
-    Number.isFinite(row.previousClose) &&
-    row.previousClose > 0
-  ) {
-    upserts.push({ date: prevDay, close: row.previousClose });
-  }
+  /* Ne pas persister row.previousClose sur prevDay : Yahoo peut sauter une séance
+     (ex. previousClose = J-2), ce qui corrompt portfolio_daily_prices. */
 
   for (const point of upserts) {
     await prisma.portfolioDailyPrice.upsert({
@@ -256,4 +250,40 @@ export function pairsNeedingChartHistory(
 
 export function yahooSymbolForPair(ticker: string, currency: string): string {
   return disnatTickerToYahooSymbol(ticker, currency);
+}
+
+/** Clôtures de la séance précédente (veille boursière), clé `TICKER|CURRENCY`. */
+export async function priorSessionCloseByPair(
+  pairs: { ticker: string; currency: string }[],
+  now = new Date(),
+): Promise<Map<string, number>> {
+  if (pairs.length === 0) return new Map();
+
+  const priorDay = isoDateLocal(
+    previousTradingDay(referenceTradingSessionDay(now), 1),
+  );
+  const chartFrom = isoDateLocal(
+    previousTradingDay(parseIsoDateLocal(priorDay), 5),
+  );
+
+  let closeMap = await loadDailyCloseMap(pairs, chartFrom, priorDay);
+  const needingChart = pairsMissingCloses(pairs, closeMap, [priorDay]);
+  if (needingChart.length > 0) {
+    await backfillDailyClosesForPairs(
+      needingChart.map((p) => ({
+        ...p,
+        yahooSymbol: yahooSymbolForPair(p.ticker, p.currency),
+      })),
+    );
+    closeMap = await loadDailyCloseMap(pairs, chartFrom, priorDay);
+  }
+
+  const out = new Map<string, number>();
+  for (const { ticker, currency } of pairs) {
+    const close = closeMap.get(dailyCloseKey(ticker, currency, priorDay));
+    if (close != null && close > 0) {
+      out.set(`${ticker.toUpperCase()}|${currency.toUpperCase()}`, close);
+    }
+  }
+  return out;
 }

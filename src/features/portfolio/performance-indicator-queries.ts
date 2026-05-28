@@ -17,6 +17,7 @@ import {
   fetchChartClosesInMemory,
   loadDailyCloseMap,
   pairsNeedingChartHistory,
+  priorSessionCloseByPair,
   yesterdayCloseDates,
   yahooSymbolForPair,
 } from "./daily-close-prices";
@@ -24,6 +25,7 @@ import type {
   PerformanceAccountCurrent,
   PerformanceAccountRef,
   PerformanceCashFlow,
+  PerformanceEnrichedHoldingRow,
   PerformanceHoldingRow,
   PerformanceIndicatorPayload,
   PerformanceSnapshotPoint,
@@ -132,11 +134,22 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
 
   const quotes = await loadQuotesForHoldings(holdings);
   const quoteMap = indexQuotesByTickerCurrency(quotes);
+  const uniquePairs = [
+    ...new Map(
+      holdings.map((h) => [
+        `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`,
+        { ticker: h.ticker.toUpperCase(), currency: h.currency.toUpperCase() },
+      ]),
+    ).values(),
+  ];
+  const priorCloseByPair = await priorSessionCloseByPair(uniquePairs);
   const fxRow = await getUsdCadRateNear(new Date());
   const usdToCad = fxRow?.usdToCad ?? null;
 
   const positionsByAccount = new Map<string, ReturnType<typeof enrichPositionRow>[]>();
+  const enrichedHoldings: PerformanceEnrichedHoldingRow[] = [];
   for (const h of holdings) {
+    const pairKey = `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`;
     const enriched = enrichPositionRow(
       {
         id: h.id,
@@ -158,11 +171,22 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
         assetType: h.assetType ?? null,
       },
       h.accountName,
-      quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
+      quoteMap.get(pairKey),
+      priorCloseByPair.get(pairKey) ?? null,
     );
     const list = positionsByAccount.get(h.accountKey) ?? [];
     list.push(enriched);
     positionsByAccount.set(h.accountKey, list);
+    if (h.quantity > 0) {
+      enrichedHoldings.push({
+        ticker: h.ticker.toUpperCase(),
+        securityName: (h.securityName ?? "").trim() || h.ticker.toUpperCase(),
+        currency: normalizeCurrency(h.currency),
+        quantity: h.quantity,
+        quoteChangePerShare: enriched.quoteChangePerShare,
+        displayDayGainLoss: enriched.displayDayGainLoss,
+      });
+    }
   }
 
   const accounts: PerformanceAccountRef[] = [];
@@ -328,7 +352,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   const closeFrom = sessionStart;
   const closeTo = isoDate(new Date());
 
-  const uniquePairs = [
+  const closeHistoryPairs = [
     ...new Map(
       performanceHoldings.map((h) => [
         `${h.ticker}|${h.currency}`,
@@ -338,7 +362,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   ];
 
   let closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
-  const needingChart = pairsNeedingChartHistory(uniquePairs, closeMap, sessionEnd);
+  const needingChart = pairsNeedingChartHistory(closeHistoryPairs, closeMap, sessionEnd);
   if (needingChart.length > 0) {
     const fetched = await fetchChartClosesInMemory(
       needingChart.map((p) => ({
@@ -347,14 +371,6 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       })),
     );
     closeMap = new Map([...closeMap, ...fetched]);
-  }
-  for (const q of quotes) {
-    if (q.previousClose != null && q.previousClose > 0) {
-      const key = dailyCloseKey(q.ticker, q.currency, sessionEnd);
-      if (!closeMap.has(key)) {
-        closeMap.set(key, q.previousClose);
-      }
-    }
   }
 
   const dailyCloses: Record<string, number> = {};
@@ -371,6 +387,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     sessionGainsByDate,
     cashFlows,
     holdings: performanceHoldings,
+    enrichedHoldings,
     dailyCloses,
     usdToCad,
     usdToCadDate: fxRow?.rateDate ? isoDate(fxRow.rateDate) : null,

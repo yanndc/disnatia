@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner, portfolioOwnerKey, portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
+import { priorSessionCloseByPair } from "./daily-close-prices";
 import {
   enrichPositionRow,
   indexQuotesByTickerCurrency,
@@ -97,6 +98,19 @@ function withDisplayWeightsCad(
   }));
 }
 
+function uniqueTickerCurrencyPairs(
+  holdings: { ticker: string; currency: string }[],
+): { ticker: string; currency: string }[] {
+  return [
+    ...new Map(
+      holdings.map((h) => [
+        `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`,
+        { ticker: h.ticker.toUpperCase(), currency: h.currency.toUpperCase() },
+      ]),
+    ).values(),
+  ];
+}
+
 async function loadQuotesForHoldings(
   holdings: { ticker: string; currency: string }[],
 ) {
@@ -130,8 +144,12 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
 
   const quotes = await loadQuotesForHoldings(holdings);
   const quoteMap = indexQuotesByTickerCurrency(quotes);
-  const rows = holdings.map((h) =>
-    enrichPositionRow(
+  const priorCloseByPair = await priorSessionCloseByPair(
+    uniqueTickerCurrencyPairs(holdings),
+  );
+  const rows = holdings.map((h) => {
+    const pairKey = `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`;
+    return enrichPositionRow(
       {
         id: h.id,
         importId: h.sourceImportId,
@@ -152,9 +170,10 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
         assetType: h.assetType ?? null,
       },
       h.accountName,
-      quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
-    ),
-  );
+      quoteMap.get(pairKey),
+      priorCloseByPair.get(pairKey) ?? null,
+    );
+  });
 
   return withDisplayWeights(rows).toSorted((a, b) => b.displayMarketValue - a.displayMarketValue);
 }
@@ -186,9 +205,13 @@ export async function getPortfolioSummary() {
 
   const quotes = await loadQuotesForHoldings(holdings);
   const quoteMap = indexQuotesByTickerCurrency(quotes);
+  const priorCloseByPair = await priorSessionCloseByPair(
+    uniqueTickerCurrencyPairs(holdings),
+  );
 
-  const enrichedPositionsBase = holdings.map((h) =>
-    enrichPositionRow(
+  const enrichedPositionsBase = holdings.map((h) => {
+    const pairKey = `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`;
+    return enrichPositionRow(
       {
         id: h.id,
         importId: h.sourceImportId,
@@ -209,9 +232,10 @@ export async function getPortfolioSummary() {
         assetType: h.assetType ?? null,
       },
       h.accountName,
-      quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
-    ),
-  );
+      quoteMap.get(pairKey),
+      priorCloseByPair.get(pairKey) ?? null,
+    );
+  });
 
   const holdingAsOfSource = holdings.map((h) => h.asOf);
   const externalAsOf = externalWithValue
@@ -589,7 +613,11 @@ export async function getAccountsWithStats() {
   if (holdings.length > 0) {
     const quotes = await loadQuotesForHoldings(holdings);
     const quoteMap = indexQuotesByTickerCurrency(quotes);
+    const priorCloseByPair = await priorSessionCloseByPair(
+      uniqueTickerCurrencyPairs(holdings),
+    );
     for (const h of holdings) {
+      const pairKey = `${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`;
       const enriched = enrichPositionRow(
         {
           id: h.id,
@@ -611,7 +639,8 @@ export async function getAccountsWithStats() {
           assetType: h.assetType ?? null,
         },
         h.accountName,
-        quoteMap.get(`${h.ticker.toUpperCase()}|${h.currency.toUpperCase()}`),
+        quoteMap.get(pairKey),
+        priorCloseByPair.get(pairKey) ?? null,
       );
       reconstructedByAccountKey.set(
         h.accountKey,

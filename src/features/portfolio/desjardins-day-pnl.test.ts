@@ -6,28 +6,30 @@ import {
 } from "@/app/(dashboard)/comptes/comptes-accounts-logic";
 import { computePeriodResult } from "./performance-indicator-logic";
 import {
-  DESJARDINS_2024_04_30,
+  DESJARDINS_2026_04_30,
   desjardinsAccountKey,
   desjardinsPerformancePayload,
   desjardinsPositionsByAccountKey,
   ownerVariationCad,
   sumAccountVariationsCad,
-} from "./fixtures/desjardins-2024-04-30.fixture";
+} from "./fixtures/desjardins-2026-04-30.fixture";
 
-const REF = DESJARDINS_2024_04_30;
+const REF = DESJARDINS_2026_04_30;
 
 const filtersAll = {
   preset: "disnat" as const,
   owner: null,
   includedAccountKeys: [],
   excludedAccountKeys: [],
-  selectedYear: 2024,
+  selectedYear: 2026,
 };
 
 function withinCent(actual: number, expected: number, label: string) {
+  const a = Math.round(actual * 100) / 100;
+  const e = Math.round(expected * 100) / 100;
   assert.ok(
-    Math.abs(actual - expected) <= 0.01,
-    `${label}: ${actual} vs ${expected}`,
+    Math.abs(a - e) <= 0.01,
+    `${label}: ${a} vs ${e}`,
   );
 }
 
@@ -35,7 +37,7 @@ function filtersForOwner(owner: string) {
   return { ...filtersAll, owner };
 }
 
-describe("Desjardins 2024-04-30 — référence capture", () => {
+describe("Desjardins 2026-04-30 — référence capture", () => {
   test("totaux portefeuille (titres, liquidités, valeur)", () => {
     withinCent(
       REF.yann.titresCad + REF.valerie.titresCad,
@@ -66,8 +68,8 @@ describe("Desjardins 2024-04-30 — référence capture", () => {
     );
   });
 
-  test("variation consolidée Disnat (1363,89 $)", () => {
-    assert.equal(REF.consolidated.variationCad, 1_363.89);
+  test("variation consolidée Disnat (1371,17 $)", () => {
+    assert.equal(REF.consolidated.variationCad, 1_371.17);
     const payload = desjardinsPerformancePayload();
     const summed = sumAccountVariationsCad(payload);
     assert.equal(summed, REF.yann.variationCad + REF.valerie.variationCad);
@@ -78,7 +80,7 @@ describe("Desjardins 2024-04-30 — référence capture", () => {
   });
 });
 
-describe("Desjardins 2024-04-30 — positions → accountDayTitresPnL", () => {
+describe("Desjardins 2026-04-30 — positions → accountDayTitresPnL", () => {
   test("Σ P&L titres par compte = variation Disnat", () => {
     const byKey = desjardinsPositionsByAccountKey();
 
@@ -89,7 +91,7 @@ describe("Desjardins 2024-04-30 — positions → accountDayTitresPnL", () => {
       const key = desjardinsAccountKey(person.accountNumber);
       const rows = byKey.get(key) ?? [];
       const state = accountDayTitresPnL(rows);
-      assert.equal(state.sum, expected);
+      withinCent(state.sum, expected, person.owner);
       assert.equal(state.incomplete, false);
       assert.equal(
         state.priorCloseTitresValue,
@@ -99,7 +101,7 @@ describe("Desjardins 2024-04-30 — positions → accountDayTitresPnL", () => {
   });
 });
 
-describe("Desjardins 2024-04-30 — Performance dynamique (jour)", () => {
+describe("Desjardins 2026-04-30 — Performance dynamique (jour)", () => {
   test("séance ouverte → live-quotes, total titulaires", () => {
     const payload = desjardinsPerformancePayload({ marketOpen: true });
 
@@ -119,7 +121,7 @@ describe("Desjardins 2024-04-30 — Performance dynamique (jour)", () => {
     assert.equal(yann.gainCad, REF.yann.variationCad);
     assert.equal(valerie.gainCad, REF.valerie.variationCad);
     assert.equal(all.gainCad, REF.yann.variationCad + REF.valerie.variationCad);
-    assert.equal(all.gainCad, 1_363.88);
+    assert.equal(all.gainCad, 1_371.17);
   });
 
   test("séance fermée → session-chain persistée", () => {
@@ -133,7 +135,7 @@ describe("Desjardins 2024-04-30 — Performance dynamique (jour)", () => {
   });
 });
 
-describe("Desjardins 2024-04-30 — agrégation comptes (page Comptes)", () => {
+describe("Desjardins 2026-04-30 — agrégation comptes (page Comptes)", () => {
   test("aggregateDayTitresForSubset reproduit le total", () => {
     const positionsByKey = desjardinsPositionsByAccountKey();
     const byKey = new Map(

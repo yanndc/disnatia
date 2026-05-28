@@ -54,6 +54,16 @@ export type PerformanceHoldingRow = {
   quantity: number;
 };
 
+/** Ligne titres enrichie (cours live + clôture séance précédente), calculée une fois dans le payload. */
+export type PerformanceEnrichedHoldingRow = {
+  ticker: string;
+  securityName: string;
+  currency: string;
+  quantity: number;
+  quoteChangePerShare: number | null;
+  displayDayGainLoss: number | null;
+};
+
 export type PerformanceDailyTotalCad = {
   date: string;
   totalCad: number;
@@ -79,6 +89,8 @@ export type PerformanceIndicatorPayload = {
   cashFlows: PerformanceCashFlow[];
   /** Positions projetées pour calcul P&L titres par séance */
   holdings: PerformanceHoldingRow[];
+  /** Positions enrichies (P&L séance déjà calculé par ligne). */
+  enrichedHoldings: PerformanceEnrichedHoldingRow[];
   /** Clé ticker|currency|date → clôture */
   dailyCloses: Record<string, number>;
   usdToCad: number | null;

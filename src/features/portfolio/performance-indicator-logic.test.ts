@@ -46,6 +46,7 @@ function mockPayload(
     ],
     cashFlows: [],
     holdings: [],
+    enrichedHoldings: [],
     dailyCloses: {},
     usdToCad: 1.35,
     usdToCadDate: "2026-05-27",
