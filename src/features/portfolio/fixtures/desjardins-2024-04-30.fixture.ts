@@ -71,7 +71,7 @@ function positionRow(
     importId: null,
     createdAt: new Date(`${REF.asOf}T16:00:00Z`),
     updatedAt: new Date(`${REF.asOf}T20:00:00Z`),
-  } as EnrichedPosition;
+  } as unknown as EnrichedPosition;
 }
 
 /** Positions synthétiques : Σ displayDayGainLoss = variation Disnat par titulaire. */
