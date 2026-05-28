@@ -99,8 +99,8 @@ export type PerformancePeriodResult = {
   baselineDate: string | null;
   periodStart: string | null;
   periodEnd: string | null;
-  /** live-quotes | session-closes | session-chain | holdings-history | snapshot-delta | unavailable */
-  method: "live-quotes" | "session-closes" | "session-chain" | "holdings-history" | "snapshot-delta" | "unavailable";
+  /** live-quotes | session-chain | unavailable */
+  method: "live-quotes" | "session-chain" | "unavailable";
   accountsIncluded: number;
   accountsWithBaseline: number;
   incomplete: boolean;

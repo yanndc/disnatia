@@ -60,6 +60,7 @@ export const ModelName = {
   PortfolioDailyPrice: 'PortfolioDailyPrice',
   PortfolioDailyHolding: 'PortfolioDailyHolding',
   PortfolioDailyValue: 'PortfolioDailyValue',
+  PortfolioDailyAccountSessionGain: 'PortfolioDailyAccountSessionGain',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
@@ -244,6 +245,20 @@ export const PortfolioDailyValueScalarFieldEnum = {
 } as const
 
 export type PortfolioDailyValueScalarFieldEnum = (typeof PortfolioDailyValueScalarFieldEnum)[keyof typeof PortfolioDailyValueScalarFieldEnum]
+
+
+export const PortfolioDailyAccountSessionGainScalarFieldEnum = {
+  id: 'id',
+  sessionDate: 'sessionDate',
+  accountKey: 'accountKey',
+  currency: 'currency',
+  gainNative: 'gainNative',
+  priorNative: 'priorNative',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyAccountSessionGainScalarFieldEnum = (typeof PortfolioDailyAccountSessionGainScalarFieldEnum)[keyof typeof PortfolioDailyAccountSessionGainScalarFieldEnum]
 
 
 export const PortfolioTransactionLineScalarFieldEnum = {

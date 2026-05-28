@@ -1,5 +1,4 @@
 import {
-  differenceInCalendarDays,
   endOfYear,
   startOfMonth,
   startOfWeek,
@@ -13,7 +12,6 @@ import type {
   PerformancePeriodId,
   PerformancePeriodResult,
   PerformanceScopePreset,
-  PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
 import {
   isoDateInToronto,
@@ -24,11 +22,9 @@ import {
   yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
-import {
-  formatFlowAdjustmentNote,
-  netExternalFlowsCad,
-} from "./performance-cash-flows";
-import { dailyCloseKey } from "./daily-close-key";
+
+const SESSION_GAINS_UNAVAILABLE_NOTE =
+  "Actualise les cours pour calculer le P&L de séance.";
 
 const PERIOD_META: Record<
   Exclude<PerformancePeriodId, "day">,
@@ -58,142 +54,38 @@ function isoDate(d: Date): string {
 }
 
 function parseIsoDate(s: string): Date {
+  if (s.includes("T")) {
+    const parsed = new Date(s);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y!, m! - 1, d!);
-}
-
-/** Écart max (jours calendaires) entre la date cible et le point d'historique résolu. */
-const MAX_HISTORY_LAG_DAYS = 7;
-
-function historyLagDays(resolvedAsOf: string, targetDate: string): number {
-  return differenceInCalendarDays(
-    parseIsoDate(targetDate),
-    parseIsoDate(resolvedAsOf),
-  );
-}
-
-function isFreshHistory(resolvedAsOf: string, targetDate: string): boolean {
-  return historyLagDays(resolvedAsOf, targetDate) <= MAX_HISTORY_LAG_DAYS;
 }
 
 function baselineBeforePeriodStart(startIso: string): string {
   return isoDate(previousTradingDay(parseIsoDate(startIso), 1));
 }
 
-function firstHistoryDateForAccount(
-  accountKey: string,
+function currentCadTotal(
+  accountKeys: string[],
   payload: PerformanceIndicatorPayload,
-): string | null {
-  const dates = (payload.historyPoints ?? [])
-    .filter((s) => s.accountKey === accountKey)
-    .map((s) => s.asOf);
-  if (dates.length === 0) return null;
-  return dates.toSorted()[0] ?? null;
-}
-
-function resolveAccountBaseline(
-  accountKey: string,
-  bounds: { baselineLookup: string | null; start: string | null; end: string },
-  payload: PerformanceIndicatorPayload,
-  periodId: PerformancePeriodId,
-): { valueCad: number; asOf: string; fromHistory: boolean } | null {
-  if (periodId === "all") {
-    const first = firstHistoryDateForAccount(accountKey, payload);
-    if (first) {
-      return portfolioValueAtDate(accountKey, first, payload);
-    }
-    const snap = snapshotValueAtDate(
-      accountKey,
-      bounds.end,
-      payload.snapshots,
-      payload.usdToCad,
-    );
-    if (!snap) return null;
-    return { ...snap, fromHistory: false };
-  }
-
-  if (!bounds.baselineLookup) return null;
-
-  const atBaseline = portfolioValueAtDate(
-    accountKey,
-    bounds.baselineLookup,
-    payload,
+): number {
+  return accountKeys.reduce(
+    (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+    0,
   );
-  if (
-    atBaseline &&
-    isFreshHistory(atBaseline.asOf, bounds.baselineLookup)
-  ) {
-    return atBaseline;
-  }
-
-  const first = firstHistoryDateForAccount(accountKey, payload);
-  if (!first || !bounds.start) return null;
-  if (first > bounds.start) {
-    return portfolioValueAtDate(accountKey, first, payload);
-  }
-
-  return atBaseline;
-}
-
-function resolveAccountEndValue(
-  accountKey: string,
-  bounds: { end: string },
-  payload: PerformanceIndicatorPayload,
-  options: { endFromSnapshot?: boolean },
-): { valueCad: number; fromHistory: boolean } | null {
-  const acc = payload.accounts.find((a) => a.accountKey === accountKey);
-  const cur = payload.currentByAccount[accountKey];
-  const endIsToday =
-    bounds.end === isoDate(sessionClockForBounds(payload.asOfNow)) ||
-    bounds.end === payload.asOfNow.slice(0, 10);
-
-  if (options.endFromSnapshot) {
-    const endSnap = portfolioValueAtDate(accountKey, bounds.end, payload);
-    if (!endSnap || !isFreshHistory(endSnap.asOf, bounds.end)) return null;
-    return { valueCad: endSnap.valueCad, fromHistory: endSnap.fromHistory };
-  }
-
-  if (endIsToday) {
-    if (acc?.isExternal) {
-      return cur ? { valueCad: cur.totalCad, fromHistory: false } : null;
-    }
-    const positionsCad = cur?.positionsCad ?? cur?.totalCad ?? null;
-    return positionsCad !== null
-      ? { valueCad: positionsCad, fromHistory: false }
-      : null;
-  }
-
-  const endSnap = portfolioValueAtDate(accountKey, bounds.end, payload);
-  if (endSnap && isFreshHistory(endSnap.asOf, bounds.end)) {
-    return { valueCad: endSnap.valueCad, fromHistory: endSnap.fromHistory };
-  }
-
-  if (acc?.isExternal) {
-    return cur ? { valueCad: cur.totalCad, fromHistory: false } : null;
-  }
-
-  const positionsCad = cur?.positionsCad ?? cur?.totalCad ?? null;
-  return positionsCad !== null
-    ? { valueCad: positionsCad, fromHistory: false }
-    : null;
 }
 
 /** Horloge pour les bornes : `asOfNow` en tests/SSR, sinon horloge réelle. */
 function sessionClockForBounds(asOfNow?: string): Date {
   if (asOfNow) {
     const d = parseIsoDate(asOfNow);
-    d.setHours(15, 0, 0, 0);
+    if (!asOfNow.includes("T")) {
+      d.setHours(15, 0, 0, 0);
+    }
     return d;
   }
   return new Date();
-}
-
-function toCad(value: number, currency: string, usdToCad: number | null): number {
-  const cur = currency.trim().toUpperCase();
-  if (cur === "USD" || cur === "US") {
-    return usdToCad !== null ? value * usdToCad : value;
-  }
-  return value;
 }
 
 export function resolveActiveAccountKeys(
@@ -227,271 +119,6 @@ export function resolveActiveAccountKeys(
   }
 
   return keys;
-}
-
-function snapshotValueAtDate(
-  accountKey: string,
-  targetDate: string,
-  snapshots: PerformanceSnapshotPoint[],
-  usdToCad: number | null,
-): { valueCad: number; asOf: string } | null {
-  const rows = snapshots
-    .filter((s) => s.accountKey === accountKey && s.asOf <= targetDate)
-    .toSorted((a, b) => b.asOf.localeCompare(a.asOf));
-  const hit = rows[0];
-  if (!hit) return null;
-  return {
-    valueCad: toCad(hit.totalValueNative, hit.currency, usdToCad),
-    asOf: hit.asOf,
-  };
-}
-
-function portfolioValueAtDate(
-  accountKey: string,
-  targetDate: string,
-  payload: PerformanceIndicatorPayload,
-): { valueCad: number; asOf: string; fromHistory: boolean } | null {
-  const history = snapshotValueAtDate(
-    accountKey,
-    targetDate,
-    payload.historyPoints ?? [],
-    payload.usdToCad,
-  );
-  const snap = snapshotValueAtDate(
-    accountKey,
-    targetDate,
-    payload.snapshots,
-    payload.usdToCad,
-  );
-  if (history && snap) {
-    if (history.asOf >= snap.asOf) {
-      return { ...history, fromHistory: true };
-    }
-    return { ...snap, fromHistory: false };
-  }
-  if (history) return { ...history, fromHistory: true };
-  if (snap) return { ...snap, fromHistory: false };
-  return null;
-}
-
-/** Vrai si baseline et fin résolvent au même snapshot (delta = 0 trompeur). */
-function snapshotsDegenerateForPeriod(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-  bounds: { baselineLookup: string | null; end: string },
-): boolean {
-  if (!bounds.baselineLookup) return true;
-  let withBoth = 0;
-  let sameDate = 0;
-  for (const key of accountKeys) {
-    const base = portfolioValueAtDate(key, bounds.baselineLookup, payload);
-    const end = portfolioValueAtDate(key, bounds.end, payload);
-    if (!base || !end) continue;
-    withBoth++;
-    if (base.asOf === end.asOf) sameDate++;
-  }
-  return withBoth > 0 && sameDate === withBoth;
-}
-
-function closePriceAtDate(
-  ticker: string,
-  currency: string,
-  date: string,
-  dailyCloses: Record<string, number>,
-): number | null {
-  const key = dailyCloseKey(ticker, currency, date);
-  const value = dailyCloses[key];
-  return value != null && Number.isFinite(value) && value > 0 ? value : null;
-}
-
-/** Séance précédente avec clôture connue (gère jours fériés boursiers). */
-function priorCloseDateForTicker(
-  sessionEnd: string,
-  ticker: string,
-  currency: string,
-  dailyCloses: Record<string, number>,
-  maxSteps = 8,
-): string | null {
-  let cursor = parseIsoDate(sessionEnd);
-  for (let i = 0; i < maxSteps; i++) {
-    cursor = previousTradingDay(cursor, 1);
-    const iso = isoDate(cursor);
-    if (closePriceAtDate(ticker, currency, iso, dailyCloses) !== null) {
-      return iso;
-    }
-  }
-  return null;
-}
-
-function computeYesterdayFromSessionCloses(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-  bounds: {
-    start: string | null;
-    end: string;
-    baselineLookup: string | null;
-  },
-): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> & {
-  usable: boolean;
-} {
-  if (!bounds.baselineLookup || !bounds.start) {
-    return {
-      usable: false,
-      gainCad: null,
-      gainPct: null,
-      currentCad: 0,
-      baselineCad: null,
-      baselineDate: bounds.baselineLookup,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
-      incomplete: true,
-      note: null,
-    };
-  }
-
-  const disnatKeys = accountKeys.filter((k) => {
-    const acc = payload.accounts.find((a) => a.accountKey === k);
-    return acc && !acc.isExternal;
-  });
-
-  if (disnatKeys.length === 0) {
-    return {
-      usable: false,
-      gainCad: null,
-      gainPct: null,
-      currentCad: accountKeys.reduce(
-        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-        0,
-      ),
-      baselineCad: null,
-      baselineDate: bounds.baselineLookup,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
-      incomplete: true,
-      note: "P&L jour disponible uniquement sur les titres Disnat avec cotation.",
-    };
-  }
-
-  let gain = 0;
-  let prior = 0;
-  let hasGain = false;
-  let hasPrior = false;
-  let pricedLines = 0;
-  let incomplete = false;
-  const coveredKeys = new Set<string>();
-
-  for (const key of disnatKeys) {
-    const rows = payload.holdings.filter(
-      (h) => h.accountKey === key && h.quantity > 0,
-    );
-    if (rows.length === 0) continue;
-
-    const acc = payload.accounts.find((a) => a.accountKey === key);
-    if (!acc) continue;
-
-    let accountGain = 0;
-    let accountPrior = 0;
-    let accountPriced = 0;
-
-    for (const row of rows) {
-      const endClose = closePriceAtDate(
-        row.ticker,
-        row.currency,
-        bounds.end,
-        payload.dailyCloses,
-      );
-      const baseDate =
-        priorCloseDateForTicker(
-          bounds.end,
-          row.ticker,
-          row.currency,
-          payload.dailyCloses,
-        ) ?? bounds.baselineLookup;
-      const baseClose =
-        baseDate != null
-          ? closePriceAtDate(
-              row.ticker,
-              row.currency,
-              baseDate,
-              payload.dailyCloses,
-            )
-          : null;
-      if (endClose === null || baseClose === null) {
-        incomplete = true;
-        continue;
-      }
-      accountPriced++;
-      accountGain += row.quantity * (endClose - baseClose);
-      accountPrior += row.quantity * baseClose;
-    }
-
-    if (accountPriced === 0) continue;
-    coveredKeys.add(key);
-    pricedLines += accountPriced;
-    hasGain = true;
-    gain += toCad(accountGain, acc.currency, payload.usdToCad);
-    if (accountPrior > 0) {
-      hasPrior = true;
-      prior += toCad(accountPrior, acc.currency, payload.usdToCad);
-    }
-  }
-
-  const currentCad = accountKeys.reduce(
-    (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-    0,
-  );
-
-  if (!hasGain || pricedLines === 0) {
-    return {
-      usable: false,
-      gainCad: null,
-      gainPct: null,
-      currentCad,
-      baselineCad: hasPrior ? prior : null,
-      baselineDate: bounds.baselineLookup,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
-      incomplete: true,
-      note: "Clôtures de séance indisponibles pour calculer le P&L d'hier.",
-    };
-  }
-
-  const flowAdjustmentCad = netExternalFlowsCad(
-    payload.cashFlows ?? [],
-    [...coveredKeys],
-    bounds.start,
-    bounds.end,
-  );
-  const gainCad = gain - flowAdjustmentCad;
-  const flowNote = formatFlowAdjustmentNote(flowAdjustmentCad);
-
-  return {
-    usable: true,
-    gainCad,
-    gainPct: hasPrior && prior > 0 ? (gainCad / prior) * 100 : null,
-    currentCad,
-    baselineCad: hasPrior ? prior : null,
-    baselineDate: bounds.baselineLookup,
-    periodStart: bounds.start,
-    periodEnd: bounds.end,
-    method: "session-closes",
-    accountsIncluded: accountKeys.length,
-    accountsWithBaseline: coveredKeys.size,
-    incomplete,
-    note: joinNotes(
-      incomplete ? "P&L partiel : clôture absente sur au moins une ligne titre." : null,
-      flowNote,
-    ),
-  };
 }
 
 export function resolvePeriodBounds(
@@ -700,25 +327,6 @@ function sumLiveDayGainCad(
   return gain;
 }
 
-function periodBaselinePriorCad(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-  bounds: { baselineLookup: string | null; start: string | null },
-  fallbackPrior: number,
-): number {
-  if (!bounds.baselineLookup) return fallbackPrior;
-  let total = 0;
-  let count = 0;
-  for (const key of disnatAccountKeysInScope(accountKeys, payload)) {
-    const hit = portfolioValueAtDate(key, bounds.baselineLookup, payload);
-    if (hit && isFreshHistory(hit.asOf, bounds.baselineLookup)) {
-      total += hit.valueCad;
-      count++;
-    }
-  }
-  return count > 0 ? total : fallbackPrior;
-}
-
 /** Somme des P&L de séance sur une plage (exporté pour tests). */
 export function sumSessionGainsInRange(
   sessionGains: { date: string; gainCad: number; priorCad: number }[],
@@ -735,19 +343,6 @@ export function sumSessionGainsInRange(
   };
 }
 
-function canUseSessionChain(
-  periodId: PerformancePeriodId,
-  bounds: { start: string | null; end: string },
-  payload: PerformanceIndicatorPayload,
-): boolean {
-  if ((payload.sessionGainsByDate?.length ?? 0) === 0) return false;
-  if (periodId === "all") return true;
-  if (!bounds.start) return false;
-  return (payload.sessionGainsByDate ?? []).some(
-    (g) => g.date >= bounds.start! && g.date <= bounds.end,
-  );
-}
-
 function disnatAccountKeysInScope(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -757,16 +352,7 @@ function disnatAccountKeysInScope(
   );
 }
 
-function externalAccountKeysInScope(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-): string[] {
-  return accountKeys.filter(
-    (k) => payload.accounts.find((a) => a.accountKey === k && a.isExternal),
-  );
-}
-
-/** P&L titres = somme des séances sur la période (évite de compter les achats comme gains). */
+/** P&L titres = somme des séances persistées sur la période (+ live du jour si séance ouverte). */
 function computeSessionChainPeriod(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -783,333 +369,98 @@ function computeSessionChainPeriod(
   incomplete: boolean;
   note: string | null;
 } {
+  const currentCad = currentCadTotal(accountKeys, payload);
+
   if (!bounds.start) {
     return {
       usable: false,
       gainCad: null,
       gainPct: null,
-      currentCad: accountKeys.reduce(
-        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-        0,
-      ),
+      currentCad,
       baselineCad: null,
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
-      note: null,
+      note: SESSION_GAINS_UNAVAILABLE_NOTE,
     };
   }
 
   const disnatKeys = disnatAccountKeysInScope(accountKeys, payload);
-  const extKeys = externalAccountKeysInScope(accountKeys, payload);
+  if (disnatKeys.length === 0) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      currentCad,
+      baselineCad: null,
+      baselineDate: null,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: "P&L disponible uniquement sur les comptes Disnat.",
+    };
+  }
+
   const sessions =
     periodId === "all"
       ? [...(payload.sessionGainsByDate ?? [])]
       : (payload.sessionGainsByDate ?? [])
           .filter((g) => g.date >= bounds.start! && g.date <= bounds.end)
           .toSorted((a, b) => a.date.localeCompare(b.date));
-  sessions.sort((a, b) => a.date.localeCompare(b.date));
 
-  let gainCad = 0;
-  let priorCad = 0;
-  let hasPrior = false;
-  let incomplete = periodId === "all";
-
-  if (disnatKeys.length > 0) {
-    if (sessions.length === 0) {
-      return {
-        usable: false,
-        gainCad: null,
-        gainPct: null,
-        currentCad: accountKeys.reduce(
-          (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-          0,
-        ),
-        baselineCad: null,
-        baselineDate: null,
-        accountsWithBaseline: 0,
-        incomplete: true,
-        note: null,
-      };
-    }
-    gainCad += sessions.reduce((s, g) => s + g.gainCad, 0);
-    const fallbackPrior = sessions[0]!.priorCad;
-    priorCad += periodBaselinePriorCad(accountKeys, payload, bounds, fallbackPrior);
-    hasPrior = priorCad > 0;
-    if (sessions[0]!.date > bounds.start!) incomplete = true;
-
-    const endIsToday = bounds.end === isoDate(sessionClockForBounds(payload.asOfNow));
-    const todayInChain = sessions.some((g) => g.date === bounds.end);
-    if (
-      endIsToday &&
-      periodId !== "yesterday" &&
-      !todayInChain &&
-      isEquityMarketSessionOpen()
-    ) {
-      gainCad += sumLiveDayGainCad(accountKeys, payload);
-    }
+  if (sessions.length === 0) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      currentCad,
+      baselineCad: null,
+      baselineDate: null,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: SESSION_GAINS_UNAVAILABLE_NOTE,
+    };
   }
 
-  if (periodId === "all" && sessions.length > 0) {
-    incomplete = true;
-  }
+  let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
+  const priorCad = sessions[0]!.priorCad;
+  let incomplete = periodId === "all" || sessions[0]!.date > bounds.start!;
 
-  if (extKeys.length > 0) {
-    const extCalc = computeAdjustedSnapshotGain(
-      extKeys,
-      payload,
-      bounds,
-      { periodId },
-    );
-    if (extCalc.gainCad !== null) gainCad += extCalc.gainCad;
-    if (extCalc.baselineCad > 0) {
-      priorCad += extCalc.baselineCad;
-      hasPrior = true;
+  const now = sessionClockForBounds(payload.asOfNow);
+  const endIsToday = bounds.end === isoDate(now);
+  if (
+    endIsToday &&
+    periodId !== "yesterday" &&
+    isEquityMarketSessionOpen(now)
+  ) {
+    const todayIso = bounds.end;
+    const chainToday = sessions.find((g) => g.date === todayIso);
+    const liveToday = sumLiveDayGainCad(accountKeys, payload);
+    if (chainToday) {
+      gainCad -= chainToday.gainCad;
     }
-    incomplete = incomplete || extCalc.incomplete;
+    gainCad += liveToday;
   }
-
-  const flowKeys = [...disnatKeys, ...extKeys];
-  const flowAdjustmentCad = netExternalFlowsCad(
-    payload.cashFlows ?? [],
-    flowKeys,
-    bounds.start,
-    bounds.end,
-  );
-  gainCad -= flowAdjustmentCad;
-  const flowNote = formatFlowAdjustmentNote(flowAdjustmentCad);
-
-  const currentCad = accountKeys.reduce(
-    (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-    0,
-  );
 
   return {
-    usable: disnatKeys.length === 0 || sessions.length > 0,
-    gainCad: disnatKeys.length > 0 && sessions.length === 0 ? null : gainCad,
-    gainPct: hasPrior && priorCad > 0 ? (gainCad / priorCad) * 100 : null,
+    usable: true,
+    gainCad,
+    gainPct: priorCad > 0 ? (gainCad / priorCad) * 100 : null,
     currentCad,
-    baselineCad: hasPrior ? priorCad : null,
+    baselineCad: priorCad > 0 ? priorCad : null,
     baselineDate: sessions[0]?.date ?? bounds.baselineLookup,
-    accountsWithBaseline:
-      (disnatKeys.length > 0 && sessions.length > 0 ? disnatKeys.length : 0) +
-      extKeys.filter((k) => payload.currentByAccount[k]).length,
+    accountsWithBaseline: disnatKeys.length,
     incomplete,
     note: joinNotes(
       periodId === "all" && sessions.length > 0
         ? `Total titres depuis ${sessions[0]!.date} (historique de séances chargé).`
         : null,
-      incomplete ? "P&L partiel : historique journalier incomplet sur la période." : null,
-      flowNote,
+      incomplete ? "P&L partiel : historique de séances incomplet sur la période." : null,
     ),
   };
 }
 
-function computeAdjustedSnapshotGain(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-  bounds: {
-    start: string | null;
-    end: string;
-    baselineLookup: string | null;
-  },
-  options: {
-    /** Si true, la valeur de fin vient d'un snapshot (ex. hier) plutôt que du live. */
-    endFromSnapshot?: boolean;
-    periodId?: PerformancePeriodId;
-  } = {},
-): {
-  currentCad: number;
-  baselineCad: number;
-  withBaseline: number;
-  withEnd: number;
-  latestBaselineDate: string | null;
-  gainCad: number | null;
-  gainPct: number | null;
-  flowAdjustmentCad: number;
-  incomplete: boolean;
-  note: string | null;
-  usedHistory: boolean;
-} {
-  const endFromSnapshot = options.endFromSnapshot ?? false;
-  const periodId = options.periodId ?? "week";
-  let currentCad = 0;
-  let baselineCad = 0;
-  let withBaseline = 0;
-  let withEnd = 0;
-  let latestBaselineDate: string | null = null;
-  const coveredKeys: string[] = [];
-
-  let withHistory = 0;
-
-  for (const key of accountKeys) {
-    const baseSnap = resolveAccountBaseline(key, bounds, payload, periodId);
-    if (!baseSnap) continue;
-
-    const endResolved = resolveAccountEndValue(key, bounds, payload, {
-      endFromSnapshot,
-    });
-    if (!endResolved) continue;
-
-    coveredKeys.push(key);
-    baselineCad += baseSnap.valueCad;
-    currentCad += endResolved.valueCad;
-    withBaseline++;
-    withEnd++;
-    if (baseSnap.fromHistory) withHistory++;
-    if (endResolved.fromHistory) withHistory++;
-    if (!latestBaselineDate || baseSnap.asOf > latestBaselineDate) {
-      latestBaselineDate = baseSnap.asOf;
-    }
-  }
-
-  const incomplete =
-    withBaseline < accountKeys.length || withEnd < accountKeys.length;
-
-  if (withBaseline === 0 || withEnd === 0 || !bounds.start) {
-    return {
-      currentCad,
-      baselineCad,
-      withBaseline,
-      withEnd,
-      latestBaselineDate,
-      gainCad: null,
-      gainPct: null,
-      flowAdjustmentCad: 0,
-      incomplete: true,
-      note: null,
-      usedHistory: false,
-    };
-  }
-
-  const flowAdjustmentCad = netExternalFlowsCad(
-    payload.cashFlows ?? [],
-    coveredKeys,
-    bounds.start,
-    bounds.end,
-  );
-  const rawGain = currentCad - baselineCad;
-  const gainCad = rawGain - flowAdjustmentCad;
-  const gainPct = baselineCad > 0 ? (gainCad / baselineCad) * 100 : null;
-
-  const partialNote = incomplete
-    ? `Baseline partielle (${withBaseline}/${accountKeys.length} comptes avec référence).`
-    : null;
-  const flowNote = formatFlowAdjustmentNote(flowAdjustmentCad);
-
-  return {
-    currentCad,
-    baselineCad,
-    withBaseline,
-    withEnd,
-    latestBaselineDate,
-    gainCad,
-    gainPct,
-    flowAdjustmentCad,
-    incomplete,
-    note: joinNotes(partialNote, flowNote),
-    usedHistory: withHistory > 0,
-  };
-}
-
-function computeYesterdayPeriod(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-): PerformancePeriodResult {
-  const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
-  const now = sessionClockForBounds(payload.asOfNow);
-  const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
-
-  const fromChain = computeSessionChainPeriod(
-    accountKeys,
-    payload,
-    bounds,
-    "yesterday",
-  );
-  if (fromChain.usable && fromChain.gainCad !== null) {
-    return {
-      periodId: "yesterday",
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      gainCad: fromChain.gainCad,
-      gainPct: fromChain.gainPct,
-      currentCad: fromChain.currentCad,
-      baselineCad: fromChain.baselineCad,
-      baselineDate: fromChain.baselineDate,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "session-chain",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: fromChain.accountsWithBaseline,
-      incomplete: fromChain.incomplete,
-      note: fromChain.note,
-    };
-  }
-
-  const fromCloses = computeYesterdayFromSessionCloses(
-    accountKeys,
-    payload,
-    bounds,
-  );
-  if (fromCloses.usable) {
-    const { usable, ...result } = fromCloses;
-    void usable;
-    return {
-      periodId: "yesterday",
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      ...result,
-    };
-  }
-
-  const degenerate = snapshotsDegenerateForPeriod(accountKeys, payload, bounds);
-  const calc = computeAdjustedSnapshotGain(accountKeys, payload, bounds, {
-    endFromSnapshot: true,
-  });
-
-  if (calc.withEnd === 0 || calc.withBaseline === 0 || degenerate) {
-    return {
-      periodId: "yesterday",
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      gainCad: null,
-      gainPct: null,
-      currentCad: calc.currentCad,
-      baselineCad: calc.withBaseline > 0 ? calc.baselineCad : null,
-      baselineDate: calc.latestBaselineDate,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: calc.withBaseline,
-      incomplete: true,
-      note:
-        fromCloses.note ??
-        "Snapshot introuvable pour la séance d'hier — importe un fichier portefeuille daté ou saisis une valeur externe.",
-    };
-  }
-
-  return {
-    periodId: "yesterday",
-    label: meta.label,
-    shortLabel: meta.shortLabel,
-    gainCad: calc.gainCad,
-    gainPct: calc.gainPct,
-    currentCad: calc.currentCad,
-    baselineCad: calc.baselineCad,
-    baselineDate: calc.latestBaselineDate,
-    periodStart: bounds.start,
-    periodEnd: bounds.end,
-    method: "snapshot-delta",
-    accountsIncluded: accountKeys.length,
-    accountsWithBaseline: calc.withBaseline,
-    incomplete: calc.incomplete,
-    note: calc.note,
-  };
-}
-
-function computeSnapshotPeriod(
-  periodId: PerformancePeriodId,
+function buildChainPeriodResult(
+  periodId: Exclude<PerformancePeriodId, "day">,
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
   selectedYear: number,
@@ -1118,21 +469,16 @@ function computeSnapshotPeriod(
   const now = sessionClockForBounds(payload.asOfNow);
   const earliest = earliestHistoryAmong(accountKeys, payload);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
+  const currentCad = currentCadTotal(accountKeys, payload);
 
-  if (
-    periodId !== "all" &&
-    (!bounds.baselineLookup || !bounds.start)
-  ) {
+  if (periodId !== "all" && !bounds.start) {
     return {
       periodId,
       label: meta.label,
       shortLabel: meta.shortLabel,
       gainCad: null,
       gainPct: null,
-      currentCad: accountKeys.reduce(
-        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-        0,
-      ),
+      currentCad,
       baselineCad: null,
       baselineDate: null,
       periodStart: bounds.start,
@@ -1141,80 +487,12 @@ function computeSnapshotPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: true,
-      note: "Aucun historique pour cette portée — lance le backfill historique de marché.",
+      note: SESSION_GAINS_UNAVAILABLE_NOTE,
     };
   }
 
-  if (periodId === "all" && !earliest) {
-    return {
-      periodId,
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      gainCad: null,
-      gainPct: null,
-      currentCad: accountKeys.reduce(
-        (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-        0,
-      ),
-      baselineCad: null,
-      baselineDate: null,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
-      incomplete: true,
-      note: "Lance le backfill historique de marché ou importe des snapshots portefeuille.",
-    };
-  }
-
-  const chainBounds = {
-    start: bounds.start,
-    end: bounds.end,
-    baselineLookup: bounds.baselineLookup,
-  };
-  const fromChain = computeSessionChainPeriod(
-    accountKeys,
-    payload,
-    chainBounds,
-    periodId,
-  );
-  if (
-    canUseSessionChain(periodId, bounds, payload) &&
-    fromChain.usable &&
-    fromChain.gainCad !== null
-  ) {
-    return {
-      periodId,
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      gainCad: fromChain.gainCad,
-      gainPct: fromChain.gainPct,
-      currentCad: fromChain.currentCad,
-      baselineCad: fromChain.baselineCad,
-      baselineDate: fromChain.baselineDate,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "session-chain",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: fromChain.accountsWithBaseline,
-      incomplete: fromChain.incomplete,
-      note: fromChain.note,
-    };
-  }
-
-  const calc = computeAdjustedSnapshotGain(
-    accountKeys,
-    payload,
-    {
-      start: bounds.start,
-      end: bounds.end,
-      baselineLookup: bounds.baselineLookup,
-    },
-    { periodId },
-  );
-
-  if (calc.withBaseline === 0) {
+  const calc = computeSessionChainPeriod(accountKeys, payload, bounds, periodId);
+  if (!calc.usable || calc.gainCad === null) {
     return {
       periodId,
       label: meta.label,
@@ -1222,18 +500,15 @@ function computeSnapshotPeriod(
       gainCad: null,
       gainPct: null,
       currentCad: calc.currentCad,
-      baselineCad: null,
-      baselineDate: null,
+      baselineCad: calc.baselineCad,
+      baselineDate: calc.baselineDate,
       periodStart: bounds.start,
       periodEnd: bounds.end,
       method: "unavailable",
       accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
+      accountsWithBaseline: calc.accountsWithBaseline,
       incomplete: true,
-      note:
-        periodId === "all"
-          ? "Lance le backfill historique de marché ou importe des snapshots portefeuille."
-          : "Historique de départ introuvable — lance le backfill historique de marché.",
+      note: calc.note ?? SESSION_GAINS_UNAVAILABLE_NOTE,
     };
   }
 
@@ -1245,12 +520,12 @@ function computeSnapshotPeriod(
     gainPct: calc.gainPct,
     currentCad: calc.currentCad,
     baselineCad: calc.baselineCad,
-    baselineDate: calc.latestBaselineDate,
+    baselineDate: calc.baselineDate,
     periodStart: bounds.start,
     periodEnd: bounds.end,
-    method: calc.usedHistory ? "holdings-history" : "snapshot-delta",
+    method: "session-chain",
     accountsIncluded: accountKeys.length,
-    accountsWithBaseline: calc.withBaseline,
+    accountsWithBaseline: calc.accountsWithBaseline,
     incomplete: calc.incomplete,
     note: calc.note,
   };
@@ -1302,11 +577,7 @@ export function computePeriodResult(
     return { periodId, label: meta.label, shortLabel: meta.shortLabel, ...day };
   }
 
-  if (periodId === "yesterday") {
-    return computeYesterdayPeriod(accountKeys, payload);
-  }
-
-  return computeSnapshotPeriod(
+  return buildChainPeriodResult(
     periodId,
     accountKeys,
     payload,

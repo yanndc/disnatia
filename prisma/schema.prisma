@@ -213,6 +213,23 @@ model PortfolioDailyValue {
   @@map("portfolio_daily_values")
 }
 
+/// P&L titres par compte et par séance (persisté au refresh des cours).
+model PortfolioDailyAccountSessionGain {
+  id           String   @id @default(cuid())
+  sessionDate  DateTime @db.Date
+  accountKey   String
+  currency     String
+  gainNative   Float
+  priorNative  Float
+  source       String   @default("holdings_closes")
+  updatedAt    DateTime @updatedAt
+
+  @@unique([sessionDate, accountKey])
+  @@index([sessionDate])
+  @@index([accountKey])
+  @@map("portfolio_daily_account_session_gains")
+}
+
 model PortfolioTransactionLine {
   id              String      @id @default(cuid())
   importId        String

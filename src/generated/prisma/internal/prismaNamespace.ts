@@ -393,6 +393,7 @@ export const ModelName = {
   PortfolioDailyPrice: 'PortfolioDailyPrice',
   PortfolioDailyHolding: 'PortfolioDailyHolding',
   PortfolioDailyValue: 'PortfolioDailyValue',
+  PortfolioDailyAccountSessionGain: 'PortfolioDailyAccountSessionGain',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
@@ -416,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "eodReportDelivery"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1083,6 +1084,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PortfolioDailyValueCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyValueCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioDailyAccountSessionGain: {
+      payload: Prisma.$PortfolioDailyAccountSessionGainPayload<ExtArgs>
+      fields: Prisma.PortfolioDailyAccountSessionGainFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioDailyAccountSessionGainFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioDailyAccountSessionGainFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioDailyAccountSessionGainFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioDailyAccountSessionGainFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioDailyAccountSessionGainFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioDailyAccountSessionGainCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioDailyAccountSessionGainCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioDailyAccountSessionGainCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioDailyAccountSessionGainDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>
+        }
+        update: {
+          args: Prisma.PortfolioDailyAccountSessionGainUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioDailyAccountSessionGainDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioDailyAccountSessionGainUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioDailyAccountSessionGainUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioDailyAccountSessionGainUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioDailyAccountSessionGainPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioDailyAccountSessionGainAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioDailyAccountSessionGain>
+        }
+        groupBy: {
+          args: Prisma.PortfolioDailyAccountSessionGainGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyAccountSessionGainGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioDailyAccountSessionGainCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioDailyAccountSessionGainCountAggregateOutputType> | number
         }
       }
     }
@@ -1877,6 +1952,20 @@ export const PortfolioDailyValueScalarFieldEnum = {
 export type PortfolioDailyValueScalarFieldEnum = (typeof PortfolioDailyValueScalarFieldEnum)[keyof typeof PortfolioDailyValueScalarFieldEnum]
 
 
+export const PortfolioDailyAccountSessionGainScalarFieldEnum = {
+  id: 'id',
+  sessionDate: 'sessionDate',
+  accountKey: 'accountKey',
+  currency: 'currency',
+  gainNative: 'gainNative',
+  priorNative: 'priorNative',
+  source: 'source',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioDailyAccountSessionGainScalarFieldEnum = (typeof PortfolioDailyAccountSessionGainScalarFieldEnum)[keyof typeof PortfolioDailyAccountSessionGainScalarFieldEnum]
+
+
 export const PortfolioTransactionLineScalarFieldEnum = {
   id: 'id',
   importId: 'importId',
@@ -2303,6 +2392,7 @@ export type GlobalOmitConfig = {
   portfolioDailyPrice?: Prisma.PortfolioDailyPriceOmit
   portfolioDailyHolding?: Prisma.PortfolioDailyHoldingOmit
   portfolioDailyValue?: Prisma.PortfolioDailyValueOmit
+  portfolioDailyAccountSessionGain?: Prisma.PortfolioDailyAccountSessionGainOmit
   portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit

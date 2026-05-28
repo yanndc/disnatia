@@ -130,13 +130,22 @@ describe("computePeriodResult", () => {
     assert.equal(week.gainCad, 1000 + 2000 + 500);
   });
 
-  test("semaine sans live si séance déjà dans l'historique", () => {
+  test("semaine remplace la séance du jour à 0 par le live", () => {
     const payload = mockPayload({
       sessionGainsByDate: [
         { date: "2026-05-26", gainCad: 1000, priorCad: 90_000 },
         { date: "2026-05-27", gainCad: 2000, priorCad: 91_000 },
-        { date: "2026-05-28", gainCad: 500, priorCad: 93_000 },
+        { date: "2026-05-28", gainCad: 0, priorCad: 93_000 },
       ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 100_000,
+          positionsCad: 100_000,
+          cashCad: 0,
+          dayGainCad: 4256,
+          dayPriorCad: 99_500,
+        },
+      },
     });
     const filters = {
       preset: "disnat" as const,
@@ -146,6 +155,20 @@ describe("computePeriodResult", () => {
       selectedYear: 2026,
     };
     const week = computePeriodResult(payload, filters, "week");
-    assert.equal(week.gainCad, 3500);
+    assert.equal(week.gainCad, 1000 + 2000 + 4256);
+  });
+
+  test("sans séances persistées → indisponible", () => {
+    const payload = mockPayload({ sessionGainsByDate: [] });
+    const filters = {
+      preset: "disnat" as const,
+      owner: null,
+      includedAccountKeys: [],
+      excludedAccountKeys: [],
+      selectedYear: 2026,
+    };
+    const week = computePeriodResult(payload, filters, "week");
+    assert.equal(week.method, "unavailable");
+    assert.equal(week.gainCad, null);
   });
 });

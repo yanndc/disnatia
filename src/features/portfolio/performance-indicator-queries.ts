@@ -29,10 +29,12 @@ import type {
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
 import {
-  loadDailyTitresSessionGains,
   loadPerformanceAccountHistory,
   loadPerformanceDailyTotalsCad,
 } from "./performance-history-loader";
+import {
+  loadPersistedSessionGains,
+} from "./performance-session-gains";
 import { isoDateInToronto } from "@/lib/market/equity-session";
 import {
   startOfMonth,
@@ -270,10 +272,13 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   ];
   const sessionGainFrom = sessionGainFromCandidates.toSorted()[0] ?? isoDate(startOfYear(now));
 
-  const [historyPoints, dailyTotalsCad, sessionGainsByDate] = await Promise.all([
+  let historyPoints: Awaited<ReturnType<typeof loadPerformanceAccountHistory>>;
+  let dailyTotalsCad: Awaited<ReturnType<typeof loadPerformanceDailyTotalsCad>>;
+  let sessionGainsByDate: Awaited<ReturnType<typeof loadPersistedSessionGains>>;
+  [historyPoints, dailyTotalsCad, sessionGainsByDate] = await Promise.all([
     loadPerformanceAccountHistory(sessionGainFrom),
     loadPerformanceDailyTotalsCad(usdToCad),
-    loadDailyTitresSessionGains(
+    loadPersistedSessionGains(
       disnatAccountKeys,
       sessionGainFrom,
       isoDate(now),

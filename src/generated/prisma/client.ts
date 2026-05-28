@@ -95,6 +95,11 @@ export type PortfolioDailyHolding = Prisma.PortfolioDailyHoldingModel
  */
 export type PortfolioDailyValue = Prisma.PortfolioDailyValueModel
 /**
+ * Model PortfolioDailyAccountSessionGain
+ * P&L titres par compte et par séance (persisté au refresh des cours).
+ */
+export type PortfolioDailyAccountSessionGain = Prisma.PortfolioDailyAccountSessionGainModel
+/**
  * Model PortfolioTransactionLine
  * 
  */

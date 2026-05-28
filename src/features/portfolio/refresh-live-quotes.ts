@@ -4,6 +4,10 @@ import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import { disnatTickerToStooqSymbol, fetchStooqLastClose } from "@/lib/market/stooq-quote";
 import { fetchYahooQuotesBySymbol } from "@/lib/market/yahoo-quote";
 import { persistQuoteSessionCloses } from "@/features/portfolio/daily-close-prices";
+import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
+import { isoDateInToronto } from "@/lib/market/equity-session";
+import { recomputeAndPersistSessionGains } from "@/features/portfolio/performance-session-gains";
+import { subDays } from "date-fns";
 
 export type RefreshLiveQuotesResult = {
   ok: boolean;
@@ -127,6 +131,21 @@ export async function refreshLiveQuotesForLatestImport(): Promise<RefreshLiveQuo
       await persistQuoteSessionCloses(ticker, currency, sourceSymbol, row, now);
     }
     quotesUpserted += 1;
+  }
+
+  const accountKeys = (
+    await prisma.portfolioAccountState.findMany({ select: { accountKey: true } })
+  ).map((a) => a.accountKey);
+  if (accountKeys.length > 0 && quotesUpserted > 0) {
+    const fx = await getUsdCadRateNear(now);
+    const to = isoDateInToronto(now);
+    const from = isoDateInToronto(subDays(now, 45));
+    await recomputeAndPersistSessionGains(
+      accountKeys,
+      from,
+      to,
+      fx?.usdToCad ?? null,
+    );
   }
 
   return {
