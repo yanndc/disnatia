@@ -14,8 +14,29 @@ export type RefreshLiveQuotesResult = {
   stooqFilled: number;
   missingYahooSymbols: string[];
   fetchedAt: string;
+  skipped?: boolean;
+  quotesAsOf?: string;
   message?: string;
 };
+
+/** Date/heure du dernier fetch de cours en base (max `fetchedAt`). */
+export async function getLatestQuotesFetchedAt(): Promise<Date | null> {
+  const row = await prisma.portfolioLiveQuote.findFirst({
+    orderBy: { fetchedAt: "desc" },
+    select: { fetchedAt: true },
+  });
+  return row?.fetchedAt ?? null;
+}
+
+export function quotesAreStale(
+  quotesAsOf: Date | null,
+  maxAgeMinutes: number,
+  now = Date.now(),
+): boolean {
+  if (maxAgeMinutes <= 0) return true;
+  if (quotesAsOf === null) return true;
+  return now - quotesAsOf.getTime() >= maxAgeMinutes * 60 * 1000;
+}
 
 function uniqueTickerCurrency(
   positions: { ticker: string; currency: string }[],

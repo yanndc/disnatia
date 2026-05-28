@@ -261,11 +261,6 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   const nowYear = new Date().getFullYear();
   yearSet.add(nowYear);
 
-  const [historyPoints, dailyTotalsCad] = await Promise.all([
-    loadPerformanceAccountHistory(),
-    loadPerformanceDailyTotalsCad(usdToCad),
-  ]);
-
   const disnatAccountKeys = accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
   const now = new Date();
   const sessionGainFromCandidates = [
@@ -274,12 +269,17 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     isoDate(startOfMonth(now)),
   ];
   const sessionGainFrom = sessionGainFromCandidates.toSorted()[0] ?? isoDate(startOfYear(now));
-  const sessionGainsByDate = await loadDailyTitresSessionGains(
-    disnatAccountKeys,
-    sessionGainFrom,
-    isoDate(now),
-    usdToCad,
-  );
+
+  const [historyPoints, dailyTotalsCad, sessionGainsByDate] = await Promise.all([
+    loadPerformanceAccountHistory(sessionGainFrom),
+    loadPerformanceDailyTotalsCad(usdToCad),
+    loadDailyTitresSessionGains(
+      disnatAccountKeys,
+      sessionGainFrom,
+      isoDate(now),
+      usdToCad,
+    ),
+  ]);
 
   for (const s of snapshots) {
     yearSet.add(Number(s.asOf.slice(0, 4)));
@@ -333,7 +333,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   ];
 
   let closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
-  let needingChart = pairsNeedingChartHistory(uniquePairs, closeMap, sessionEnd);
+  const needingChart = pairsNeedingChartHistory(uniquePairs, closeMap, sessionEnd);
   if (needingChart.length > 0) {
     const fetched = await fetchChartClosesInMemory(
       needingChart.map((p) => ({

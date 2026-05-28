@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "icons": "node scripts/generate-icons.cjs",
+    "test": "npx tsx --test src/features/portfolio/performance-indicator-logic.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",

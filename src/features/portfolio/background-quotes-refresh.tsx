@@ -1,44 +1,50 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-const INTERVAL_MS = 10 * 60 * 1000;
+const STALE_AFTER_MS = 15 * 60 * 1000;
 
 /**
- * Actualise les cours en arrière-plan tant que l’utilisateur navigue sur le dashboard
- * (même API que « Actualiser les cours », sans bouger l’UI).
+ * Actualise les cours en arrière-plan à chaque ouverture de page dashboard
+ * si la dernière MAJ date de plus de 15 minutes (même API que « Actualiser les cours »).
  */
 export function BackgroundQuotesRefresh() {
   const router = useRouter();
+  const pathname = usePathname();
   const inFlightRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function tick() {
+    async function maybeRefresh() {
       if (cancelled || inFlightRef.current) return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
 
       inFlightRef.current = true;
       try {
-        const res = await fetch("/api/portfolio/refresh-quotes", { method: "POST" });
+        const res = await fetch(
+          `/api/portfolio/refresh-quotes?maxAgeMinutes=${STALE_AFTER_MS / 60_000}`,
+          { method: "POST" },
+        );
         if (!cancelled && res.ok) {
-          router.refresh();
+          const payload = (await res.json()) as { skipped?: boolean };
+          if (!payload.skipped) {
+            router.refresh();
+          }
         }
       } catch {
-        /* erreur réseau : prochain intervalle */
+        /* erreur réseau : prochaine navigation */
       } finally {
         inFlightRef.current = false;
       }
     }
 
-    const id = window.setInterval(() => void tick(), INTERVAL_MS);
+    void maybeRefresh();
     return () => {
       cancelled = true;
-      window.clearInterval(id);
     };
-  }, [router]);
+  }, [pathname, router]);
 
   return null;
 }

@@ -17,7 +17,9 @@ import type {
 } from "./performance-indicator-types";
 import {
   isoDateInToronto,
+  isEquityMarketSessionOpen,
   previousTradingDay,
+  referenceTradingSessionDay,
   resolveDayPeriodLabels,
   yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
@@ -142,7 +144,7 @@ function resolveAccountEndValue(
   const acc = payload.accounts.find((a) => a.accountKey === accountKey);
   const cur = payload.currentByAccount[accountKey];
   const endIsToday =
-    bounds.end === isoDate(sessionClockForBounds()) ||
+    bounds.end === isoDate(sessionClockForBounds(payload.asOfNow)) ||
     bounds.end === payload.asOfNow.slice(0, 10);
 
   if (options.endFromSnapshot) {
@@ -176,8 +178,13 @@ function resolveAccountEndValue(
     : null;
 }
 
-/** Horloge réelle pour les bornes de séance (évite minuit sur asOfNow). */
-function sessionClockForBounds(): Date {
+/** Horloge pour les bornes : `asOfNow` en tests/SSR, sinon horloge réelle. */
+function sessionClockForBounds(asOfNow?: string): Date {
+  if (asOfNow) {
+    const d = parseIsoDate(asOfNow);
+    d.setHours(15, 0, 0, 0);
+    return d;
+  }
   return new Date();
 }
 
@@ -561,6 +568,34 @@ function computeDayPeriod(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
 ): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> {
+  const now = sessionClockForBounds(payload.asOfNow);
+  const refDay = isoDate(referenceTradingSessionDay(now));
+  const refSession = (payload.sessionGainsByDate ?? []).find((g) => g.date === refDay);
+
+  if (refSession && !isEquityMarketSessionOpen(now)) {
+    const currentCad = accountKeys.reduce(
+      (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
+      0,
+    );
+    return {
+      gainCad: refSession.gainCad,
+      gainPct:
+        refSession.priorCad > 0
+          ? (refSession.gainCad / refSession.priorCad) * 100
+          : null,
+      currentCad,
+      baselineCad: refSession.priorCad > 0 ? refSession.priorCad : null,
+      baselineDate: refDay,
+      periodStart: refDay,
+      periodEnd: refDay,
+      method: "session-chain",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
+      incomplete: false,
+      note: null,
+    };
+  }
+
   let gain = 0;
   let prior = 0;
   let hasGain = false;
@@ -653,17 +688,64 @@ function joinNotes(...parts: (string | null | undefined)[]): string | null {
   return merged.length > 0 ? merged.join(" ") : null;
 }
 
+function sumLiveDayGainCad(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+): number {
+  let gain = 0;
+  for (const key of disnatAccountKeysInScope(accountKeys, payload)) {
+    const dayGain = payload.currentByAccount[key]?.dayGainCad;
+    if (dayGain != null) gain += dayGain;
+  }
+  return gain;
+}
+
+function periodBaselinePriorCad(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  bounds: { baselineLookup: string | null; start: string | null },
+  fallbackPrior: number,
+): number {
+  if (!bounds.baselineLookup) return fallbackPrior;
+  let total = 0;
+  let count = 0;
+  for (const key of disnatAccountKeysInScope(accountKeys, payload)) {
+    const hit = portfolioValueAtDate(key, bounds.baselineLookup, payload);
+    if (hit && isFreshHistory(hit.asOf, bounds.baselineLookup)) {
+      total += hit.valueCad;
+      count++;
+    }
+  }
+  return count > 0 ? total : fallbackPrior;
+}
+
+/** Somme des P&L de séance sur une plage (exporté pour tests). */
+export function sumSessionGainsInRange(
+  sessionGains: { date: string; gainCad: number; priorCad: number }[],
+  start: string,
+  end: string,
+): { gainCad: number; priorCad: number; dates: string[] } {
+  const hits = sessionGains
+    .filter((g) => g.date >= start && g.date <= end)
+    .toSorted((a, b) => a.date.localeCompare(b.date));
+  return {
+    gainCad: hits.reduce((s, g) => s + g.gainCad, 0),
+    priorCad: hits[0]?.priorCad ?? 0,
+    dates: hits.map((g) => g.date),
+  };
+}
+
 function canUseSessionChain(
   periodId: PerformancePeriodId,
-  bounds: { start: string | null },
+  bounds: { start: string | null; end: string },
   payload: PerformanceIndicatorPayload,
 ): boolean {
   if ((payload.sessionGainsByDate?.length ?? 0) === 0) return false;
   if (periodId === "all") return true;
   if (!bounds.start) return false;
-  const first = payload.sessionGainsByDate?.[0]?.date;
-  if (!first) return false;
-  return bounds.start >= first;
+  return (payload.sessionGainsByDate ?? []).some(
+    (g) => g.date >= bounds.start! && g.date <= bounds.end,
+  );
 }
 
 function disnatAccountKeysInScope(
@@ -751,9 +833,21 @@ function computeSessionChainPeriod(
       };
     }
     gainCad += sessions.reduce((s, g) => s + g.gainCad, 0);
-    priorCad += sessions[0]!.priorCad;
-    hasPrior = sessions[0]!.priorCad > 0;
-    if (sessions[0]!.date > bounds.start) incomplete = true;
+    const fallbackPrior = sessions[0]!.priorCad;
+    priorCad += periodBaselinePriorCad(accountKeys, payload, bounds, fallbackPrior);
+    hasPrior = priorCad > 0;
+    if (sessions[0]!.date > bounds.start!) incomplete = true;
+
+    const endIsToday = bounds.end === isoDate(sessionClockForBounds(payload.asOfNow));
+    const todayInChain = sessions.some((g) => g.date === bounds.end);
+    if (
+      endIsToday &&
+      periodId !== "yesterday" &&
+      !todayInChain &&
+      isEquityMarketSessionOpen()
+    ) {
+      gainCad += sumLiveDayGainCad(accountKeys, payload);
+    }
   }
 
   if (periodId === "all" && sessions.length > 0) {
@@ -923,7 +1017,7 @@ function computeYesterdayPeriod(
   payload: PerformanceIndicatorPayload,
 ): PerformancePeriodResult {
   const meta = resolvePeriodMeta("yesterday", payload.asOfNow);
-  const now = sessionClockForBounds();
+  const now = sessionClockForBounds(payload.asOfNow);
   const bounds = resolvePeriodBounds("yesterday", now, now.getFullYear(), null);
 
   const fromChain = computeSessionChainPeriod(
@@ -958,7 +1052,8 @@ function computeYesterdayPeriod(
     bounds,
   );
   if (fromCloses.usable) {
-    const { usable: _u, ...result } = fromCloses;
+    const { usable, ...result } = fromCloses;
+    void usable;
     return {
       periodId: "yesterday",
       label: meta.label,
@@ -1020,7 +1115,7 @@ function computeSnapshotPeriod(
   selectedYear: number,
 ): PerformancePeriodResult {
   const meta = resolvePeriodMeta(periodId, payload.asOfNow);
-  const now = sessionClockForBounds();
+  const now = sessionClockForBounds(payload.asOfNow);
   const earliest = earliestHistoryAmong(accountKeys, payload);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
 

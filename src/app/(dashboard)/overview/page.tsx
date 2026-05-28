@@ -101,19 +101,15 @@ export default async function OverviewPage() {
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(5,150,105,0.06),transparent_30%)]" />
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-700">
-              <span className="rounded-full bg-cyan-50 px-3 py-1 ring-1 ring-cyan-100">Tableau de bord</span>
-              <span className="rounded-full bg-cyan-50 px-3 py-1 ring-1 ring-cyan-100">{quoteCoverageLabel}</span>
+              <HeaderPill label="Référence" value={referenceLabel} />
+              <HeaderPill label="Dernier import" value={importLabel} />
+              <HeaderPill label="Cours" value={quotesLabel} />
             </div>
             <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
               Vue d&apos;ensemble du portefeuille
             </h2>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              <div className="grid min-w-[12rem] flex-1 gap-3 text-sm sm:grid-cols-3">
-                <InfoPill label="Référence" value={referenceLabel} />
-                <InfoPill label="Dernier import" value={importLabel} />
-                <InfoPill label="Cours" value={quotesLabel} />
-              </div>
               <RefreshQuotesButton />
             </div>
           </div>
@@ -168,12 +164,12 @@ export default async function OverviewPage() {
   );
 }
 
-function InfoPill({ label, value }: { label: string; value: string }) {
+function HeaderPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 font-medium text-slate-950">{value}</p>
-    </div>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-3 py-1 ring-1 ring-cyan-100">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-600">{label}</span>
+      <span className="text-cyan-900">{value}</span>
+    </span>
   );
 }
 

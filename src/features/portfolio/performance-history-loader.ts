@@ -4,6 +4,7 @@ import {
   previousTradingDay,
 } from "@/lib/market/equity-session";
 import { normalizeCurrency } from "@/lib/utils";
+import { subYears, startOfYear } from "date-fns";
 import { dailyCloseKey, isoDateLocal, parseIsoDateLocal } from "./daily-close-key";
 import type {
   PerformanceDailyTotalCad,
@@ -172,15 +173,22 @@ export async function loadPerformanceDailyTotalsCad(
     .toSorted((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function loadPerformanceAccountHistory(): Promise<
-  PerformanceSnapshotPoint[]
-> {
+export async function loadPerformanceAccountHistory(
+  fromDate?: string,
+): Promise<PerformanceSnapshotPoint[]> {
   const holdingCount = await prisma.portfolioDailyHolding.count();
   if (holdingCount === 0) return [];
 
+  const historyFrom =
+    fromDate ??
+    isoDateLocal(startOfYear(subYears(new Date(), 1)));
+
   const [holdings, prices] = await Promise.all([
     prisma.portfolioDailyHolding.findMany({
-      where: { quantity: { gt: 0 } },
+      where: {
+        quantity: { gt: 0 },
+        holdingDate: { gte: parseIsoDateLocal(historyFrom) },
+      },
       select: {
         holdingDate: true,
         accountKey: true,
@@ -190,6 +198,9 @@ export async function loadPerformanceAccountHistory(): Promise<
       },
     }),
     prisma.portfolioDailyPrice.findMany({
+      where: {
+        priceDate: { gte: parseIsoDateLocal(historyFrom) },
+      },
       select: {
         ticker: true,
         currency: true,
