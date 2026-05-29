@@ -16,6 +16,16 @@ import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+const DISPLAY_TIME_ZONE = "America/Toronto";
+
+function formatDateInDisplayTimeZone(value: Date) {
+  return value.toLocaleDateString("fr-CA", { timeZone: DISPLAY_TIME_ZONE });
+}
+
+function formatDateTimeInDisplayTimeZone(value: Date) {
+  return value.toLocaleString("fr-CA", { timeZone: DISPLAY_TIME_ZONE });
+}
+
 export default async function OverviewPage() {
   let summary: Awaited<ReturnType<typeof getPortfolioSummary>>;
   let performancePayload: Awaited<
@@ -71,15 +81,21 @@ export default async function OverviewPage() {
     );
   }
 
-  const referenceLabel = summary.referenceAsOf?.toLocaleDateString("fr-CA") ?? "Non définie";
-  const importLabel = summary.importedAt?.toLocaleDateString("fr-CA") ?? "Aucun import";
-  const quotesLabel = summary.quotesAsOf?.toLocaleString("fr-CA") ?? "Cours non actualisés";
+  const referenceLabel = summary.referenceAsOf
+    ? formatDateInDisplayTimeZone(summary.referenceAsOf)
+    : "Non définie";
+  const importLabel = summary.importedAt
+    ? formatDateInDisplayTimeZone(summary.importedAt)
+    : "Aucun import";
+  const quotesLabel = summary.quotesAsOf
+    ? formatDateTimeInDisplayTimeZone(summary.quotesAsOf)
+    : "Cours non actualisés";
   const quoteCoverageLabel =
     summary.quoteCoverage.total > 0
       ? `${summary.quoteCoverage.matched}/${summary.quoteCoverage.total} tickers couverts`
       : "Aucun cours disponible";
   const disnatRecoLabel = summary.disnatReconciliationAsOf
-    ? summary.disnatReconciliationAsOf.toLocaleDateString("fr-CA")
+    ? formatDateInDisplayTimeZone(summary.disnatReconciliationAsOf)
     : null;
   const compositionDetail = [
     `${summary.positionCount} lignes titres (projection opérations)`,
@@ -163,7 +179,7 @@ export default async function OverviewPage() {
             {summary.usdToCadRate !== null && summary.usdToCadRateDate ? (
               <span className="text-slate-400">
                 USD→CAD {summary.usdToCadRate.toFixed(4)} (Banque du Canada FXUSDCAD,{" "}
-                {summary.usdToCadRateDate.toLocaleDateString("fr-CA")})
+                {formatDateInDisplayTimeZone(summary.usdToCadRateDate)})
               </span>
             ) : (
               <span className="text-amber-600">

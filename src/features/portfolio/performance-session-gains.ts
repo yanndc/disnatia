@@ -111,10 +111,7 @@ export async function recomputeAndPersistSessionGains(
     priceSeries.set(key, series);
   }
 
-  const byAccountDate = new Map<
-    string,
-    { gainNative: number; priorNative: number; currency: string }
-  >();
+  const byAccountDate = new Map<string, { gainCad: number; priorCad: number }>();
 
   for (const h of holdings) {
     const date = isoDateFromDbDate(h.holdingDate);
@@ -132,13 +129,11 @@ export async function recomputeAndPersistSessionGains(
     if (baseClose == null || baseClose <= 0) continue;
 
     const aggKey = `${h.accountKey}${ACCOUNT_DATE_KEY_SEP}${date}`;
-    const bucket = byAccountDate.get(aggKey) ?? {
-      gainNative: 0,
-      priorNative: 0,
-      currency: normalizeCurrency(h.currency),
-    };
-    bucket.gainNative += h.quantity * (endClose - baseClose);
-    bucket.priorNative += h.quantity * baseClose;
+    const bucket = byAccountDate.get(aggKey) ?? { gainCad: 0, priorCad: 0 };
+    const gainNative = h.quantity * (endClose - baseClose);
+    const priorNative = h.quantity * baseClose;
+    bucket.gainCad += toCad(gainNative, h.currency, usdToCad);
+    bucket.priorCad += toCad(priorNative, h.currency, usdToCad);
     byAccountDate.set(aggKey, bucket);
   }
 
@@ -160,9 +155,9 @@ export async function recomputeAndPersistSessionGains(
       id: randomUUID(),
       sessionDate: parseIsoDateLocal(dateStr),
       accountKey,
-      currency: v.currency,
-      gainNative: v.gainNative,
-      priorNative: v.priorNative,
+      currency: "CAD",
+      gainNative: v.gainCad,
+      priorNative: v.priorCad,
       source: "holdings_closes",
       updatedAt: new Date(),
     };

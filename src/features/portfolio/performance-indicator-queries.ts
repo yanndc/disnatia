@@ -2,9 +2,6 @@ import { prisma } from "@/lib/db/prisma";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { formatAccountNumber, normalizeCurrency } from "@/lib/utils";
-import {
-  accountDayTitresPnL,
-} from "@/app/(dashboard)/comptes/comptes-accounts-logic";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
 import {
   enrichPositionRow,
@@ -48,6 +45,55 @@ function toCad(value: number, currency: string, usdToCad: number | null): number
   const cur = normalizeCurrency(currency);
   if (cur === "USD") return usdToCad !== null ? value * usdToCad : value;
   return value;
+}
+
+type DayStateCad = {
+  dayGainCad: number | null;
+  dayPriorCad: number | null;
+};
+
+function sumPositionsCad(
+  rows: PerformanceEnrichedHoldingRow[],
+  usdToCad: number | null,
+): number {
+  return rows.reduce(
+    (sum, row) => sum + toCad(row.displayMarketValue, row.currency, usdToCad),
+    0,
+  );
+}
+
+function dayStateCadForRows(
+  rows: PerformanceEnrichedHoldingRow[],
+  usdToCad: number | null,
+): DayStateCad {
+  const withQty = rows.filter((row) => row.quantity > 0);
+  if (withQty.length === 0) {
+    return { dayGainCad: null, dayPriorCad: null };
+  }
+
+  const known = withQty.filter(
+    (row) =>
+      row.displayDayGainLoss !== null && Number.isFinite(row.displayDayGainLoss),
+  );
+  if (known.length === 0) {
+    return { dayGainCad: null, dayPriorCad: null };
+  }
+
+  let dayGainCad = 0;
+  let dayPriorCad = 0;
+  for (const row of known) {
+    const gainNative = row.displayDayGainLoss ?? 0;
+    const priorNative = row.displayMarketValue - gainNative;
+    dayGainCad += toCad(gainNative, row.currency, usdToCad);
+    if (Number.isFinite(priorNative) && priorNative > 0) {
+      dayPriorCad += toCad(priorNative, row.currency, usdToCad);
+    }
+  }
+
+  return {
+    dayGainCad,
+    dayPriorCad: dayPriorCad > 0 ? dayPriorCad : null,
+  };
 }
 
 function isoDate(d: Date): string {
@@ -193,21 +239,14 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
 
   for (const a of accountStates) {
     const rows = positionsByAccount.get(a.accountKey) ?? [];
-    const dayState = accountDayTitresPnL(rows);
-    const positionsNative = rows.reduce((s, p) => s + p.displayMarketValue, 0);
     const cashNative = a.cashValue;
-    const positionsCad = toCad(positionsNative, a.currency, usdToCad);
+    const positionsCad = sumPositionsCad(rows, usdToCad);
     const cashCad = toCad(cashNative, a.currency, usdToCad);
     const totalCad = positionsCad + cashCad;
+    const dayState = dayStateCadForRows(rows, usdToCad);
 
-    let dayGainCad: number | null = null;
-    let dayPriorCad: number | null = null;
-    if (dayState.sum !== null) {
-      dayGainCad = toCad(dayState.sum, a.currency, usdToCad);
-    }
-    if (dayState.priorCloseTitresValue !== null && dayState.priorCloseTitresValue > 0) {
-      dayPriorCad = toCad(dayState.priorCloseTitresValue, a.currency, usdToCad);
-    }
+    const dayGainCad = dayState.dayGainCad;
+    const dayPriorCad = dayState.dayPriorCad;
 
     const num = formatAccountNumber(a.accountNumber);
     const label = num
