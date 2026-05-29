@@ -437,6 +437,6 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     usdToCadDate: fxRow?.rateDate ? isoDate(fxRow.rateDate) : null,
     availableYears,
     quotesAsOf,
-    asOfNow: isoDate(new Date()),
+    asOfNow: new Date().toISOString(),
   };
 }
