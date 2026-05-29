@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { backfillMarketHistory } from "@/features/portfolio/backfill-market-history";
 import { shouldSendEodReport } from "@/lib/market/equity-session";
+import {
+  checkSessionDataIntegrity,
+  notifySessionIntegrityFailure,
+} from "@/features/portfolio/session-data-integrity";
 
 function verifyCronSecret(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -40,6 +44,24 @@ export async function POST(request: NextRequest) {
       recomputeSessionGainsDays: 60,
       ensureDailyHoldings: true,
     });
+    const integrity = await checkSessionDataIntegrity();
+    if (!integrity.ok) {
+      await notifySessionIntegrityFailure("cron:backfill-market-history", integrity).catch(
+        () => {
+          /* best effort; on renvoie quand meme l'echec */
+        },
+      );
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "integrity_check_failed",
+          message: "Integrite seance invalide apres backfill.",
+          issues: integrity.issues,
+          metrics: integrity.metrics,
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(result);
   } catch (cause) {
     const message =

@@ -6,6 +6,10 @@ import {
   isoDateInToronto,
   referenceTradingSessionDay,
 } from "@/lib/market/equity-session";
+import {
+  checkSessionDataIntegrity,
+  notifySessionIntegrityFailure,
+} from "@/features/portfolio/session-data-integrity";
 import { buildEodReportData } from "./eod-report-data";
 import { markEodReportSent } from "./eod-report-delivery";
 
@@ -15,6 +19,14 @@ export type RunEodReportResult =
 
 export async function runEodReportJob(now = new Date()): Promise<RunEodReportResult> {
   await refreshLiveQuotesForLatestImport({ recomputeSessionGains: true });
+  const sessionDate = eodReportSessionDate(now);
+  const integrity = await checkSessionDataIntegrity(sessionDate);
+  if (!integrity.ok) {
+    await notifySessionIntegrityFailure("cron:eod-report", integrity).catch(() => {
+      /* best effort; l'erreur principale doit remonter */
+    });
+    throw new Error(`Integrite seance invalide pour ${sessionDate}. Rapport bloque.`);
+  }
 
   const data = await buildEodReportData(now);
   const html = await render(EodReportEmail({ data }));
