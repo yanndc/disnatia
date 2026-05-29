@@ -12,11 +12,17 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => ({}))) as {
       force?: boolean;
       recomputeDailyValues?: boolean;
+      recomputeDailyValuesDays?: number;
+      recomputeSessionGains?: boolean;
+      recomputeSessionGainsDays?: number;
     };
 
     const result = await backfillMarketHistory({
       force: body.force ?? false,
       recomputeDailyValues: body.recomputeDailyValues ?? true,
+      recomputeDailyValuesDays: body.recomputeDailyValuesDays,
+      recomputeSessionGains: body.recomputeSessionGains ?? true,
+      recomputeSessionGainsDays: body.recomputeSessionGainsDays ?? 90,
       ensureDailyHoldings: true,
     });
     const integrity = await checkSessionDataIntegrity();

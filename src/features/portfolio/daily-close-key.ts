@@ -19,3 +19,11 @@ export function isoDateLocal(d: Date): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/** Colonnes Prisma `@db.Date` (minuit UTC) → ISO calendrier sans décalage fuseau. */
+export function isoDateFromDbDate(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}

@@ -5,7 +5,7 @@ import {
 } from "@/lib/market/equity-session";
 import { normalizeCurrency } from "@/lib/utils";
 import { subYears, startOfYear } from "date-fns";
-import { dailyCloseKey, isoDateLocal, parseIsoDateLocal } from "./daily-close-key";
+import { dailyCloseKey, isoDateLocal, isoDateFromDbDate, parseIsoDateLocal } from "./daily-close-key";
 import type {
   PerformanceDailyTotalCad,
   PerformanceSessionGain,
@@ -105,7 +105,7 @@ export async function loadDailyTitresSessionGains(
   const priceSeries = new Map<string, Map<string, number>>();
   for (const p of prices) {
     const key = `${p.ticker.toUpperCase()}|${normalizeCurrency(p.currency)}`;
-    const date = isoDateLocal(p.priceDate);
+    const date = isoDateFromDbDate(p.priceDate);
     const series = priceSeries.get(key) ?? new Map<string, number>();
     series.set(date, p.closePrice);
     priceSeries.set(key, series);
@@ -114,7 +114,7 @@ export async function loadDailyTitresSessionGains(
   const byDate = new Map<string, { gainCad: number; priorCad: number }>();
 
   for (const h of holdings) {
-    const date = isoDateLocal(h.holdingDate);
+    const date = isoDateFromDbDate(h.holdingDate);
     if (date < fromDate || date > toDate) continue;
     if (!isTradingDayDate(date)) continue;
 
@@ -156,7 +156,7 @@ export async function loadPerformanceDailyTotalsCad(
 
   const byDate = new Map<string, { cad: number; usd: number }>();
   for (const row of rows) {
-    const date = isoDateLocal(row.valueDate);
+    const date = isoDateFromDbDate(row.valueDate);
     const bucket = byDate.get(date) ?? { cad: 0, usd: 0 };
     const cur = normalizeCurrency(row.currency);
     if (cur === "USD") bucket.usd += row.positionsValue;
@@ -215,7 +215,7 @@ export async function loadPerformanceAccountHistory(
   const priceSeries = new Map<string, Map<string, number>>();
   for (const p of prices) {
     const key = `${p.ticker.toUpperCase()}|${normalizeCurrency(p.currency)}`;
-    const date = isoDateLocal(p.priceDate);
+    const date = isoDateFromDbDate(p.priceDate);
     const series = priceSeries.get(key) ?? new Map<string, number>();
     series.set(date, p.closePrice);
     priceSeries.set(key, series);
@@ -224,7 +224,7 @@ export async function loadPerformanceAccountHistory(
   const agg = new Map<string, number>();
   const KEY_SEP = "\u001F";
   for (const h of holdings) {
-    const date = isoDateLocal(h.holdingDate);
+    const date = isoDateFromDbDate(h.holdingDate);
     const seriesKey = `${h.ticker.toUpperCase()}|${normalizeCurrency(h.currency)}`;
     const series = priceSeries.get(seriesKey);
     if (!series) continue;
@@ -258,7 +258,7 @@ export function dailyCloseIndexFromPrices(
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const p of prices) {
-    out[dailyCloseKey(p.ticker, p.currency, isoDateLocal(p.priceDate))] = p.closePrice;
+    out[dailyCloseKey(p.ticker, p.currency, isoDateFromDbDate(p.priceDate))] = p.closePrice;
   }
   return out;
 }

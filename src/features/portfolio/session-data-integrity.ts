@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { sendHtmlEmail } from "@/lib/email/resend-client";
 import { referenceTradingSessionDay, isoDateInToronto } from "@/lib/market/equity-session";
-import { isoDateLocal, parseIsoDateLocal } from "./daily-close-key";
+import { isoDateLocal, isoDateFromDbDate, parseIsoDateLocal } from "./daily-close-key";
 
 export type SessionIntegrityCheck = {
   ok: boolean;
@@ -77,16 +77,16 @@ export async function checkSessionDataIntegrity(
   ]);
 
   const maxHoldingDate = maxHoldingRow?.holdingDate
-    ? isoDateLocal(maxHoldingRow.holdingDate)
+    ? isoDateFromDbDate(maxHoldingRow.holdingDate)
     : null;
   const maxPriceDate = maxPriceRow?.priceDate
-    ? isoDateLocal(maxPriceRow.priceDate)
+    ? isoDateFromDbDate(maxPriceRow.priceDate)
     : null;
   const maxValueDate = maxValueRow?.valueDate
-    ? isoDateLocal(maxValueRow.valueDate)
+    ? isoDateFromDbDate(maxValueRow.valueDate)
     : null;
   const maxSessionGainDate = maxSessionGainRow?.sessionDate
-    ? isoDateLocal(maxSessionGainRow.sessionDate)
+    ? isoDateFromDbDate(maxSessionGainRow.sessionDate)
     : null;
 
   const issues: string[] = [];

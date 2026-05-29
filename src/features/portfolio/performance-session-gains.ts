@@ -5,8 +5,10 @@ import {
   previousTradingDay,
 } from "@/lib/market/equity-session";
 import { normalizeCurrency } from "@/lib/utils";
-import { isoDateLocal, parseIsoDateLocal } from "./daily-close-key";
+import { isoDateLocal, isoDateFromDbDate, parseIsoDateLocal } from "./daily-close-key";
 import type { PerformanceSessionGain } from "./performance-indicator-types";
+
+const ACCOUNT_DATE_KEY_SEP = "\u001F";
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = normalizeCurrency(currency);
@@ -103,7 +105,7 @@ export async function recomputeAndPersistSessionGains(
   const priceSeries = new Map<string, Map<string, number>>();
   for (const p of prices) {
     const key = `${p.ticker.toUpperCase()}|${normalizeCurrency(p.currency)}`;
-    const date = isoDateLocal(p.priceDate);
+    const date = isoDateFromDbDate(p.priceDate);
     const series = priceSeries.get(key) ?? new Map<string, number>();
     series.set(date, p.closePrice);
     priceSeries.set(key, series);
@@ -115,7 +117,7 @@ export async function recomputeAndPersistSessionGains(
   >();
 
   for (const h of holdings) {
-    const date = isoDateLocal(h.holdingDate);
+    const date = isoDateFromDbDate(h.holdingDate);
     if (date < fromDate || date > toDate) continue;
     if (!isTradingDayDate(date)) continue;
 
@@ -129,7 +131,7 @@ export async function recomputeAndPersistSessionGains(
     const baseClose = series.get(priorDate);
     if (baseClose == null || baseClose <= 0) continue;
 
-    const aggKey = `${h.accountKey}|${date}`;
+    const aggKey = `${h.accountKey}${ACCOUNT_DATE_KEY_SEP}${date}`;
     const bucket = byAccountDate.get(aggKey) ?? {
       gainNative: 0,
       priorNative: 0,
@@ -151,11 +153,13 @@ export async function recomputeAndPersistSessionGains(
   });
 
   const rows = [...byAccountDate.entries()].map(([key, v]) => {
-    const [accountKey, dateStr] = key.split("|");
+    const sepIdx = key.lastIndexOf(ACCOUNT_DATE_KEY_SEP);
+    const accountKey = key.slice(0, sepIdx);
+    const dateStr = key.slice(sepIdx + 1);
     return {
       id: randomUUID(),
-      sessionDate: parseIsoDateLocal(dateStr!),
-      accountKey: accountKey!,
+      sessionDate: parseIsoDateLocal(dateStr),
+      accountKey,
       currency: v.currency,
       gainNative: v.gainNative,
       priorNative: v.priorNative,
@@ -204,7 +208,7 @@ export async function loadPersistedSessionGains(
 
   const byDate = new Map<string, { gainCad: number; priorCad: number }>();
   for (const row of rows) {
-    const date = isoDateLocal(row.sessionDate);
+    const date = isoDateFromDbDate(row.sessionDate);
     const bucket = byDate.get(date) ?? { gainCad: 0, priorCad: 0 };
     bucket.gainCad += toCad(row.gainNative, row.currency, usdToCad);
     bucket.priorCad += toCad(row.priorNative, row.currency, usdToCad);

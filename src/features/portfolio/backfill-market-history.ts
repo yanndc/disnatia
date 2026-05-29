@@ -8,7 +8,7 @@ import {
 import { isoDateInToronto, previousTradingDay, referenceTradingSessionDay } from "@/lib/market/equity-session";
 import { normalizeCurrency } from "@/lib/utils";
 import { projectHoldingsFromTransactions } from "./project-transaction-holdings";
-import { dailyCloseKey, parseIsoDateLocal, isoDateLocal } from "./daily-close-key";
+import { dailyCloseKey, parseIsoDateLocal, isoDateLocal, isoDateFromDbDate } from "./daily-close-key";
 import { recomputeAndPersistSessionGains } from "./performance-session-gains";
 
 export type TickerCoverageRange = {
@@ -46,8 +46,8 @@ async function resolveTickerCoverageRanges(): Promise<TickerCoverageRange[]> {
       ticker: row.ticker.toUpperCase(),
       currency: normalizeCurrency(row.currency),
       yahooSymbol: disnatTickerToYahooSymbol(row.ticker, row.currency),
-      fromDate: isoDateLocal(row._min.holdingDate!),
-      toDate: isoDateLocal(row._max.holdingDate!) > today ? today : isoDateLocal(row._max.holdingDate!),
+      fromDate: isoDateFromDbDate(row._min.holdingDate!),
+      toDate: isoDateFromDbDate(row._max.holdingDate!) > today ? today : isoDateFromDbDate(row._max.holdingDate!),
     }));
   }
 
@@ -116,7 +116,7 @@ async function pairHasRecentPriceGap(
     },
     select: { priceDate: true },
   });
-  const have = new Set(rows.map((r) => isoDateLocal(r.priceDate)));
+  const have = new Set(rows.map((r) => isoDateFromDbDate(r.priceDate)));
   return datesToCheck.some((d) => !have.has(d));
 }
 
@@ -145,7 +145,7 @@ async function pairNeedsBackfill(
   if (!earliest || !latest || count < 5) return true;
 
   const from = parseIsoDateLocal(fromDate);
-  const earliestIso = isoDateLocal(earliest.priceDate);
+  const earliestIso = isoDateFromDbDate(earliest.priceDate);
   if (parseIsoDateLocal(earliestIso) > from) return true;
 
   if (await pairHasRecentPriceGap(ticker, currency, fromDate)) return true;
@@ -247,7 +247,7 @@ async function recomputeDailyPortfolioValues(
   const priceMap = new Map<string, number>();
   for (const p of prices) {
     priceMap.set(
-      dailyCloseKey(p.ticker, p.currency, isoDateLocal(p.priceDate)),
+      dailyCloseKey(p.ticker, p.currency, isoDateFromDbDate(p.priceDate)),
       p.closePrice,
     );
   }
@@ -255,7 +255,7 @@ async function recomputeDailyPortfolioValues(
   const byDateCurrency = new Map<string, { cad: number; usd: number }>();
 
   for (const h of holdings) {
-    const dateIso = isoDateLocal(h.holdingDate);
+    const dateIso = isoDateFromDbDate(h.holdingDate);
     const close = priceMap.get(
       dailyCloseKey(h.ticker, h.currency, dateIso),
     );

@@ -7,6 +7,15 @@ on:
     # Lun–ven 23 h 15 UTC ≈ 18 h 15–19 h Toronto (après le rapport EOD 22 h 30 UTC)
     - cron: "15 23 * * 1-5"
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Ignorer la fenêtre horaire et forcer le backfill Yahoo"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 jobs:
   trigger:
@@ -17,15 +26,20 @@ jobs:
         env:
           APP_URL: ${{ vars.EOD_REPORT_APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force || 'false' }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
             echo "Config manquante : vars.EOD_REPORT_APP_URL (Variables) et secrets.CRON_SECRET (Secrets)"
             exit 1
           fi
           BASE="${APP_URL%/}"
-          echo "Appel ${BASE}/api/cron/backfill-market-history"
+          QUERY=""
+          if [ "$FORCE" = "true" ]; then
+            QUERY="?force=1"
+          fi
+          echo "Appel ${BASE}/api/cron/backfill-market-history${QUERY} (force=${FORCE})"
           HTTP_CODE=$(curl -sS -o /tmp/history-response.json -w "%{http_code}" \
-            -X POST "${BASE}/api/cron/backfill-market-history" \
+            -X POST "${BASE}/api/cron/backfill-market-history${QUERY}" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json")
           cat /tmp/history-response.json

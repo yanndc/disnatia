@@ -24,9 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   const now = new Date();
-  const force =
-    process.env.NODE_ENV === "development" &&
-    request.nextUrl.searchParams.get("force") === "1";
+  const force = request.nextUrl.searchParams.get("force") === "1";
 
   if (!force && !shouldSendEodReport(now)) {
     return NextResponse.json({
@@ -37,7 +35,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await backfillMarketHistory({
-      force: false,
+      force,
       recomputeDailyValues: true,
       recomputeDailyValuesDays: 60,
       recomputeSessionGains: true,
