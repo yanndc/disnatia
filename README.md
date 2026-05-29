@@ -103,12 +103,12 @@ Envoi automatique d’un courriel HTML après chaque **jour ouvré** (lun–ven,
    pnpm prisma migrate deploy
    ```
 
-4. **GitHub Actions** (pas de Vercel Cron — limite plan Hobby) — secrets du dépôt (**Settings → Secrets and variables → Actions**) :
+4. **GitHub Actions** (pas de Vercel Cron — limite plan Hobby) — **Settings → Secrets and variables → Actions** :
 
-   | Secret GitHub | Valeur |
-   |---------------|--------|
-   | `CRON_SECRET` | Identique à celui sur Vercel |
-   | `EOD_REPORT_APP_URL` | URL prod sans slash final, ex. `https://disnatia.vercel.app` |
+   | Emplacement | Nom | Valeur |
+   |-------------|-----|--------|
+   | **Secrets** | `CRON_SECRET` | Identique à celui sur Vercel |
+   | **Variables** | `EOD_REPORT_APP_URL` | URL prod sans slash final, ex. `https://disnatia.vercel.app` |
 
    Workflow : [`.github/workflows/eod-report-cron.yml`](.github/workflows/eod-report-cron.yml) — lun–ven 22 h 30 UTC, plus **Run workflow** manuel (`workflow_dispatch`). Redéployer Vercel après les variables ; le workflow s’active au prochain push sur la branche par défaut.
 

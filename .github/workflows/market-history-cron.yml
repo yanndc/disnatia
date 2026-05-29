@@ -15,11 +15,11 @@ jobs:
     steps:
       - name: POST /api/cron/backfill-market-history
         env:
-          APP_URL: ${{ secrets.EOD_REPORT_APP_URL }}
+          APP_URL: ${{ vars.EOD_REPORT_APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "Secrets manquants : EOD_REPORT_APP_URL et CRON_SECRET"
+            echo "Config manquante : vars.EOD_REPORT_APP_URL (Variables) et secrets.CRON_SECRET (Secrets)"
             exit 1
           fi
           BASE="${APP_URL%/}"
