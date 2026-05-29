@@ -91,6 +91,23 @@ function sessionPctFromDelta(
   return null;
 }
 
+function resolveSessionDeltaPerShare(
+  livePrice: number,
+  priorClose: number | null,
+  changeAmount: number | null,
+): number | null {
+  if (changeAmount == null && priorClose == null) return null;
+  if (changeAmount == null) {
+    return priorClose != null ? livePrice - priorClose : null;
+  }
+  if (priorClose == null) return changeAmount;
+
+  const derived = livePrice - priorClose;
+  if (!Number.isFinite(derived)) return changeAmount;
+  const tolerance = Math.max(0.02, Math.abs(derived) * 0.25);
+  return Math.abs(changeAmount - derived) <= tolerance ? changeAmount : derived;
+}
+
 export function enrichPositionRow(
   position: PortfolioPosition & { accountKey?: string },
   accountName: string,
@@ -123,9 +140,13 @@ export function enrichPositionRow(
       ? priorSessionClose
       : null;
 
+  const changeAmount =
+    quote?.changeAmount != null && Number.isFinite(quote.changeAmount)
+      ? quote.changeAmount
+      : null;
   const sessionDeltaPerShare =
-    usesLiveQuote && livePrice != null && priorClose != null
-      ? livePrice - priorClose
+    usesLiveQuote && livePrice != null
+      ? resolveSessionDeltaPerShare(livePrice, priorClose, changeAmount)
       : null;
 
   const quoteChangePerShare = sessionDeltaPerShare;

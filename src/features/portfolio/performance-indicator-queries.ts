@@ -6,6 +6,7 @@ import { loadHoldingsForDashboard } from "./holdings-display-query";
 import {
   enrichPositionRow,
   indexQuotesByTickerCurrency,
+  type EnrichedPosition,
 } from "./live-enrichment";
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { makeAccountKey } from "./upsert-portfolio-state";
@@ -52,10 +53,7 @@ type DayStateCad = {
   dayPriorCad: number | null;
 };
 
-function sumPositionsCad(
-  rows: PerformanceEnrichedHoldingRow[],
-  usdToCad: number | null,
-): number {
+function sumPositionsCad(rows: EnrichedPosition[], usdToCad: number | null): number {
   return rows.reduce(
     (sum, row) => sum + toCad(row.displayMarketValue, row.currency, usdToCad),
     0,
@@ -63,7 +61,7 @@ function sumPositionsCad(
 }
 
 function dayStateCadForRows(
-  rows: PerformanceEnrichedHoldingRow[],
+  rows: EnrichedPosition[],
   usdToCad: number | null,
 ): DayStateCad {
   const withQty = rows.filter((row) => row.quantity > 0);
