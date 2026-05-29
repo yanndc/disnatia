@@ -265,6 +265,18 @@ export function PerformanceIndicatorCard({
           </div>
 
           {/* Panneau comptes */}
+          {!payload.sessionDataHealth.ok ? (
+            <div className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-xs text-rose-900 sm:px-6">
+              <p className="font-semibold">
+                Donnees de seance invalides - indicateurs non fiables
+              </p>
+              <p className="mt-1">
+                {payload.sessionDataHealth.message ??
+                  "Historisation des seances absente."}
+              </p>
+            </div>
+          ) : null}
+
           {scopeOpen ? (
             <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
               <div className="mb-3 flex items-center justify-between gap-2">

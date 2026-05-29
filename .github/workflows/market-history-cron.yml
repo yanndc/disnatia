@@ -1,0 +1,36 @@
+# Complète portfolio_daily_prices (clôtures Yahoo) après la clôture TSX/NYSE.
+# Fenêtre côté app : shouldSendEodReport (lun–ven, ~17 h 15–19 h Toronto).
+name: Historique clôtures
+
+on:
+  schedule:
+    # Lun–ven 23 h 15 UTC ≈ 18 h 15–19 h Toronto (après le rapport EOD 22 h 30 UTC)
+    - cron: "15 23 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: POST /api/cron/backfill-market-history
+        env:
+          APP_URL: ${{ secrets.EOD_REPORT_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Secrets manquants : EOD_REPORT_APP_URL et CRON_SECRET"
+            exit 1
+          fi
+          BASE="${APP_URL%/}"
+          echo "Appel ${BASE}/api/cron/backfill-market-history"
+          HTTP_CODE=$(curl -sS -o /tmp/history-response.json -w "%{http_code}" \
+            -X POST "${BASE}/api/cron/backfill-market-history" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json")
+          cat /tmp/history-response.json
+          echo ""
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Échec HTTP ${HTTP_CODE}"
+            exit 1
+          fi

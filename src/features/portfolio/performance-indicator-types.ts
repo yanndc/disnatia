@@ -76,6 +76,14 @@ export type PerformanceSessionGain = {
   priorCad: number;
 };
 
+export type PerformanceSessionDataHealth = {
+  ok: boolean;
+  message: string | null;
+  persistedDays: number;
+  firstDate: string | null;
+  lastDate: string | null;
+};
+
 export type PerformanceIndicatorPayload = {
   accounts: PerformanceAccountRef[];
   currentByAccount: Record<string, PerformanceAccountCurrent>;
@@ -86,6 +94,8 @@ export type PerformanceIndicatorPayload = {
   dailyTotalsCad: PerformanceDailyTotalCad[];
   /** P&L titres par séance boursière (holdings journaliers × clôtures). */
   sessionGainsByDate: PerformanceSessionGain[];
+  /** État de fiabilité des séances persistées (aucun fallback implicite). */
+  sessionDataHealth: PerformanceSessionDataHealth;
   cashFlows: PerformanceCashFlow[];
   /** Positions projetées pour calcul P&L titres par séance */
   holdings: PerformanceHoldingRow[];

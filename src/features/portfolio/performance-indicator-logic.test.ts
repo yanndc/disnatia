@@ -44,6 +44,13 @@ function mockPayload(
       { date: "2026-05-26", gainCad: 1_000, priorCad: 90_000 },
       { date: "2026-05-27", gainCad: 2_000, priorCad: 91_000 },
     ],
+    sessionDataHealth: {
+      ok: true,
+      message: null,
+      persistedDays: 2,
+      firstDate: "2026-05-26",
+      lastDate: "2026-05-27",
+    },
     cashFlows: [],
     holdings: [],
     enrichedHoldings: [],

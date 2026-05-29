@@ -198,6 +198,7 @@ function computeDayPeriod(
   const now = sessionClockForBounds(payload.asOfNow);
   const refDay = isoDate(referenceTradingSessionDay(now));
   const refSession = (payload.sessionGainsByDate ?? []).find((g) => g.date === refDay);
+  const sessionHealthNote = payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE;
 
   if (refSession && !isEquityMarketSessionOpen(now)) {
     const currentCad = accountKeys.reduce(
@@ -220,6 +221,23 @@ function computeDayPeriod(
       accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
       incomplete: false,
       note: null,
+    };
+  }
+
+  if (!isEquityMarketSessionOpen(now)) {
+    return {
+      gainCad: null,
+      gainPct: null,
+      currentCad: currentCadTotal(accountKeys, payload),
+      baselineCad: null,
+      baselineDate: refDay,
+      periodStart: refDay,
+      periodEnd: refDay,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      note: sessionHealthNote,
     };
   }
 
@@ -288,7 +306,12 @@ function computeDayPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: true,
-      note: "Cotation du jour indisponible pour calculer le P&L.",
+      note: payload.sessionDataHealth.ok
+        ? "Cotation du jour indisponible pour calculer le P&L."
+        : joinNotes(
+            "Cotation du jour indisponible pour calculer le P&L.",
+            sessionHealthNote,
+          ),
     };
   }
 
@@ -305,7 +328,10 @@ function computeDayPeriod(
     accountsWithBaseline: disnatWithDay,
     incomplete,
     note: incomplete
-      ? "P&L partiel : cotation absente sur au moins une ligne titre."
+      ? joinNotes(
+          "P&L partiel : cotation absente sur au moins une ligne titre.",
+          payload.sessionDataHealth.ok ? null : sessionHealthNote,
+        )
       : null,
   };
 }
@@ -417,13 +443,13 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
-      note: SESSION_GAINS_UNAVAILABLE_NOTE,
+      note: payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE,
     };
   }
 
   let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
   const priorCad = sessions[0]!.priorCad;
-  let incomplete = periodId === "all" || sessions[0]!.date > bounds.start!;
+  const incomplete = periodId === "all" || sessions[0]!.date > bounds.start!;
 
   const now = sessionClockForBounds(payload.asOfNow);
   const endIsToday = bounds.end === isoDate(now);

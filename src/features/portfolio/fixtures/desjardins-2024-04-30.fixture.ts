@@ -163,6 +163,13 @@ export function desjardinsPerformancePayload(
     sessionGainsByDate: marketOpen
       ? []
       : [{ date: REF.asOf, gainCad: sessionGainCad, priorCad: sessionPriorCad }],
+    sessionDataHealth: {
+      ok: true,
+      message: null,
+      persistedDays: marketOpen ? 0 : 1,
+      firstDate: marketOpen ? null : REF.asOf,
+      lastDate: marketOpen ? null : REF.asOf,
+    },
     cashFlows: [],
     holdings: [],
     enrichedHoldings: [],

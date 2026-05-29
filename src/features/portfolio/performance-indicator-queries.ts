@@ -13,7 +13,6 @@ import {
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { makeAccountKey } from "./upsert-portfolio-state";
 import {
-  dailyCloseKey,
   fetchChartClosesInMemory,
   loadDailyCloseMap,
   pairsNeedingChartHistory,
@@ -296,10 +295,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   ];
   const sessionGainFrom = sessionGainFromCandidates.toSorted()[0] ?? isoDate(startOfYear(now));
 
-  let historyPoints: Awaited<ReturnType<typeof loadPerformanceAccountHistory>>;
-  let dailyTotalsCad: Awaited<ReturnType<typeof loadPerformanceDailyTotalsCad>>;
-  let sessionGainsByDate: Awaited<ReturnType<typeof loadPersistedSessionGains>>;
-  [historyPoints, dailyTotalsCad, sessionGainsByDate] = await Promise.all([
+  const [historyPoints, dailyTotalsCad, sessionGainsByDate] = await Promise.all([
     loadPerformanceAccountHistory(sessionGainFrom),
     loadPerformanceDailyTotalsCad(usdToCad),
     loadPersistedSessionGains(
@@ -309,6 +305,16 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       usdToCad,
     ),
   ]);
+  const sessionDataHealth = {
+    ok: sessionGainsByDate.length > 0,
+    message:
+      sessionGainsByDate.length > 0
+        ? null
+        : "Aucune séance persistée dans portfolio_daily_account_session_gains. Recalcul requis avant affichage fiable.",
+    persistedDays: sessionGainsByDate.length,
+    firstDate: sessionGainsByDate[0]?.date ?? null,
+    lastDate: sessionGainsByDate.at(-1)?.date ?? null,
+  };
 
   for (const s of snapshots) {
     yearSet.add(Number(s.asOf.slice(0, 4)));
@@ -385,6 +391,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     historyPoints,
     dailyTotalsCad,
     sessionGainsByDate,
+    sessionDataHealth,
     cashFlows,
     holdings: performanceHoldings,
     enrichedHoldings,

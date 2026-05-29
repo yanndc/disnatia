@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/db/prisma";
+import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import {
   fetchYahooChartDailyCloses,
   pickYahooChartRange,
 } from "@/lib/market/yahoo-chart-closes";
-import { isoDateInToronto } from "@/lib/market/equity-session";
+import { isoDateInToronto, previousTradingDay, referenceTradingSessionDay } from "@/lib/market/equity-session";
 import { normalizeCurrency } from "@/lib/utils";
 import { projectHoldingsFromTransactions } from "./project-transaction-holdings";
 import { dailyCloseKey, parseIsoDateLocal, isoDateLocal } from "./daily-close-key";
+import { recomputeAndPersistSessionGains } from "./performance-session-gains";
 
 export type TickerCoverageRange = {
   ticker: string;
@@ -25,6 +27,7 @@ export type BackfillMarketHistoryResult = {
   tickersSkipped: number;
   pricesUpserted: number;
   dailyValuesUpserted: number;
+  sessionGainsUpserted: number;
   coverageRanges: TickerCoverageRange[];
   message?: string;
 };
@@ -81,6 +84,42 @@ async function resolveTickerCoverageRanges(): Promise<TickerCoverageRange[]> {
   return [...unique.values()];
 }
 
+const RECENT_TRADING_DAYS_TO_CHECK = 14;
+
+/** Dernières séances ouvrées (référence incluse), ordre récent → ancien. */
+function recentTradingSessionDates(now: Date, count: number): string[] {
+  const out: string[] = [];
+  let cursor = referenceTradingSessionDay(now);
+  for (let i = 0; i < count; i++) {
+    out.push(isoDateLocal(cursor));
+    cursor = previousTradingDay(cursor, 1);
+  }
+  return out;
+}
+
+async function pairHasRecentPriceGap(
+  ticker: string,
+  currency: string,
+  fromDate: string,
+  now = new Date(),
+): Promise<boolean> {
+  const datesToCheck = recentTradingSessionDates(now, RECENT_TRADING_DAYS_TO_CHECK).filter(
+    (d) => d >= fromDate,
+  );
+  if (datesToCheck.length === 0) return false;
+
+  const rows = await prisma.portfolioDailyPrice.findMany({
+    where: {
+      ticker,
+      currency,
+      priceDate: { in: datesToCheck.map((d) => parseIsoDateLocal(d)) },
+    },
+    select: { priceDate: true },
+  });
+  const have = new Set(rows.map((r) => isoDateLocal(r.priceDate)));
+  return datesToCheck.some((d) => !have.has(d));
+}
+
 async function pairNeedsBackfill(
   ticker: string,
   currency: string,
@@ -108,6 +147,8 @@ async function pairNeedsBackfill(
   const from = parseIsoDateLocal(fromDate);
   const earliestIso = isoDateLocal(earliest.priceDate);
   if (parseIsoDateLocal(earliestIso) > from) return true;
+
+  if (await pairHasRecentPriceGap(ticker, currency, fromDate)) return true;
 
   const latestAgeDays =
     (Date.now() - latest.priceDate.getTime()) / (24 * 60 * 60 * 1000);
@@ -267,10 +308,18 @@ async function recomputeDailyPortfolioValues(
 export async function backfillMarketHistory(options?: {
   force?: boolean;
   recomputeDailyValues?: boolean;
+  /** Limite le recalcul des valeurs journalières aux N derniers jours (cron). */
+  recomputeDailyValuesDays?: number;
+  recomputeSessionGains?: boolean;
+  /** Limite le recalcul des gains de séance aux N derniers jours (cron). */
+  recomputeSessionGainsDays?: number;
   ensureDailyHoldings?: boolean;
 }): Promise<BackfillMarketHistoryResult> {
   const force = options?.force ?? false;
   const recomputeDailyValues = options?.recomputeDailyValues ?? true;
+  const recomputeDailyValuesDays = options?.recomputeDailyValuesDays;
+  const recomputeSessionGains = options?.recomputeSessionGains ?? true;
+  const recomputeSessionGainsDays = options?.recomputeSessionGainsDays;
   const ensureDailyHoldings = options?.ensureDailyHoldings ?? true;
 
   if (ensureDailyHoldings) {
@@ -291,6 +340,7 @@ export async function backfillMarketHistory(options?: {
       tickersSkipped: 0,
       pricesUpserted: 0,
       dailyValuesUpserted: 0,
+      sessionGainsUpserted: 0,
       coverageRanges: [],
       message:
         "Aucun titre détenu — importe des transactions ou lance d'abord le recalcul portefeuille.",
@@ -315,12 +365,40 @@ export async function backfillMarketHistory(options?: {
   }
 
   let dailyValuesUpserted = 0;
+  const globalTo = isoDateInToronto(new Date());
+  let globalFrom = coverageRanges.map((r) => r.fromDate).toSorted()[0]!;
   if (recomputeDailyValues) {
-    const globalFrom = coverageRanges
-      .map((r) => r.fromDate)
-      .toSorted()[0]!;
-    const globalTo = isoDateInToronto(new Date());
+    if (recomputeDailyValuesDays != null && recomputeDailyValuesDays > 0) {
+      const cutoff = isoDateInToronto(
+        previousTradingDay(parseIsoDateLocal(globalTo), recomputeDailyValuesDays),
+      );
+      if (cutoff > globalFrom) globalFrom = cutoff;
+    }
     dailyValuesUpserted = await recomputeDailyPortfolioValues(globalFrom, globalTo);
+  }
+
+  let sessionGainsUpserted = 0;
+  if (recomputeSessionGains) {
+    let gainsFrom = globalFrom;
+    if (recomputeSessionGainsDays != null && recomputeSessionGainsDays > 0) {
+      const cutoff = isoDateInToronto(
+        previousTradingDay(parseIsoDateLocal(globalTo), recomputeSessionGainsDays),
+      );
+      if (cutoff > gainsFrom) gainsFrom = cutoff;
+    }
+    const disnatAccountKeys = (
+      await prisma.portfolioAccountState.findMany({ select: { accountKey: true } })
+    ).map((row) => row.accountKey);
+    if (disnatAccountKeys.length > 0) {
+      const fx = await getUsdCadRateNear(new Date());
+      const wrote = await recomputeAndPersistSessionGains(
+        disnatAccountKeys,
+        gainsFrom,
+        globalTo,
+        fx?.usdToCad ?? null,
+      );
+      sessionGainsUpserted = wrote.rowsWritten;
+    }
   }
 
   return {
@@ -329,6 +407,7 @@ export async function backfillMarketHistory(options?: {
     tickersSkipped,
     pricesUpserted,
     dailyValuesUpserted,
+    sessionGainsUpserted,
     coverageRanges,
     message: `${tickersProcessed} titre(s) mis à jour, ${tickersSkipped} déjà couverts, ${pricesUpserted} clôtures enregistrées.`,
   };
