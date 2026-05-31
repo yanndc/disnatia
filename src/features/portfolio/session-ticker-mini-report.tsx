@@ -160,11 +160,13 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
               sessionDate={report.currentSessionDate}
               lists={report.current}
             />
-            <SessionBlock
-              label={report.previousSessionLabel}
-              sessionDate={report.previousSessionDate}
-              lists={report.previous}
-            />
+            {report.showPreviousSession && report.previousSessionDate ? (
+              <SessionBlock
+                label={report.previousSessionLabel ?? "Séance précédente"}
+                sessionDate={report.previousSessionDate}
+                lists={report.previous}
+              />
+            ) : null}
           </>
         )}
       </CardContent>

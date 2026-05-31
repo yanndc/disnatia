@@ -36,8 +36,9 @@ export type SessionTickerLists = {
 export type SessionTickerMiniReport = {
   currentSessionDate: string;
   currentSessionLabel: string;
-  previousSessionDate: string;
-  previousSessionLabel: string;
+  previousSessionDate: string | null;
+  previousSessionLabel: string | null;
+  showPreviousSession: boolean;
   current: SessionTickerLists;
   previous: SessionTickerLists;
 };
@@ -141,17 +142,16 @@ function aggregateFromEnriched(
   return finalizeBuckets(buckets, usdToCad);
 }
 
-async function aggregateFromDailyHoldings(
+async function loadHoldingsForSessionDate(
   sessionDate: string,
   accountKeys: string[],
-  dailyCloses: Record<string, number>,
-  usdToCad: number | null,
-): Promise<SessionTickerRow[]> {
+) {
   if (!isTradingDayDate(sessionDate) || accountKeys.length === 0) return [];
 
-  const holdings = await prisma.portfolioDailyHolding.findMany({
+  const sessionDay = parseIsoDateLocal(sessionDate);
+  const exact = await prisma.portfolioDailyHolding.findMany({
     where: {
-      holdingDate: parseIsoDateLocal(sessionDate),
+      holdingDate: sessionDay,
       accountKey: { in: accountKeys },
       quantity: { gt: 0 },
     },
@@ -162,6 +162,43 @@ async function aggregateFromDailyHoldings(
       quantity: true,
     },
   });
+  if (exact.length > 0) return exact;
+
+  const latest = await prisma.portfolioDailyHolding.findFirst({
+    where: {
+      accountKey: { in: accountKeys },
+      holdingDate: { lte: sessionDay },
+      quantity: { gt: 0 },
+    },
+    orderBy: { holdingDate: "desc" },
+    select: { holdingDate: true },
+  });
+  if (!latest) return [];
+
+  return prisma.portfolioDailyHolding.findMany({
+    where: {
+      holdingDate: latest.holdingDate,
+      accountKey: { in: accountKeys },
+      quantity: { gt: 0 },
+    },
+    select: {
+      ticker: true,
+      securityName: true,
+      currency: true,
+      quantity: true,
+    },
+  });
+}
+
+async function aggregateFromDailyHoldings(
+  sessionDate: string,
+  accountKeys: string[],
+  dailyCloses: Record<string, number>,
+  usdToCad: number | null,
+): Promise<SessionTickerRow[]> {
+  if (!isTradingDayDate(sessionDate) || accountKeys.length === 0) return [];
+
+  const holdings = await loadHoldingsForSessionDate(sessionDate, accountKeys);
   if (holdings.length === 0) return [];
 
   const buckets = new Map<string, TickerBucket>();
@@ -212,24 +249,11 @@ function parsePayloadClock(asOfNow: string): Date {
   return local;
 }
 
-function usePersistedSessionForCurrent(
-  payload: PerformanceIndicatorPayload,
-  refDay: string,
-  now: Date,
-): boolean {
-  if (isEquityMarketSessionOpen(now)) return false;
-  return (payload.sessionGainsByDate ?? []).some((g) => g.date === refDay);
-}
-
-/**
- * Construit le mini-rapport à partir du payload performance (aucun rechargement
- * des cours ni recalcul d'enrichissement). Seules les quantités historiques par
- * séance passée sont lues en base.
- */
 export async function buildSessionTickerMiniReportFromPayload(
   payload: PerformanceIndicatorPayload,
 ): Promise<SessionTickerMiniReport> {
   const now = parsePayloadClock(payload.asOfNow);
+  const marketOpen = isEquityMarketSessionOpen(now);
   const currentSessionDate = isoDateInToronto(referenceTradingSessionDay(now));
   const previousSessionDate = isoDateInToronto(yesterdayTradingSessionDay(now));
   const { label: currentSessionLabel } = resolveDayPeriodLabels(now);
@@ -238,36 +262,31 @@ export async function buildSessionTickerMiniReportFromPayload(
     .filter((a) => !a.isExternal)
     .map((a) => a.accountKey);
 
-  const currentUsesCloses = usePersistedSessionForCurrent(
-    payload,
-    currentSessionDate,
-    now,
-  );
+  const currentRows = marketOpen
+    ? aggregateFromEnriched(payload.enrichedHoldings ?? [], payload.usdToCad)
+    : await aggregateFromDailyHoldings(
+        currentSessionDate,
+        disnatAccountKeys,
+        payload.dailyCloses,
+        payload.usdToCad,
+      );
 
-  const [currentRows, previousRows] = await Promise.all([
-    currentUsesCloses
-      ? aggregateFromDailyHoldings(
-          currentSessionDate,
+  const previousRows =
+    marketOpen
+      ? await aggregateFromDailyHoldings(
+          previousSessionDate,
           disnatAccountKeys,
           payload.dailyCloses,
           payload.usdToCad,
         )
-      : Promise.resolve(
-          aggregateFromEnriched(payload.enrichedHoldings ?? [], payload.usdToCad),
-        ),
-    aggregateFromDailyHoldings(
-      previousSessionDate,
-      disnatAccountKeys,
-      payload.dailyCloses,
-      payload.usdToCad,
-    ),
-  ]);
+      : [];
 
   return {
     currentSessionDate,
-    currentSessionLabel,
-    previousSessionDate,
-    previousSessionLabel: "Séance d'avant-dernière",
+    currentSessionLabel: marketOpen ? currentSessionLabel : "Dernière séance",
+    previousSessionDate: marketOpen ? previousSessionDate : null,
+    previousSessionLabel: marketOpen ? "Séance précédente" : null,
+    showPreviousSession: marketOpen,
     current: splitGainersLosers(currentRows),
     previous: splitGainersLosers(previousRows),
   };
