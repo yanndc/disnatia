@@ -10,6 +10,7 @@ import type {
   PerformancePeriodId,
   PerformancePeriodResult,
   PerformanceScopePreset,
+  PerformanceSessionGain,
 } from "./performance-indicator-types";
 import {
   isoDateInToronto,
