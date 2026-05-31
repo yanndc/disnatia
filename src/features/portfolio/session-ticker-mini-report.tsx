@@ -11,9 +11,11 @@ import type {
 function formatSessionDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y!, m! - 1, d!).toLocaleDateString("fr-CA", {
-    weekday: "short",
+    weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Toronto",
   });
 }
 

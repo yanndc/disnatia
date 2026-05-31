@@ -1,10 +1,8 @@
 import {
-  endOfYear,
-  startOfMonth,
-  startOfWeek,
   startOfYear,
+  subMonths,
+  subYears,
 } from "date-fns";
-import { frCA } from "date-fns/locale";
 import type {
   PerformanceAccountRef,
   PerformanceFilterState,
@@ -19,7 +17,6 @@ import {
   previousTradingDay,
   referenceTradingSessionDay,
   resolveDayPeriodLabels,
-  yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 
@@ -30,11 +27,11 @@ const PERIOD_META: Record<
   Exclude<PerformancePeriodId, "day">,
   { label: string; shortLabel: string }
 > = {
-  yesterday: { label: "Hier", shortLabel: "Hier" },
-  week: { label: "Cette semaine", shortLabel: "Sem." },
-  month: { label: "Ce mois", shortLabel: "Mois" },
-  ytd: { label: "Année à ce jour", shortLabel: "AAJ" },
-  year: { label: "Par année", shortLabel: "Année" },
+  month: { label: "1 mois", shortLabel: "1 mois" },
+  month3: { label: "3 mois", shortLabel: "3 mois" },
+  year: { label: "1 an", shortLabel: "1 an" },
+  year3: { label: "3 ans", shortLabel: "3 ans" },
+  ytd: { label: "Année à date", shortLabel: "AAJ" },
   all: { label: "Depuis le début", shortLabel: "Total" },
 };
 
@@ -124,47 +121,34 @@ export function resolveActiveAccountKeys(
 export function resolvePeriodBounds(
   periodId: PerformancePeriodId,
   now: Date,
-  selectedYear: number,
+  _selectedYear: number,
   earliestSnapshotDate: string | null,
 ): { start: string | null; end: string; baselineLookup: string | null } {
-  const end = isoDate(now);
+  const refDay = referenceTradingSessionDay(now);
+  const end = isoDate(refDay);
 
   switch (periodId) {
     case "day":
       return { start: end, end, baselineLookup: null };
-    case "yesterday": {
-      const sessionEnd = yesterdayTradingSessionDay(now);
-      const sessionEndIso = isoDate(sessionEnd);
-      const baseline = isoDate(previousTradingDay(sessionEnd, 1));
-      return { start: sessionEndIso, end: sessionEndIso, baselineLookup: baseline };
-    }
-    case "week": {
-      const start = isoDate(
-        startOfWeek(now, { weekStartsOn: 1, locale: frCA }),
-      );
-      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
-    }
     case "month": {
-      const start = isoDate(startOfMonth(now));
+      const start = isoDate(subMonths(refDay, 1));
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
-    case "ytd": {
-      const start = isoDate(startOfYear(now));
+    case "month3": {
+      const start = isoDate(subMonths(refDay, 3));
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "year": {
-      const yearStart = startOfYear(new Date(selectedYear, 0, 1));
-      const start = isoDate(yearStart);
-      const yearEndDate =
-        selectedYear < now.getFullYear()
-          ? endOfYear(yearStart)
-          : now;
-      const periodEnd = isoDate(yearEndDate);
-      return {
-        start,
-        end: periodEnd,
-        baselineLookup: baselineBeforePeriodStart(start),
-      };
+      const start = isoDate(subYears(refDay, 1));
+      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
+    }
+    case "year3": {
+      const start = isoDate(subYears(refDay, 3));
+      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
+    }
+    case "ytd": {
+      const start = isoDate(startOfYear(refDay));
+      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "all":
       return {
@@ -173,6 +157,28 @@ export function resolvePeriodBounds(
         baselineLookup: earliestSnapshotDate,
       };
   }
+}
+
+/** Agrège les gains de séance pour les comptes filtrés. */
+export function aggregateSessionGainsForAccounts(
+  payload: PerformanceIndicatorPayload,
+  accountKeys: string[],
+): PerformanceSessionGain[] {
+  const disnatKeys = disnatAccountKeysInScope(accountKeys, payload);
+  const byDate = new Map<string, { gainCad: number; priorCad: number }>();
+
+  for (const accountKey of disnatKeys) {
+    for (const g of payload.sessionGainsByAccount?.[accountKey] ?? []) {
+      const bucket = byDate.get(g.date) ?? { gainCad: 0, priorCad: 0 };
+      bucket.gainCad += g.gainCad;
+      bucket.priorCad += g.priorCad;
+      byDate.set(g.date, bucket);
+    }
+  }
+
+  return [...byDate.entries()]
+    .map(([date, v]) => ({ date, gainCad: v.gainCad, priorCad: v.priorCad }))
+    .toSorted((a, b) => a.date.localeCompare(b.date));
 }
 
 function earliestHistoryAmong(
@@ -197,7 +203,8 @@ function computeDayPeriod(
 ): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> {
   const now = sessionClockForBounds(payload.asOfNow);
   const refDay = isoDate(referenceTradingSessionDay(now));
-  const refSession = (payload.sessionGainsByDate ?? []).find((g) => g.date === refDay);
+  const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
+  const refSession = filteredSessions.find((g) => g.date === refDay);
   const sessionHealthNote = payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE;
 
   if (refSession && !isEquityMarketSessionOpen(now)) {
@@ -426,10 +433,11 @@ function computeSessionChainPeriod(
     };
   }
 
+  const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
   const sessions =
     periodId === "all"
-      ? [...(payload.sessionGainsByDate ?? [])]
-      : (payload.sessionGainsByDate ?? [])
+      ? [...filteredSessions]
+      : filteredSessions
           .filter((g) => g.date >= bounds.start! && g.date <= bounds.end)
           .toSorted((a, b) => a.date.localeCompare(b.date));
 
@@ -455,7 +463,6 @@ function computeSessionChainPeriod(
   const endIsToday = bounds.end === isoDate(now);
   if (
     endIsToday &&
-    periodId !== "yesterday" &&
     isEquityMarketSessionOpen(now)
   ) {
     const todayIso = bounds.end;
@@ -624,11 +631,11 @@ export function computeAllPeriodResults(
 ): PerformancePeriodResult[] {
   const ids: PerformancePeriodId[] = [
     "day",
-    "yesterday",
-    "week",
     "month",
-    "ytd",
+    "month3",
     "year",
+    "year3",
+    "ytd",
     "all",
   ];
   return ids.map((id) => computePeriodResult(payload, filters, id));

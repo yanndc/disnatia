@@ -81,11 +81,11 @@ const PRESET_LABELS: Record<PerformanceScopePreset, string> = {
 
 const PERIOD_ORDER: PerformancePeriodId[] = [
   "day",
-  "yesterday",
-  "week",
   "month",
-  "ytd",
+  "month3",
   "year",
+  "year3",
+  "ytd",
   "all",
 ];
 
@@ -347,25 +347,7 @@ export function PerformanceIndicatorCard({
           <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-slate-500">
-                  {active.label}
-                  {filters.activePeriod === "year" ? ` · ${filters.selectedYear}` : ""}
-                </p>
-                {filters.activePeriod === "year" ? (
-                  <select
-                    value={filters.selectedYear}
-                    onChange={(e) =>
-                      updateFilters({ selectedYear: Number(e.target.value) })
-                    }
-                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
-                  >
-                    {payload.availableYears.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
+                <p className="text-sm font-medium text-slate-500">{active.label}</p>
               </div>
 
               <div className="mt-3 flex items-end gap-3">

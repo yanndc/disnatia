@@ -218,3 +218,51 @@ export async function loadPersistedSessionGains(
     }))
     .toSorted((a, b) => a.date.localeCompare(b.date));
 }
+
+/** P&L de séance par compte (clé = accountKey). */
+export async function loadPersistedSessionGainsByAccount(
+  accountKeys: string[],
+  fromDate: string,
+  toDate: string,
+  usdToCad: number | null,
+): Promise<Record<string, PerformanceSessionGain[]>> {
+  if (accountKeys.length === 0) return {};
+
+  const rows = await prisma.portfolioDailyAccountSessionGain.findMany({
+    where: {
+      accountKey: { in: accountKeys },
+      sessionDate: {
+        gte: parseIsoDateLocal(fromDate),
+        lte: parseIsoDateLocal(toDate),
+      },
+    },
+    select: {
+      accountKey: true,
+      sessionDate: true,
+      currency: true,
+      gainNative: true,
+      priorNative: true,
+    },
+    orderBy: [{ accountKey: "asc" }, { sessionDate: "asc" }],
+  });
+
+  const out: Record<string, Map<string, { gainCad: number; priorCad: number }>> = {};
+
+  for (const row of rows) {
+    const date = isoDateFromDbDate(row.sessionDate);
+    const accountMap = out[row.accountKey] ?? new Map();
+    const bucket = accountMap.get(date) ?? { gainCad: 0, priorCad: 0 };
+    bucket.gainCad += toCad(row.gainNative, row.currency, usdToCad);
+    bucket.priorCad += toCad(row.priorNative, row.currency, usdToCad);
+    accountMap.set(date, bucket);
+    out[row.accountKey] = accountMap;
+  }
+
+  const result: Record<string, PerformanceSessionGain[]> = {};
+  for (const [accountKey, byDate] of Object.entries(out)) {
+    result[accountKey] = [...byDate.entries()]
+      .map(([date, v]) => ({ date, gainCad: v.gainCad, priorCad: v.priorCad }))
+      .toSorted((a, b) => a.date.localeCompare(b.date));
+  }
+  return result;
+}

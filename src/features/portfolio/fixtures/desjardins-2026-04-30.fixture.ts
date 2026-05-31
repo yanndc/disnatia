@@ -162,6 +162,24 @@ export function desjardinsPerformancePayload(
     sessionGainsByDate: marketOpen
       ? []
       : [{ date: REF.asOf, gainCad: sessionGainCad, priorCad: sessionPriorCad }],
+    sessionGainsByAccount: marketOpen
+      ? {}
+      : {
+          [yannKey]: [
+            {
+              date: REF.asOf,
+              gainCad: REF.yann.variationCad,
+              priorCad: REF.yann.titresCad - REF.yann.variationCad,
+            },
+          ],
+          [valKey]: [
+            {
+              date: REF.asOf,
+              gainCad: REF.valerie.variationCad,
+              priorCad: REF.valerie.titresCad - REF.valerie.variationCad,
+            },
+          ],
+        },
     sessionDataHealth: {
       ok: true,
       message: null,

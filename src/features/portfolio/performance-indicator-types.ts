@@ -1,10 +1,10 @@
 export type PerformancePeriodId =
   | "day"
-  | "yesterday"
-  | "week"
   | "month"
-  | "ytd"
+  | "month3"
   | "year"
+  | "year3"
+  | "ytd"
   | "all";
 
 export type PerformanceScopePreset = "all" | "disnat" | "external" | "custom";
@@ -56,6 +56,7 @@ export type PerformanceHoldingRow = {
 
 /** Ligne titres enrichie (cours live + clôture séance précédente), calculée une fois dans le payload. */
 export type PerformanceEnrichedHoldingRow = {
+  accountKey: string;
   ticker: string;
   securityName: string;
   currency: string;
@@ -94,6 +95,8 @@ export type PerformanceIndicatorPayload = {
   dailyTotalsCad: PerformanceDailyTotalCad[];
   /** P&L titres par séance boursière (holdings journaliers × clôtures). */
   sessionGainsByDate: PerformanceSessionGain[];
+  /** P&L titres par compte et par séance (pour filtres propriétaire / compte). */
+  sessionGainsByAccount: Record<string, PerformanceSessionGain[]>;
   /** État de fiabilité des séances persistées (aucun fallback implicite). */
   sessionDataHealth: PerformanceSessionDataHealth;
   cashFlows: PerformanceCashFlow[];

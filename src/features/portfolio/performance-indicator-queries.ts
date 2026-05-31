@@ -31,15 +31,10 @@ import {
   loadPerformanceDailyTotalsCad,
 } from "./performance-history-loader";
 import {
-  loadPersistedSessionGains,
+  loadPersistedSessionGainsByAccount,
 } from "./performance-session-gains";
 import { isoDateInToronto } from "@/lib/market/equity-session";
-import {
-  startOfMonth,
-  startOfWeek,
-  startOfYear,
-  subYears,
-} from "date-fns";
+import { subYears } from "date-fns";
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = normalizeCurrency(currency);
@@ -221,6 +216,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     positionsByAccount.set(h.accountKey, list);
     if (h.quantity > 0) {
       enrichedHoldings.push({
+        accountKey: h.accountKey,
         ticker: h.ticker.toUpperCase(),
         securityName: (h.securityName ?? "").trim() || h.ticker.toUpperCase(),
         currency: normalizeCurrency(h.currency),
@@ -324,32 +320,42 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
 
   const disnatAccountKeys = accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
   const now = new Date();
-  const sessionGainFromCandidates = [
-    isoDate(startOfYear(subYears(now, 1))),
-    isoDate(startOfWeek(now, { weekStartsOn: 1 })),
-    isoDate(startOfMonth(now)),
-  ];
-  const sessionGainFrom = sessionGainFromCandidates.toSorted()[0] ?? isoDate(startOfYear(now));
+  const sessionGainFrom = isoDate(subYears(now, 4));
+  const sessionGainTo = isoDate(now);
 
-  const [historyPoints, dailyTotalsCad, sessionGainsByDate] = await Promise.all([
+  const [historyPoints, dailyTotalsCad, sessionGainsByAccount] = await Promise.all([
     loadPerformanceAccountHistory(sessionGainFrom),
     loadPerformanceDailyTotalsCad(usdToCad),
-    loadPersistedSessionGains(
+    loadPersistedSessionGainsByAccount(
       disnatAccountKeys,
       sessionGainFrom,
-      isoDate(now),
+      sessionGainTo,
       usdToCad,
     ),
   ]);
+
+  const sessionGainsByDate = disnatAccountKeys
+    .flatMap((key) => sessionGainsByAccount[key] ?? [])
+    .reduce((map, g) => {
+      const bucket = map.get(g.date) ?? { gainCad: 0, priorCad: 0 };
+      bucket.gainCad += g.gainCad;
+      bucket.priorCad += g.priorCad;
+      map.set(g.date, bucket);
+      return map;
+    }, new Map<string, { gainCad: number; priorCad: number }>());
+
+  const sessionGainsByDateList = [...sessionGainsByDate.entries()]
+    .map(([date, v]) => ({ date, gainCad: v.gainCad, priorCad: v.priorCad }))
+    .toSorted((a, b) => a.date.localeCompare(b.date));
   const sessionDataHealth = {
-    ok: sessionGainsByDate.length > 0,
+    ok: sessionGainsByDateList.length > 0,
     message:
-      sessionGainsByDate.length > 0
+      sessionGainsByDateList.length > 0
         ? null
         : "Aucune séance persistée dans portfolio_daily_account_session_gains. Recalcul requis avant affichage fiable.",
-    persistedDays: sessionGainsByDate.length,
-    firstDate: sessionGainsByDate[0]?.date ?? null,
-    lastDate: sessionGainsByDate.at(-1)?.date ?? null,
+    persistedDays: sessionGainsByDateList.length,
+    firstDate: sessionGainsByDateList[0]?.date ?? null,
+    lastDate: sessionGainsByDateList.at(-1)?.date ?? null,
   };
 
   for (const s of snapshots) {
@@ -425,7 +431,8 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     snapshots,
     historyPoints,
     dailyTotalsCad,
-    sessionGainsByDate,
+    sessionGainsByDate: sessionGainsByDateList,
+    sessionGainsByAccount,
     sessionDataHealth,
     cashFlows,
     holdings: performanceHoldings,

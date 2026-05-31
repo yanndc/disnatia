@@ -267,7 +267,7 @@ export async function buildSessionTickerMiniReportFromPayload(
     currentSessionDate,
     currentSessionLabel,
     previousSessionDate,
-    previousSessionLabel: "Séance précédente",
+    previousSessionLabel: "Séance d'avant-dernière",
     current: splitGainersLosers(currentRows),
     previous: splitGainersLosers(previousRows),
   };

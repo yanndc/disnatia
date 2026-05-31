@@ -63,7 +63,7 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
   };
 
   const dayPeriod = computePeriodResult(payload, filters, "day");
-  const yesterdayPeriod = computePeriodResult(payload, filters, "yesterday");
+  const yesterdayPeriod = dayPeriod;
 
   const sessionDate = isoDateInToronto(referenceTradingSessionDay(now));
   const { label: sessionLabel } = resolveDayPeriodLabels(now);

@@ -9,6 +9,7 @@ export type SessionIntegrityCheck = {
   issues: string[];
   metrics: {
     accountCount: number;
+    accountsWithHoldingsCount: number;
     holdingsRows: number;
     pricesRows: number;
     valuesRows: number;
@@ -32,6 +33,7 @@ export function formatSessionIntegrityForUser(check: SessionIntegrityCheck): str
   const lines = [
     `Séance de référence : ${check.expectedSessionDate}`,
     `Comptes actifs : ${check.metrics.accountCount}`,
+    `Comptes avec titres (séance) : ${check.metrics.accountsWithHoldingsCount}`,
     `Lignes holdings (séance) : ${check.metrics.holdingsRows}`,
     `Lignes clôtures (séance) : ${check.metrics.pricesRows}`,
     `Lignes valeurs jour (séance) : ${check.metrics.valuesRows}`,
@@ -67,6 +69,7 @@ export async function checkSessionDataIntegrity(
   const day = parseIsoDateLocal(expectedSessionDate);
   const [
     accountCount,
+    accountsWithHoldings,
     holdingsRows,
     pricesRows,
     valuesRows,
@@ -77,6 +80,13 @@ export async function checkSessionDataIntegrity(
     maxSessionGainRow,
   ] = await Promise.all([
     prisma.portfolioAccountState.count(),
+    prisma.portfolioDailyHolding.groupBy({
+      by: ["accountKey"],
+      where: {
+        holdingDate: day,
+        quantity: { gt: 0 },
+      },
+    }),
     prisma.portfolioDailyHolding.count({
       where: {
         holdingDate: day,
@@ -123,22 +133,23 @@ export async function checkSessionDataIntegrity(
     ? isoDateFromDbDate(maxSessionGainRow.sessionDate)
     : null;
 
+  const accountsWithHoldingsCount = accountsWithHoldings.length;
   const issues: string[] = [];
-  if (holdingsRows === 0) {
+  if (accountsWithHoldingsCount > 0 && holdingsRows === 0) {
     issues.push("Aucune ligne portfolio_daily_holdings pour la seance attendue.");
   }
-  if (pricesRows === 0) {
+  if (accountsWithHoldingsCount > 0 && pricesRows === 0) {
     issues.push("Aucune ligne portfolio_daily_prices pour la seance attendue.");
   }
   if (valuesRows === 0) {
     issues.push("Aucune ligne portfolio_daily_values pour la seance attendue.");
   }
-  if (sessionGainRows === 0) {
+  if (accountsWithHoldingsCount > 0 && sessionGainRows === 0) {
     issues.push("Aucune ligne portfolio_daily_account_session_gains pour la seance attendue.");
   }
-  if (accountCount > 0 && sessionGainRows < accountCount) {
+  if (accountsWithHoldingsCount > 0 && sessionGainRows < accountsWithHoldingsCount) {
     issues.push(
-      `Nombre de comptes avec gain de seance (${sessionGainRows}) inferieur aux comptes actifs (${accountCount}).`,
+      `Nombre de comptes avec gain de seance (${sessionGainRows}) inferieur aux comptes avec titres (${accountsWithHoldingsCount}).`,
     );
   }
   if (maxHoldingDate && maxHoldingDate < expectedSessionDate) {
@@ -168,6 +179,7 @@ export async function checkSessionDataIntegrity(
     issues,
     metrics: {
       accountCount,
+      accountsWithHoldingsCount,
       holdingsRows,
       pricesRows,
       valuesRows,
