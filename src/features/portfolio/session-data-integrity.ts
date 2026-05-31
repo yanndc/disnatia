@@ -27,6 +27,40 @@ function makeFailureMessage(check: SessionIntegrityCheck): string {
   ].join("\n");
 }
 
+/** Résumé lisible pour l’UI après un backfill historique. */
+export function formatSessionIntegrityForUser(check: SessionIntegrityCheck): string[] {
+  const lines = [
+    `Séance de référence : ${check.expectedSessionDate}`,
+    `Comptes actifs : ${check.metrics.accountCount}`,
+    `Lignes holdings (séance) : ${check.metrics.holdingsRows}`,
+    `Lignes clôtures (séance) : ${check.metrics.pricesRows}`,
+    `Lignes valeurs jour (séance) : ${check.metrics.valuesRows}`,
+    `Gains de séance persistés : ${check.metrics.sessionGainRows}`,
+  ];
+  if (check.metrics.maxHoldingDate) {
+    lines.push(`Dernière date holdings : ${check.metrics.maxHoldingDate}`);
+  }
+  if (check.metrics.maxPriceDate) {
+    lines.push(`Dernière date clôtures : ${check.metrics.maxPriceDate}`);
+  }
+  if (check.metrics.maxSessionGainDate) {
+    lines.push(`Dernière date gains séance : ${check.metrics.maxSessionGainDate}`);
+  }
+  if (check.issues.length > 0) {
+    lines.push("", "Problèmes :");
+    for (const issue of check.issues) {
+      lines.push(`• ${issue}`);
+    }
+    if (check.issues.some((i) => i.includes("holdings"))) {
+      lines.push(
+        "",
+        "→ Lance d’abord « Recalcul portefeuille » si les holdings sont en retard.",
+      );
+    }
+  }
+  return lines;
+}
+
 export async function checkSessionDataIntegrity(
   expectedSessionDate = isoDateInToronto(referenceTradingSessionDay(new Date())),
 ): Promise<SessionIntegrityCheck> {

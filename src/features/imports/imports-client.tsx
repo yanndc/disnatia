@@ -202,14 +202,26 @@ export function ImportsClient({
       const response = await fetch("/api/portfolio/backfill-market-history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: false, recomputeDailyValues: true }),
+        body: JSON.stringify({
+          force: true,
+          recomputeDailyValues: true,
+          recomputeSessionGains: true,
+        }),
       });
       type HistoryJson = {
+        summary?: string;
         message?: string;
         ok?: boolean;
+        integrityOk?: boolean;
         tickersProcessed?: number;
+        tickersSkipped?: number;
         pricesUpserted?: number;
         dailyValuesUpserted?: number;
+        sessionGainsUpserted?: number;
+        integrity?: {
+          expectedSessionDate?: string;
+          issues?: string[];
+        };
       };
       let payload: HistoryJson = {};
       try {
@@ -217,14 +229,17 @@ export function ImportsClient({
       } catch {
         payload = {};
       }
-      if (!response.ok || payload.ok === false) {
+      if (!response.ok) {
         setHistoryResult(
-          (payload as { message?: string }).message ?? `Échec (${response.status}).`,
+          payload.summary ??
+            payload.message ??
+            `Échec HTTP (${response.status}).`,
         );
         return;
       }
       setHistoryResult(
-        payload.message ??
+        payload.summary ??
+          payload.message ??
           `${payload.tickersProcessed ?? 0} titre(s), ${payload.pricesUpserted ?? 0} clôtures, ${payload.dailyValuesUpserted ?? 0} valeurs jour.`,
       );
     } catch (cause) {
@@ -561,9 +576,9 @@ export function ImportsClient({
             {historyBusy ? "Backfill historique…" : "Backfill historique de marché"}
           </Button>
           {historyResult ? (
-            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+            <pre className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
               {historyResult}
-            </p>
+            </pre>
           ) : null}
         </CardContent>
       </Card>
