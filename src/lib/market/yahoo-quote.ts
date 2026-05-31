@@ -20,17 +20,75 @@ type YahooChartResult = {
         chartPreviousClose?: number;
         regularMarketPreviousClose?: number;
       };
+      timestamp?: number[];
+      indicators?: {
+        quote?: Array<{
+          close?: (number | null)[];
+        }>;
+      };
     }>;
   };
 };
 
-/** Repli lorsque quote v7 ne répond pas : prix + éventuelle clôture précédente (variation du jour dérivée en amont). */
+/**
+ * Veille réelle = avant-dernière clôture daily du chart.
+ * `meta.chartPreviousClose` est le début de la fenêtre Yahoo, pas J-1 (ex. SPY +13 $ au lieu de +2 $).
+ */
+export function previousCloseFromDailyChartBars(
+  closes: (number | null | undefined)[],
+): number | undefined {
+  const valid: number[] = [];
+  for (const close of closes) {
+    if (typeof close === "number" && Number.isFinite(close) && close > 0) {
+      valid.push(close);
+    }
+  }
+  if (valid.length < 2) return undefined;
+  return valid[valid.length - 2];
+}
+
+function resolvePreviousCloseFromChartMeta(
+  barPreviousClose: number | undefined,
+  regularMarketPreviousClose: number | undefined,
+  chartPreviousClose: number | undefined,
+): number | undefined {
+  if (barPreviousClose != null && barPreviousClose > 0) return barPreviousClose;
+  if (
+    typeof regularMarketPreviousClose === "number" &&
+    Number.isFinite(regularMarketPreviousClose) &&
+    regularMarketPreviousClose > 0
+  ) {
+    return regularMarketPreviousClose;
+  }
+  if (
+    typeof chartPreviousClose === "number" &&
+    Number.isFinite(chartPreviousClose) &&
+    chartPreviousClose > 0
+  ) {
+    return chartPreviousClose;
+  }
+  return undefined;
+}
+
+function sessionDeltaFromPriceAndPreviousClose(
+  price: number,
+  previousClose: number | undefined,
+): Pick<YahooQuotePriceRow, "previousClose" | "changeAmount"> {
+  if (previousClose == null || previousClose <= 0) return {};
+  const changeAmount = price - previousClose;
+  if (!Number.isFinite(changeAmount)) {
+    return { previousClose };
+  }
+  return { previousClose, changeAmount };
+}
+
+/** Repli lorsque quote v7 ne répond pas : prix + veille dérivée des barres daily. */
 async function fetchYahooChartFallback(
   symbol: string,
 ): Promise<YahooQuotePriceRow | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     symbol,
-  )}?interval=1d&range=5d`;
+  )}?interval=1d&range=10d`;
 
   const response = await fetch(url, {
     headers: {
@@ -43,25 +101,23 @@ async function fetchYahooChartFallback(
   if (!response.ok) return null;
 
   const data = (await response.json()) as YahooChartResult;
-  const meta = data.chart?.result?.[0]?.meta;
+  const result = data.chart?.result?.[0];
+  const meta = result?.meta;
   const price = meta?.regularMarketPrice;
   if (typeof price !== "number" || !Number.isFinite(price)) return null;
 
-  const chartPc = meta?.chartPreviousClose;
-  const regPc = meta?.regularMarketPreviousClose;
-  const prev =
-    typeof chartPc === "number" && Number.isFinite(chartPc) && chartPc > 0
-      ? chartPc
-      : typeof regPc === "number" && Number.isFinite(regPc) && regPc > 0
-        ? regPc
-        : undefined;
+  const closes = result?.indicators?.quote?.[0]?.close ?? [];
+  const barPreviousClose = previousCloseFromDailyChartBars(closes);
+  const previousClose = resolvePreviousCloseFromChartMeta(
+    barPreviousClose,
+    meta?.regularMarketPreviousClose,
+    meta?.chartPreviousClose,
+  );
 
-  const row: YahooQuotePriceRow = { price, previousClose: prev };
-  if (prev !== undefined) {
-    const change = price - prev;
-    if (Number.isFinite(change)) row.changeAmount = change;
-  }
-  return row;
+  return {
+    price,
+    ...sessionDeltaFromPriceAndPreviousClose(price, previousClose),
+  };
 }
 
 function rowNeedsChartSessionFields(row: YahooQuotePriceRow): boolean {
@@ -84,19 +140,32 @@ function mergeYahooQuoteRow(
   const prev =
     chart.previousClose ??
     (typeof quote.previousClose === "number" ? quote.previousClose : undefined);
+  const derived =
+    typeof price === "number" &&
+    Number.isFinite(price) &&
+    typeof prev === "number" &&
+    prev > 0
+      ? price - prev
+      : undefined;
   let changeAmount = quote.changeAmount;
   if (!(typeof changeAmount === "number" && Number.isFinite(changeAmount))) {
     changeAmount = chart.changeAmount;
   }
   if (
-    (!(typeof changeAmount === "number" && Number.isFinite(changeAmount))) &&
-    typeof price === "number" &&
-    Number.isFinite(price) &&
-    typeof prev === "number" &&
-    prev > 0
+    typeof derived === "number" &&
+    Number.isFinite(derived) &&
+    (!(typeof changeAmount === "number" && Number.isFinite(changeAmount)) ||
+      Math.abs(changeAmount - derived) >
+        Math.max(0.02, Math.abs(derived) * 0.25))
   ) {
-    const inferred = price - prev;
-    if (Number.isFinite(inferred)) changeAmount = inferred;
+    changeAmount = derived;
+  }
+  if (
+    (!(typeof changeAmount === "number" && Number.isFinite(changeAmount))) &&
+    typeof derived === "number" &&
+    Number.isFinite(derived)
+  ) {
+    changeAmount = derived;
   }
   return {
     price,

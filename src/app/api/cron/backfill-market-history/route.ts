@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { backfillMarketHistory } from "@/features/portfolio/backfill-market-history";
-import { shouldSendEodReport } from "@/lib/market/equity-session";
 import {
   checkSessionDataIntegrity,
   notifySessionIntegrityFailure,
@@ -23,15 +22,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ skipped: true, reason: "CRON_SECRET manquant" });
   }
 
-  const now = new Date();
   const force = request.nextUrl.searchParams.get("force") === "1";
-
-  if (!force && !shouldSendEodReport(now)) {
-    return NextResponse.json({
-      skipped: true,
-      reason: "hors_fenetre_backfill",
-    });
-  }
 
   try {
     const result = await backfillMarketHistory({

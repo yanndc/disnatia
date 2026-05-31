@@ -1,5 +1,5 @@
 # Déclenche le rapport fin de journée sur l’app Vercel (évite la limite Vercel Cron).
-# La route applique shouldSendEodReport (lun–ven, 17 h 15–19 h Toronto) et l’idempotence en base.
+# Idempotence en base (un envoi par séance) ; horaire fixé par ce cron GitHub.
 name: Rapport EOD
 
 on:

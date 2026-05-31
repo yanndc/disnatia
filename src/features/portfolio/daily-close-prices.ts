@@ -212,6 +212,29 @@ export function pairsMissingCloses(
   });
 }
 
+/** Écrit en BD les clôtures manquantes (Yahoo chart) pour les dates demandées. */
+export async function ensureDailyClosesPersistedForPairs(
+  pairs: { ticker: string; currency: string }[],
+  dates: string[],
+): Promise<number> {
+  if (pairs.length === 0 || dates.length === 0) return 0;
+
+  const sortedDates = [...dates].toSorted();
+  const fromDate = sortedDates[0]!;
+  const toDate = sortedDates.at(-1)!;
+  let closeMap = await loadDailyCloseMap(pairs, fromDate, toDate);
+  const missing = pairsMissingCloses(pairs, closeMap, dates);
+  if (missing.length === 0) return 0;
+
+  const upserted = await backfillDailyClosesForPairs(
+    missing.map((p) => ({
+      ...p,
+      yahooSymbol: yahooSymbolForPair(p.ticker, p.currency),
+    })),
+  );
+  return upserted;
+}
+
 function closeInMap(
   closeMap: Map<DailyCloseKey, number>,
   ticker: string,
@@ -267,15 +290,10 @@ export async function priorSessionCloseByPair(
   );
 
   let closeMap = await loadDailyCloseMap(pairs, chartFrom, priorDay);
-  const needingChart = pairsMissingCloses(pairs, closeMap, [priorDay]);
-  if (needingChart.length > 0) {
-    const fetched = await fetchChartClosesInMemory(
-      needingChart.map((p) => ({
-        ...p,
-        yahooSymbol: yahooSymbolForPair(p.ticker, p.currency),
-      })),
-    );
-    closeMap = new Map([...closeMap, ...fetched]);
+  const missingPrior = pairsMissingCloses(pairs, closeMap, [priorDay]);
+  if (missingPrior.length > 0) {
+    await ensureDailyClosesPersistedForPairs(missingPrior, [priorDay]);
+    closeMap = await loadDailyCloseMap(pairs, chartFrom, priorDay);
   }
 
   const out = new Map<string, number>();

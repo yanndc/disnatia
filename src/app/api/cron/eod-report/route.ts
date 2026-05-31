@@ -7,10 +7,6 @@ import {
   eodReportSessionDate,
   runEodReportJob,
 } from "@/features/reports/send-eod-report";
-import {
-  shouldSendEodReport,
-} from "@/lib/market/equity-session";
-
 function verifyCronSecret(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) return false;
@@ -40,13 +36,6 @@ export async function POST(request: NextRequest) {
   const force =
     process.env.NODE_ENV === "development" &&
     request.nextUrl.searchParams.get("force") === "1";
-
-  if (!force && !shouldSendEodReport(now)) {
-    return NextResponse.json({
-      skipped: true,
-      reason: "hors_fenetre_envoi",
-    });
-  }
 
   const sessionDate = eodReportSessionDate(now);
 

@@ -11,12 +11,11 @@ import {
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { makeAccountKey } from "./upsert-portfolio-state";
 import {
-  fetchChartClosesInMemory,
+  ensureDailyClosesPersistedForPairs,
   loadDailyCloseMap,
   pairsNeedingChartHistory,
   priorSessionCloseByPair,
   yesterdayCloseDates,
-  yahooSymbolForPair,
 } from "./daily-close-prices";
 import type {
   PerformanceAccountCurrent,
@@ -405,15 +404,14 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   ];
 
   let closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
-  const needingChart = pairsNeedingChartHistory(closeHistoryPairs, closeMap, sessionEnd);
-  if (needingChart.length > 0) {
-    const fetched = await fetchChartClosesInMemory(
-      needingChart.map((p) => ({
-        ...p,
-        yahooSymbol: yahooSymbolForPair(p.ticker, p.currency),
-      })),
+  const needingHistory = pairsNeedingChartHistory(closeHistoryPairs, closeMap, sessionEnd);
+  if (needingHistory.length > 0) {
+    const { sessionStart: priorForEnd } = yesterdayCloseDates();
+    const datesToEnsure = [sessionEnd, priorForEnd].filter(
+      (d, i, arr) => arr.indexOf(d) === i,
     );
-    closeMap = new Map([...closeMap, ...fetched]);
+    await ensureDailyClosesPersistedForPairs(needingHistory, datesToEnsure);
+    closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
   }
 
   const dailyCloses: Record<string, number> = {};
