@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { IncomeByYearChart } from "@/features/portfolio/income-by-year-chart";
 import { RefreshQuotesButton } from "@/features/portfolio/refresh-quotes-button";
 import { getIncomeByYear, getAccountsWithStats } from "@/features/portfolio/queries";
 
@@ -75,6 +76,8 @@ export default async function RevenusPage() {
           note="Montant prélevé"
         />
       </div>
+
+      <IncomeByYearChart yearData={yearData} />
 
       {/* Tableau par année */}
       <Card>
