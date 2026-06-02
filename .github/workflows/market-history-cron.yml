@@ -4,7 +4,8 @@ name: Historique clôtures
 on:
   schedule:
     # Lun–ven 23 h 15 UTC ≈ 18 h 15–19 h Toronto (après le rapport EOD 22 h 30 UTC)
-    - cron: "15 23 * * 1-5"
+    # Avant le rapport EOD (22 h 45 UTC) pour alimenter portfolio_daily_values.
+    - cron: "15 22 * * 1-5"
   workflow_dispatch:
     inputs:
       force:

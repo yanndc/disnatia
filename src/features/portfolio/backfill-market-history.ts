@@ -218,7 +218,8 @@ async function backfillPricesForPair(
   return { upserted, skipped: false };
 }
 
-async function recomputeDailyPortfolioValues(
+/** Recalcule `portfolio_daily_values` à partir des holdings et clôtures sur une plage ISO. */
+export async function recomputeDailyPortfolioValues(
   fromDate: string,
   toDate: string,
 ): Promise<number> {
@@ -303,6 +304,19 @@ async function recomputeDailyPortfolioValues(
   }
 
   return upserted;
+}
+
+/** Fenêtre glissante pour le cron EOD (séance du jour incluse). */
+export async function recomputeRecentDailyPortfolioValues(
+  trailingTradingDays = 7,
+  now = new Date(),
+): Promise<number> {
+  const toDate = isoDateInToronto(now);
+  const fromDate = previousTradingDay(parseIsoDateLocal(toDate), trailingTradingDays);
+  return recomputeDailyPortfolioValues(
+    isoDateInToronto(fromDate),
+    toDate,
+  );
 }
 
 export async function backfillMarketHistory(options?: {

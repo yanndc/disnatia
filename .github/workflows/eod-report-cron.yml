@@ -4,8 +4,8 @@ name: Rapport EOD
 
 on:
   schedule:
-    # Lun–ven 22 h 30 UTC ≈ 17 h 30–18 h 30 Toronto (EST/EDT)
-    - cron: "30 22 * * 1-5"
+    # Après backfill-market-history (22 h 15 UTC) ; ≈ 18 h 45 Toronto (EST/EDT)
+    - cron: "45 22 * * 1-5"
   workflow_dispatch:
 
 jobs:
