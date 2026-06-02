@@ -220,4 +220,36 @@ describe("computePeriodResult", () => {
     assert.equal(month.method, "unavailable");
     assert.equal(month.gainCad, null);
   });
+
+  test("depuis le début : pas d alerte si 1re séance après le plus ancien import", () => {
+    const payload = mockPayload({
+      snapshots: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2022-03-21",
+          totalValueNative: 50_000,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [{ date: "2022-06-02", gainCad: 100, priorCad: 50_000 }],
+        "ACC2|CAD": [{ date: "2022-06-02", gainCad: 50, priorCad: 40_000 }],
+      },
+      asOfNow: "2026-05-29T22:00:00",
+    });
+    const all = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "all",
+    );
+    assert.equal(all.incomplete, false);
+    assert.equal(all.note, null);
+    assert.equal(all.baselineDate, "2022-06-02");
+  });
 });

@@ -35,6 +35,7 @@ import {
 } from "./performance-session-gains";
 import { isoDateInToronto } from "@/lib/market/equity-session";
 import { subYears } from "date-fns";
+import { isoDateFromDbDate } from "./daily-close-key";
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = normalizeCurrency(currency);
@@ -320,19 +321,31 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
 
   const disnatAccountKeys = accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
   const now = new Date();
-  const sessionGainFrom = isoDate(subYears(now, 4));
   const sessionGainTo = isoDate(now);
+  const defaultSessionGainFrom = isoDate(subYears(now, 4));
 
-  const [historyPoints, dailyTotalsCad, sessionGainsByAccount] = await Promise.all([
-    loadPerformanceAccountHistory(sessionGainFrom),
+  const [historyPoints, dailyTotalsCad, earliestSessionGainRow] = await Promise.all([
+    loadPerformanceAccountHistory(defaultSessionGainFrom),
     loadPerformanceDailyTotalsCad(usdToCad),
-    loadPersistedSessionGainsByAccount(
-      disnatAccountKeys,
-      sessionGainFrom,
-      sessionGainTo,
-      usdToCad,
-    ),
+    disnatAccountKeys.length > 0
+      ? prisma.portfolioDailyAccountSessionGain.findFirst({
+          where: { accountKey: { in: disnatAccountKeys } },
+          orderBy: { sessionDate: "asc" },
+          select: { sessionDate: true },
+        })
+      : Promise.resolve(null),
   ]);
+
+  const sessionGainFrom = earliestSessionGainRow
+    ? isoDateFromDbDate(earliestSessionGainRow.sessionDate)
+    : defaultSessionGainFrom;
+
+  const sessionGainsByAccount = await loadPersistedSessionGainsByAccount(
+    disnatAccountKeys,
+    sessionGainFrom,
+    sessionGainTo,
+    usdToCad,
+  );
 
   const sessionGainsByDate = disnatAccountKeys
     .flatMap((key) => sessionGainsByAccount[key] ?? [])

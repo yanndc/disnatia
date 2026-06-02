@@ -465,7 +465,11 @@ function computeSessionChainPeriod(
 
   let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
   const priorCad = sessions[0]!.priorCad;
-  const incomplete = periodId === "all" || sessions[0]!.date > bounds.start!;
+  /** « Depuis le début » = chaîne complète persistée ; pas de comparaison aux imports CSV. */
+  const incomplete =
+    periodId === "all"
+      ? false
+      : bounds.start != null && sessions[0]!.date > bounds.start;
 
   const now = sessionClockForBounds(payload.asOfNow);
   const endIsToday = bounds.end === isoDate(now);
@@ -492,12 +496,10 @@ function computeSessionChainPeriod(
     baselineDate: sessions[0]?.date ?? bounds.baselineLookup,
     accountsWithBaseline: disnatKeys.length,
     incomplete,
-    note: joinNotes(
-      periodId === "all" && sessions.length > 0
-        ? `Total titres depuis ${sessions[0]!.date} (historique de séances chargé).`
-        : null,
-      incomplete ? "P&L partiel : historique de séances incomplet sur la période." : null,
-    ),
+    note:
+      periodId === "all" || !incomplete
+        ? null
+        : "P&L partiel : historique de séances incomplet sur la période.",
   };
 }
 
