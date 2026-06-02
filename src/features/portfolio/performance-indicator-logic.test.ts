@@ -150,7 +150,7 @@ describe("resolveSessionChainGainPct", () => {
     assert.ok(Math.abs((hit.gainPct ?? 0) - (1000 / 90_000) * 100) < 0.01);
   });
 
-  test("plusieurs séances → baseline implicite (fin − gains)", () => {
+  test("plusieurs séances → baseline implicite si couverture partielle", () => {
     const gainCad = 94_807;
     const positionsCadNow = 237_900;
     const hit = resolveSessionChainGainPct(gainCad, 1_130, positionsCadNow, 400);
@@ -158,6 +158,22 @@ describe("resolveSessionChainGainPct", () => {
     assert.equal(hit.baselineCad, expectedBaseline);
     assert.ok(Math.abs((hit.gainPct ?? 0) - (gainCad / expectedBaseline) * 100) < 0.01);
     assert.ok((hit.gainPct ?? 0) < 100, "ne doit pas exploser à des milliers de %");
+  });
+
+  test("plusieurs séances → baseline ajustée des flux nets", () => {
+    const gainCad = 10_000;
+    const firstPrior = 100_000;
+    const positionsCadNow = 160_000;
+    const netFlows = 50_000;
+    const hit = resolveSessionChainGainPct(
+      gainCad,
+      firstPrior,
+      positionsCadNow,
+      200,
+      netFlows,
+    );
+    assert.equal(hit.baselineCad, 150_000);
+    assert.ok(Math.abs((hit.gainPct ?? 0) - (10_000 / 150_000) * 100) < 0.01);
   });
 });
 

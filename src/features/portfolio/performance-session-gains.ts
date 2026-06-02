@@ -3,12 +3,38 @@ import { prisma } from "@/lib/db/prisma";
 import {
   isTradingDayDate,
   previousTradingDay,
+  previousTradingDayIso,
 } from "@/lib/market/equity-session";
 import { normalizeCurrency } from "@/lib/utils";
 import { isoDateLocal, isoDateFromDbDate, parseIsoDateLocal } from "./daily-close-key";
 import type { PerformanceSessionGain } from "./performance-indicator-types";
 
 const ACCOUNT_DATE_KEY_SEP = "\u001F";
+const POSITION_DATE_KEY_SEP = "\u001F";
+
+function positionDateKey(
+  accountKey: string,
+  ticker: string,
+  currency: string,
+  date: string,
+): string {
+  return `${accountKey}${POSITION_DATE_KEY_SEP}${ticker.toUpperCase()}${POSITION_DATE_KEY_SEP}${normalizeCurrency(currency)}${POSITION_DATE_KEY_SEP}${date}`;
+}
+
+/** P&L journalier = qty détenue à l'ouverture (veille) × Δ clôture. */
+export function sessionGainFromPriorQuantity(
+  quantityHeld: number,
+  endClose: number,
+  baseClose: number,
+): { gainNative: number; priorNative: number } {
+  if (quantityHeld <= 0 || baseClose <= 0) {
+    return { gainNative: 0, priorNative: 0 };
+  }
+  return {
+    gainNative: quantityHeld * (endClose - baseClose),
+    priorNative: quantityHeld * baseClose,
+  };
+}
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = normalizeCurrency(currency);
@@ -55,12 +81,15 @@ export async function recomputeAndPersistSessionGains(
 ): Promise<{ rowsWritten: number }> {
   if (accountKeys.length === 0) return { rowsWritten: 0 };
 
-  const holdings = await prisma.portfolioDailyHolding.findMany({
+  const holdingsFrom = isoDateLocal(
+    previousTradingDay(parseIsoDateLocal(fromDate), 12),
+  );
+  const allHoldings = await prisma.portfolioDailyHolding.findMany({
     where: {
       accountKey: { in: accountKeys },
       quantity: { gt: 0 },
       holdingDate: {
-        gte: parseIsoDateLocal(fromDate),
+        gte: parseIsoDateLocal(holdingsFrom),
         lte: parseIsoDateLocal(toDate),
       },
     },
@@ -72,6 +101,10 @@ export async function recomputeAndPersistSessionGains(
       quantity: true,
     },
   });
+  const holdings = allHoldings.filter((h) => {
+    const date = isoDateFromDbDate(h.holdingDate);
+    return date >= fromDate && date <= toDate;
+  });
   if (holdings.length === 0) return { rowsWritten: 0 };
 
   const pairSet = new Set<string>();
@@ -82,6 +115,15 @@ export async function recomputeAndPersistSessionGains(
     const [ticker, currency] = k.split("|");
     return { ticker: ticker!, currency: currency! };
   });
+
+  const qtyByPositionDate = new Map<string, number>();
+  for (const h of allHoldings) {
+    const date = isoDateFromDbDate(h.holdingDate);
+    qtyByPositionDate.set(
+      positionDateKey(h.accountKey, h.ticker, h.currency, date),
+      h.quantity,
+    );
+  }
 
   const priceFrom = isoDateLocal(
     previousTradingDay(parseIsoDateLocal(fromDate), 10),
@@ -130,8 +172,16 @@ export async function recomputeAndPersistSessionGains(
 
     const aggKey = `${h.accountKey}${ACCOUNT_DATE_KEY_SEP}${date}`;
     const bucket = byAccountDate.get(aggKey) ?? { gainCad: 0, priorCad: 0 };
-    const gainNative = h.quantity * (endClose - baseClose);
-    const priorNative = h.quantity * baseClose;
+    const priorDay = previousTradingDayIso(date, 1);
+    const qtyHeld =
+      qtyByPositionDate.get(
+        positionDateKey(h.accountKey, h.ticker, h.currency, priorDay),
+      ) ?? 0;
+    const { gainNative, priorNative } = sessionGainFromPriorQuantity(
+      qtyHeld,
+      endClose,
+      baseClose,
+    );
     bucket.gainCad += toCad(gainNative, h.currency, usdToCad);
     bucket.priorCad += toCad(priorNative, h.currency, usdToCad);
     byAccountDate.set(aggKey, bucket);

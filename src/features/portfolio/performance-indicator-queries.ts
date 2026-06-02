@@ -32,10 +32,16 @@ import {
 } from "./performance-history-loader";
 import {
   loadPersistedSessionGainsByAccount,
+  recomputeAndPersistSessionGains,
 } from "./performance-session-gains";
-import { isoDateInToronto, isEquityMarketSessionOpen } from "@/lib/market/equity-session";
-import { subYears } from "date-fns";
-import { isoDateFromDbDate } from "./daily-close-key";
+import {
+  isoDateInToronto,
+  isEquityMarketSessionOpen,
+  priorSessionDateIso,
+  referenceTradingSessionDayIso,
+} from "@/lib/market/equity-session";
+import { subDays, subYears } from "date-fns";
+import { isoDateFromDbDate, parseIsoDateLocal } from "./daily-close-key";
 import {
   getLatestQuotesFetchedAt,
   quotesAreStale,
@@ -50,9 +56,35 @@ async function ensureFreshQuotesDuringSession(now = new Date()): Promise<void> {
   if (!quotesAreStale(quotesAsOf, DASHBOARD_QUOTES_MAX_AGE_MINUTES, now.getTime())) {
     return;
   }
-  await refreshLiveQuotesForLatestImport().catch((cause) => {
+  await refreshLiveQuotesForLatestImport({ recomputeSessionGains: true }).catch((cause) => {
     console.warn("[performance] refreshLiveQuotesForLatestImport", cause);
   });
+}
+
+/** Recalcule les gains persistés si la séance courante ou la veille manquent. */
+async function ensureRecentSessionGainsPersisted(
+  accountKeys: string[],
+  existingDates: Set<string>,
+  usdToCad: number | null,
+  now = new Date(),
+): Promise<void> {
+  if (accountKeys.length === 0) return;
+
+  const refDay = referenceTradingSessionDayIso(now);
+  const yesterday = priorSessionDateIso(now);
+  const missing = [refDay, yesterday].filter((d) => !existingDates.has(d));
+  if (missing.length === 0) return;
+
+  const earliestMissing = missing.toSorted()[0]!;
+  const from = isoDateInToronto(
+    subDays(parseIsoDateLocal(earliestMissing), 7),
+  );
+  const to = isoDateInToronto(now);
+  await recomputeAndPersistSessionGains(accountKeys, from, to, usdToCad).catch(
+    (cause) => {
+      console.warn("[performance] recomputeAndPersistSessionGains", cause);
+    },
+  );
 }
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
@@ -358,6 +390,31 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   const sessionGainFrom = earliestSessionGainRow
     ? isoDateFromDbDate(earliestSessionGainRow.sessionDate)
     : defaultSessionGainFrom;
+
+  const existingSessionDates = new Set(
+    (
+      await prisma.portfolioDailyAccountSessionGain.findMany({
+        where: {
+          accountKey: { in: disnatAccountKeys },
+          sessionDate: {
+            gte: parseIsoDateLocal(
+              isoDateInToronto(subDays(parseIsoDateLocal(sessionGainTo), 14)),
+            ),
+            lte: parseIsoDateLocal(sessionGainTo),
+          },
+        },
+        select: { sessionDate: true },
+        distinct: ["sessionDate"],
+      })
+    ).map((row) => isoDateFromDbDate(row.sessionDate)),
+  );
+
+  await ensureRecentSessionGainsPersisted(
+    disnatAccountKeys,
+    existingSessionDates,
+    usdToCad,
+    now,
+  );
 
   const sessionGainsByAccount = await loadPersistedSessionGainsByAccount(
     disnatAccountKeys,

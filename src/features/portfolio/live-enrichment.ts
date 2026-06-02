@@ -133,12 +133,18 @@ export function enrichPositionRow(
       : disnatMarketValue;
 
   const usesLiveQuote = livePrice != null;
+  const quotePriorClose =
+    quote?.previousClose != null &&
+    Number.isFinite(quote.previousClose) &&
+    quote.previousClose > 0
+      ? quote.previousClose
+      : null;
   const priorClose =
     priorSessionClose != null &&
     Number.isFinite(priorSessionClose) &&
     priorSessionClose > 0
       ? priorSessionClose
-      : null;
+      : quotePriorClose;
 
   const changeAmount =
     quote?.changeAmount != null && Number.isFinite(quote.changeAmount)

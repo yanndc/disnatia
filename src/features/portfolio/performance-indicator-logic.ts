@@ -22,6 +22,10 @@ import {
   yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
+import {
+  formatFlowAdjustmentNote,
+  netExternalFlowsCad,
+} from "./performance-cash-flows";
 
 const SESSION_GAINS_UNAVAILABLE_NOTE =
   "Actualise les cours pour calculer le P&L de séance.";
@@ -310,6 +314,28 @@ function computeDayPeriod(
   }
 
   if (disnatWithTitres > 0 && disnatWithDay === 0) {
+    const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
+    const refSession = filteredSessions.find((g) => g.date === refDay);
+    if (refSession) {
+      return {
+        gainCad: refSession.gainCad,
+        gainPct:
+          refSession.priorCad > 0
+            ? (refSession.gainCad / refSession.priorCad) * 100
+            : null,
+        currentCad,
+        baselineCad: refSession.priorCad > 0 ? refSession.priorCad : null,
+        baselineDate: refDay,
+        periodStart: refDay,
+        periodEnd: refDay,
+        method: "session-chain",
+        accountsIncluded: accountKeys.length,
+        accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
+        incomplete: false,
+        note: "Cotation indisponible — P&L issu de la séance persistée.",
+      };
+    }
+
     return {
       gainCad: null,
       gainPct: null,
@@ -406,31 +432,54 @@ function currentPositionsCadInGainScope(
 
 /**
  * % de rendement sur une chaîne de séances.
- * Une seule séance → prior de cette séance.
- * Plusieurs séances → baseline implicite (titres fin − Σ gains), car le prior
- * de la 1re séance peut être incomplet (couverture holdings partielle au démarrage).
+ * Baseline = valeur titres au début + flux nets (cotisations / retraits), sauf couverture
+ * partielle au démarrage (1re séance sous-estimée → baseline implicite).
  */
 export function resolveSessionChainGainPct(
   gainCad: number,
   firstSessionPriorCad: number,
   positionsCadNow: number,
   sessionCount: number,
+  netFlowsCad = 0,
 ): { gainPct: number | null; baselineCad: number | null } {
+  const impliedStart = positionsCadNow - gainCad;
+  const partialCoverage =
+    sessionCount > 1 &&
+    firstSessionPriorCad > 0 &&
+    impliedStart > 0 &&
+    firstSessionPriorCad < impliedStart * 0.15;
+
   if (sessionCount <= 1) {
-    if (firstSessionPriorCad <= 0) return { gainPct: null, baselineCad: null };
+    const baseline =
+      firstSessionPriorCad > 0
+        ? firstSessionPriorCad
+        : impliedStart > 0
+          ? impliedStart
+          : null;
+    if (baseline === null || baseline <= 0) {
+      return { gainPct: null, baselineCad: null };
+    }
     return {
-      gainPct: (gainCad / firstSessionPriorCad) * 100,
-      baselineCad: firstSessionPriorCad,
+      gainPct: (gainCad / baseline) * 100,
+      baselineCad: baseline,
     };
   }
 
-  const impliedStart = positionsCadNow - gainCad;
-  const baselineCad =
-    impliedStart > 0
-      ? impliedStart
-      : firstSessionPriorCad > 0
-        ? firstSessionPriorCad
-        : null;
+  let baselineCad: number | null;
+  if (partialCoverage) {
+    baselineCad = impliedStart > 0 ? impliedStart : null;
+  } else {
+    const flowAdjusted = firstSessionPriorCad + netFlowsCad;
+    baselineCad =
+      flowAdjusted > 0
+        ? flowAdjusted
+        : impliedStart > 0
+          ? impliedStart
+          : firstSessionPriorCad > 0
+            ? firstSessionPriorCad
+            : null;
+  }
+
   if (baselineCad === null || baselineCad <= 0) {
     return { gainPct: null, baselineCad: null };
   }
@@ -536,12 +585,19 @@ function computeSessionChainPeriod(
   }
 
   const positionsCadNow = currentPositionsCadInGainScope(accountKeys, payload);
+  const netFlowsCad =
+    bounds.start != null
+      ? netExternalFlowsCad(payload.cashFlows, accountKeys, bounds.start, bounds.end)
+      : 0;
   const { gainPct, baselineCad } = resolveSessionChainGainPct(
     gainCad,
     firstSessionPriorCad,
     positionsCadNow,
     sessions.length,
+    netFlowsCad,
   );
+
+  const flowNote = formatFlowAdjustmentNote(netFlowsCad);
 
   return {
     usable: true,
@@ -554,8 +610,11 @@ function computeSessionChainPeriod(
     incomplete,
     note:
       periodId === "all" || !incomplete
-        ? null
-        : "P&L partiel : historique de séances incomplet sur la période.",
+        ? flowNote
+        : joinNotes(
+            "P&L partiel : historique de séances incomplet sur la période.",
+            flowNote,
+          ),
   };
 }
 
