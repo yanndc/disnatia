@@ -108,9 +108,12 @@ function PositionQuoteHistoryPanel({
           <span className="font-medium text-slate-900">Séance de référence :</span>{" "}
           {payload.referenceSessionDate}
           {" · "}
-          <span className="font-medium text-slate-900">Clôture veille :</span>{" "}
+          <span className="font-medium text-slate-900">Clôture précédente (Positions) :</span>{" "}
           {payload.priorSessionDate}
-          <span className="text-slate-500"> (séance avant {payload.referenceSessionDate})</span>
+          <span className="text-slate-500">
+            {" "}
+            · séance de référence {payload.referenceSessionDate}
+          </span>
           {payload.priorSessionCloseInDb != null ? (
             <>
               {" → "}
@@ -193,7 +196,9 @@ function PositionQuoteHistoryPanel({
                 <td className="whitespace-nowrap px-2 py-2 tabular-nums text-slate-600">
                   {row.date}
                   {row.date === payload.priorSessionDate ? (
-                    <span className="ml-1 text-[10px] font-medium text-amber-800">veille</span>
+                    <span className="ml-1 text-[10px] font-medium text-amber-800">
+                      clôture préc.
+                    </span>
                   ) : null}
                 </td>
                 <td className="whitespace-nowrap px-2 py-2 tabular-nums font-medium">

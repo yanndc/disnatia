@@ -117,10 +117,12 @@ export function referenceTradingSessionDayIso(now = new Date()): string {
 }
 
 /**
- * Date de clôture « veille » pour Positions : séance complétée juste avant la séance de référence.
+ * Date de la clôture précédente (previous close) pour la variation du jour :
+ * dernier jour ouvré avant aujourd’hui (Toronto), comme Disnat / Yahoo — pas « séance de référence − 1 »
+ * (sinon lundi avant l’ouverture → jeudi au lieu de vendredi, ~3 jours d’écart).
  */
 export function priorSessionDateIso(now = new Date()): string {
-  return previousTradingDayIso(referenceTradingSessionDayIso(now), 1);
+  return previousTradingDayIso(isoDateInToronto(now), 1);
 }
 
 /** Jour ouvré précédent (n séances en arrière). */
