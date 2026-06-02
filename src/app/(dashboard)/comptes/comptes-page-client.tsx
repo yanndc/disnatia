@@ -796,7 +796,12 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     {showRecon ? (
                       <th className="px-4 py-2 text-right">Dernière</th>
                     ) : null}
-                    <th className="px-4 py-2 text-right">Total</th>
+                    <th
+                      className="px-4 py-2 text-right"
+                      title="Encaisse + titres aux cours live (projection opérations). Sans projection : dernier import portefeuille."
+                    >
+                      Total
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -906,7 +911,7 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                           </td>
                         ) : null}
                         <AmountCellUsdCad
-                          amount={acc.totalValue}
+                          amount={acc.displayTotalValue}
                           currency={cur}
                           isUsd={isUsd}
                           usdToCad={usdToCad ?? 1}

@@ -177,11 +177,11 @@ export default async function ComptesPage() {
 
   const cadEncaisse = sum(cadAccounts.map((a) => a.cashValue));
   const cadTitres = sum(cadAccounts.map((a) => a.marketValue));
-  const cadTotal = sum(cadAccounts.map((a) => a.totalValue));
+  const cadTotal = sum(cadAccounts.map((a) => a.displayTotalValue));
 
   const usdEncaisseUsd = sum(usdAccounts.map((a) => a.cashValue));
   const usdTitresUsd = sum(usdAccounts.map((a) => a.marketValue));
-  const usdTotalUsd = sum(usdAccounts.map((a) => a.totalValue));
+  const usdTotalUsd = sum(usdAccounts.map((a) => a.displayTotalValue));
 
   const usdEncaisseCad = usdToCad != null ? usdEncaisseUsd * usdToCad : null;
   const usdTitresCad = usdToCad != null ? usdTitresUsd * usdToCad : null;

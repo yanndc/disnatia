@@ -678,12 +678,17 @@ export async function getAccountsWithStats() {
       : null;
     const driftTitresVsSnapshot =
       reconstructedMarketValue === null ? null : reconstructedMarketValue - a.marketValue;
+    const displayTotalValue =
+      reconstructedMarketValue !== null
+        ? a.cashValue + reconstructedMarketValue
+        : a.totalValue;
     return {
       ...a,
       txCount: txByKey.get(a.accountKey) ?? 0,
       lastTxDate: lastTxByKey.get(a.accountKey) ?? null,
       reconstructedMarketValue,
       driftTitresVsSnapshot,
+      displayTotalValue,
     };
   });
 }

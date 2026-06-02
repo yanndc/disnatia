@@ -201,7 +201,7 @@ export function aggregateByCurrency(accounts: AccountWithStats[], currency: "CAD
     subset,
     cash: sum(subset.map((a) => a.cashValue)),
     market: sum(subset.map((a) => a.marketValue)),
-    total: sum(subset.map((a) => a.totalValue)),
+    total: sum(subset.map((a) => a.displayTotalValue)),
     reconstructedMarketValue: reconMissing ? null : reconSum,
     driftTitresVsSnapshot: driftMissing ? null : driftSum,
     txCount: sum(subset.map((a) => a.txCount)),
@@ -251,7 +251,7 @@ export function ownerConsolidatedCad(
     const mult = cur === "USD" ? usdToCad : 1;
     enc += a.cashValue * mult;
     mkt += a.marketValue * mult;
-    tot += a.totalValue * mult;
+    tot += a.displayTotalValue * mult;
     if (a.reconstructedMarketValue === null) reconMissing = true;
     else recon += a.reconstructedMarketValue * mult;
   }
