@@ -15,6 +15,7 @@ import type {
 import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
+  latestAllowedFirstSessionDate,
   previousTradingDay,
   referenceTradingSessionDay,
   resolveDayPeriodLabels,
@@ -393,6 +394,52 @@ function disnatAccountKeysInScope(
   );
 }
 
+function currentPositionsCadInGainScope(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+): number {
+  return disnatAccountKeysInScope(accountKeys, payload).reduce(
+    (s, k) => s + (payload.currentByAccount[k]?.positionsCad ?? 0),
+    0,
+  );
+}
+
+/**
+ * % de rendement sur une chaîne de séances.
+ * Une seule séance → prior de cette séance.
+ * Plusieurs séances → baseline implicite (titres fin − Σ gains), car le prior
+ * de la 1re séance peut être incomplet (couverture holdings partielle au démarrage).
+ */
+export function resolveSessionChainGainPct(
+  gainCad: number,
+  firstSessionPriorCad: number,
+  positionsCadNow: number,
+  sessionCount: number,
+): { gainPct: number | null; baselineCad: number | null } {
+  if (sessionCount <= 1) {
+    if (firstSessionPriorCad <= 0) return { gainPct: null, baselineCad: null };
+    return {
+      gainPct: (gainCad / firstSessionPriorCad) * 100,
+      baselineCad: firstSessionPriorCad,
+    };
+  }
+
+  const impliedStart = positionsCadNow - gainCad;
+  const baselineCad =
+    impliedStart > 0
+      ? impliedStart
+      : firstSessionPriorCad > 0
+        ? firstSessionPriorCad
+        : null;
+  if (baselineCad === null || baselineCad <= 0) {
+    return { gainPct: null, baselineCad: null };
+  }
+  return {
+    gainPct: (gainCad / baselineCad) * 100,
+    baselineCad,
+  };
+}
+
 /** P&L titres = somme des séances persistées sur la période (+ live du jour si séance ouverte). */
 function computeSessionChainPeriod(
   accountKeys: string[],
@@ -464,12 +511,13 @@ function computeSessionChainPeriod(
   }
 
   let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
-  const priorCad = sessions[0]!.priorCad;
+  const firstSessionPriorCad = sessions[0]!.priorCad;
   /** « Depuis le début » = chaîne complète persistée ; pas de comparaison aux imports CSV. */
   const incomplete =
     periodId === "all"
       ? false
-      : bounds.start != null && sessions[0]!.date > bounds.start;
+      : bounds.start != null &&
+        sessions[0]!.date > latestAllowedFirstSessionDate(bounds.start);
 
   const now = sessionClockForBounds(payload.asOfNow);
   const endIsToday = bounds.end === isoDate(now);
@@ -487,12 +535,20 @@ function computeSessionChainPeriod(
     gainCad += liveToday;
   }
 
+  const positionsCadNow = currentPositionsCadInGainScope(accountKeys, payload);
+  const { gainPct, baselineCad } = resolveSessionChainGainPct(
+    gainCad,
+    firstSessionPriorCad,
+    positionsCadNow,
+    sessions.length,
+  );
+
   return {
     usable: true,
     gainCad,
-    gainPct: priorCad > 0 ? (gainCad / priorCad) * 100 : null,
+    gainPct,
     currentCad,
-    baselineCad: priorCad > 0 ? priorCad : null,
+    baselineCad,
     baselineDate: sessions[0]?.date ?? bounds.baselineLookup,
     accountsWithBaseline: disnatKeys.length,
     incomplete,

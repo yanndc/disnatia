@@ -19,6 +19,10 @@ function formatSessionDate(iso: string): string {
   });
 }
 
+function sumDayGainCad(rows: SessionTickerRow[]): number {
+  return rows.reduce((acc, row) => acc + row.dayGainCad, 0);
+}
+
 function TickerTable({
   title,
   rows,
@@ -28,6 +32,8 @@ function TickerTable({
   rows: SessionTickerRow[];
   emptyHint: string;
 }) {
+  const subtotalPnl = sumDayGainCad(rows);
+
   return (
     <div className="min-w-0 flex-1">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -78,6 +84,19 @@ function TickerTable({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-slate-200 text-[11px] font-semibold text-slate-700">
+                <td className="py-2 pr-2" colSpan={2}>
+                  Sous-total ({rows.length})
+                </td>
+                <td className="py-2 pr-2 text-right tabular-nums text-slate-400">—</td>
+                <td
+                  className={`py-2 text-right tabular-nums ${signedGainClass(subtotalPnl)}`}
+                >
+                  {formatCurrency(subtotalPnl, "CAD")}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -94,6 +113,10 @@ function SessionBlock({
   sessionDate: string;
   lists: SessionTickerLists;
 }) {
+  const allRows = [...lists.gainers, ...lists.losers];
+  const netPnl = sumDayGainCad(allRows);
+  const hasRows = allRows.length > 0;
+
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
       <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -112,6 +135,16 @@ function SessionBlock({
           emptyHint="Aucun titre en baisse."
         />
       </div>
+      {hasRows ? (
+        <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-200 pt-3 text-sm">
+          <span className="font-semibold text-slate-700">
+            Total séance ({allRows.length} titres)
+          </span>
+          <span className={`tabular-nums font-semibold ${signedGainClass(netPnl)}`}>
+            {formatCurrency(netPnl, "CAD")}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

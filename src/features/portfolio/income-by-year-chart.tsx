@@ -92,7 +92,10 @@ export function IncomeByYearChart({ yearData }: { yearData: IncomeYearChartRow[]
                           const display =
                             entry.dataKey === "retenues" ? Math.abs(v) : v;
                           return (
-                            <li key={entry.dataKey} className="flex justify-between gap-4">
+                            <li
+                              key={String(entry.dataKey ?? entry.name)}
+                              className="flex justify-between gap-4"
+                            >
                               <span>{entry.name}</span>
                               <span className="tabular-nums font-medium text-slate-800">
                                 {formatCurrency(display)}

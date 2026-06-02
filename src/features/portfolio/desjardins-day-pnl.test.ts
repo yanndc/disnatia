@@ -91,7 +91,9 @@ describe("Desjardins 2026-04-30 — positions → accountDayTitresPnL", () => {
       const key = desjardinsAccountKey(person.accountNumber);
       const rows = byKey.get(key) ?? [];
       const state = accountDayTitresPnL(rows);
-      withinCent(state.sum, expected, person.owner);
+      const sum = state.sum;
+      if (sum === null) assert.fail(`${person.owner}: P&L jour attendu`);
+      withinCent(sum, expected, person.owner);
       assert.equal(state.incomplete, false);
       assert.equal(
         state.priorCloseTitresValue,

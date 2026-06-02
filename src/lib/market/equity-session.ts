@@ -33,6 +33,38 @@ export function subtractCalendarDays(iso: string, days: number): string {
   return isoDateFromUtcParts(d);
 }
 
+export function addCalendarDays(iso: string, days: number): string {
+  const d = parseIsoCalendarDate(iso);
+  d.setUTCDate(d.getUTCDate() + days);
+  return isoDateFromUtcParts(d);
+}
+
+/** Premier jour ouvré (lun–ven) à partir de `fromIso` inclus. */
+export function firstTradingDayOnOrAfterIso(fromIso: string): string {
+  let cursor = fromIso;
+  while (!isTradingDayIso(cursor)) {
+    cursor = addCalendarDays(cursor, 1);
+  }
+  return cursor;
+}
+
+/** Jour ouvré suivant strictement après `fromIso`. */
+export function nextTradingDayIso(fromIso: string): string {
+  let cursor = fromIso;
+  do {
+    cursor = addCalendarDays(cursor, 1);
+  } while (!isTradingDayIso(cursor));
+  return cursor;
+}
+
+/**
+ * Dernière date acceptable pour la 1re séance d'une période :
+ * 1re séance ouvrée attendue, ou la suivante (jour férié sur la séance attendue).
+ */
+export function latestAllowedFirstSessionDate(periodStartIso: string): string {
+  return nextTradingDayIso(firstTradingDayOnOrAfterIso(periodStartIso));
+}
+
 function torontoClock(now: Date): { day: number; minutes: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: TORONTO_TZ,
