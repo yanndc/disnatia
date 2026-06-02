@@ -3,10 +3,11 @@ import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
   isTradingDayDate,
-  referenceTradingSessionDay,
+  referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
   yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
+import { quotesAreStale } from "@/features/portfolio/refresh-live-quotes";
 import { normalizeCurrency } from "@/lib/utils";
 import { parseIsoDateLocal } from "./daily-close-key";
 import {
@@ -80,6 +81,52 @@ function finalizeBuckets(
     });
   }
   return rows;
+}
+
+function tickerRowKey(row: SessionTickerRow): string {
+  return `${row.ticker}|${row.currency}`;
+}
+
+function mergeSessionTickerRows(
+  primary: SessionTickerRow[],
+  fallback: SessionTickerRow[],
+): SessionTickerRow[] {
+  const byKey = new Map<string, SessionTickerRow>();
+  for (const row of fallback) {
+    byKey.set(tickerRowKey(row), row);
+  }
+  for (const row of primary) {
+    byKey.set(tickerRowKey(row), row);
+  }
+  return [...byKey.values()];
+}
+
+function enrichedHasSessionPnl(
+  rows: PerformanceEnrichedHoldingRow[] | undefined,
+): boolean {
+  return (rows ?? []).some(
+    (r) => r.displayDayGainLoss !== null && r.displayDayGainLoss !== 0,
+  );
+}
+
+/** Cours du jour utilisables pour la séance courante (pas seulement 9 h 30–16 h). */
+function shouldUseLiveForCurrentSession(
+  payload: PerformanceIndicatorPayload,
+  now: Date,
+): boolean {
+  if (isEquityMarketSessionOpen(now)) return true;
+
+  const refDay = referenceTradingSessionDayIso(now);
+  const today = isoDateInToronto(now);
+  if (refDay !== today) return false;
+
+  if (enrichedHasSessionPnl(payload.enrichedHoldings)) return true;
+
+  if (!payload.quotesAsOf) return false;
+  const fetchedAt = new Date(payload.quotesAsOf);
+  if (Number.isNaN(fetchedAt.getTime())) return false;
+  if (isoDateInToronto(fetchedAt) !== today) return false;
+  return !quotesAreStale(fetchedAt, 24 * 60, now.getTime());
 }
 
 function splitGainersLosers(rows: SessionTickerRow[]): SessionTickerLists {
@@ -254,7 +301,7 @@ export async function buildSessionTickerMiniReportFromPayload(
 ): Promise<SessionTickerMiniReport> {
   const now = parsePayloadClock(payload.asOfNow);
   const marketOpen = isEquityMarketSessionOpen(now);
-  const currentSessionDate = isoDateInToronto(referenceTradingSessionDay(now));
+  const currentSessionDate = referenceTradingSessionDayIso(now);
   const previousSessionDate = isoDateInToronto(yesterdayTradingSessionDay(now));
   const { label: currentSessionLabel } = resolveDayPeriodLabels(now);
 
@@ -262,28 +309,39 @@ export async function buildSessionTickerMiniReportFromPayload(
     .filter((a) => !a.isExternal)
     .map((a) => a.accountKey);
 
-  const currentRows = marketOpen
-    ? aggregateFromEnriched(payload.enrichedHoldings ?? [], payload.usdToCad)
-    : await aggregateFromDailyHoldings(
-        currentSessionDate,
+  const useLiveForCurrent = shouldUseLiveForCurrentSession(payload, now);
+
+  const dailyCurrentRows = await aggregateFromDailyHoldings(
+    currentSessionDate,
+    disnatAccountKeys,
+    payload.dailyCloses,
+    payload.usdToCad,
+  );
+
+  const currentRows = useLiveForCurrent
+    ? mergeSessionTickerRows(
+        aggregateFromEnriched(payload.enrichedHoldings ?? [], payload.usdToCad),
+        dailyCurrentRows,
+      )
+    : dailyCurrentRows;
+
+  const previousRows = marketOpen
+    ? await aggregateFromDailyHoldings(
+        previousSessionDate,
         disnatAccountKeys,
         payload.dailyCloses,
         payload.usdToCad,
-      );
+      )
+    : [];
 
-  const previousRows =
-    marketOpen
-      ? await aggregateFromDailyHoldings(
-          previousSessionDate,
-          disnatAccountKeys,
-          payload.dailyCloses,
-          payload.usdToCad,
-        )
-      : [];
+  const liveCurrentLabel =
+    marketOpen || currentSessionDate === isoDateInToronto(now)
+      ? currentSessionLabel
+      : "Dernière séance";
 
   return {
     currentSessionDate,
-    currentSessionLabel: marketOpen ? currentSessionLabel : "Dernière séance",
+    currentSessionLabel: useLiveForCurrent ? liveCurrentLabel : "Dernière séance",
     previousSessionDate: marketOpen ? previousSessionDate : null,
     previousSessionLabel: marketOpen ? "Séance précédente" : null,
     showPreviousSession: marketOpen,

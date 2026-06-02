@@ -144,9 +144,18 @@ export function enrichPositionRow(
     quote?.changeAmount != null && Number.isFinite(quote.changeAmount)
       ? quote.changeAmount
       : null;
+  /** P&L séance : prix cotation vs clôture veille, même si le snapshot Disnat est trop désuet pour l’affichage. */
+  const sessionQuotePrice =
+    livePrice ??
+    (rawLive != null &&
+    Number.isFinite(rawLive) &&
+    priorClose != null &&
+    priorClose > 0
+      ? rawLive
+      : null);
   const sessionDeltaPerShare =
-    usesLiveQuote && livePrice != null
-      ? resolveSessionDeltaPerShare(livePrice, priorClose, changeAmount)
+    sessionQuotePrice != null
+      ? resolveSessionDeltaPerShare(sessionQuotePrice, priorClose, changeAmount)
       : null;
 
   const quoteChangePerShare = sessionDeltaPerShare;
@@ -158,7 +167,7 @@ export function enrichPositionRow(
   const quoteSessionChangePct = sessionPctFromDelta(
     sessionDeltaPerShare,
     priorClose,
-    livePrice,
+    sessionQuotePrice,
   );
 
   return {

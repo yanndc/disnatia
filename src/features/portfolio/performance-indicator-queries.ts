@@ -33,9 +33,27 @@ import {
 import {
   loadPersistedSessionGainsByAccount,
 } from "./performance-session-gains";
-import { isoDateInToronto } from "@/lib/market/equity-session";
+import { isoDateInToronto, isEquityMarketSessionOpen } from "@/lib/market/equity-session";
 import { subYears } from "date-fns";
 import { isoDateFromDbDate } from "./daily-close-key";
+import {
+  getLatestQuotesFetchedAt,
+  quotesAreStale,
+  refreshLiveQuotesForLatestImport,
+} from "./refresh-live-quotes";
+
+const DASHBOARD_QUOTES_MAX_AGE_MINUTES = 30;
+
+async function ensureFreshQuotesDuringSession(now = new Date()): Promise<void> {
+  if (!isEquityMarketSessionOpen(now)) return;
+  const quotesAsOf = await getLatestQuotesFetchedAt();
+  if (!quotesAreStale(quotesAsOf, DASHBOARD_QUOTES_MAX_AGE_MINUTES, now.getTime())) {
+    return;
+  }
+  await refreshLiveQuotesForLatestImport().catch((cause) => {
+    console.warn("[performance] refreshLiveQuotesForLatestImport", cause);
+  });
+}
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
   const cur = normalizeCurrency(currency);
@@ -116,6 +134,7 @@ async function loadQuotesForHoldings(
 }
 
 export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndicatorPayload> {
+  await ensureFreshQuotesDuringSession();
   const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots, txFlows] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
