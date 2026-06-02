@@ -18,6 +18,7 @@ import {
   previousTradingDay,
   referenceTradingSessionDay,
   resolveDayPeriodLabels,
+  yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 
@@ -28,6 +29,7 @@ const PERIOD_META: Record<
   Exclude<PerformancePeriodId, "day">,
   { label: string; shortLabel: string }
 > = {
+  yesterday: { label: "Séance précédente", shortLabel: "Préc." },
   month: { label: "1 mois", shortLabel: "1 mois" },
   month3: { label: "3 mois", shortLabel: "3 mois" },
   year: { label: "1 an", shortLabel: "1 an" },
@@ -131,6 +133,11 @@ export function resolvePeriodBounds(
   switch (periodId) {
     case "day":
       return { start: end, end, baselineLookup: null };
+    case "yesterday": {
+      const sessionEnd = isoDate(yesterdayTradingSessionDay(now));
+      const baseline = isoDate(previousTradingDay(parseIsoDate(sessionEnd), 1));
+      return { start: sessionEnd, end: sessionEnd, baselineLookup: baseline };
+    }
     case "month": {
       const start = isoDate(subMonths(refDay, 1));
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
@@ -464,6 +471,7 @@ function computeSessionChainPeriod(
   const endIsToday = bounds.end === isoDate(now);
   if (
     endIsToday &&
+    periodId !== "yesterday" &&
     isEquityMarketSessionOpen(now)
   ) {
     const todayIso = bounds.end;
@@ -632,6 +640,7 @@ export function computeAllPeriodResults(
 ): PerformancePeriodResult[] {
   const ids: PerformancePeriodId[] = [
     "day",
+    "yesterday",
     "month",
     "month3",
     "year",

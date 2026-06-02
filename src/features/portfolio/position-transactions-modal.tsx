@@ -63,6 +63,172 @@ function signedMoneyClass(value: number) {
   return "text-slate-700";
 }
 
+type QuoteHistoryPayload = {
+  yahooSymbolMapped: string;
+  referenceSessionDate: string;
+  priorSessionDate: string;
+  priorSessionCloseInDb: number | null;
+  liveQuote: {
+    price: number;
+    changeAmount: number | null;
+    previousClose: number | null;
+    fetchedAt: string;
+    yahooSymbol: string | null;
+  } | null;
+  impliedSessionDelta: number | null;
+  impliedSessionDeltaPct: number | null;
+  days: number;
+  dailyCloses: Array<{
+    date: string;
+    closePrice: number;
+    source: string;
+    yahooSymbol: string | null;
+    changeVsPrevStored: number | null;
+    changePctVsPrevStored: number | null;
+  }>;
+};
+
+function PositionQuoteHistoryPanel({
+  payload,
+  currency,
+}: {
+  payload: QuoteHistoryPayload;
+  currency: string;
+}) {
+  const cur = normalizeCurrency(currency);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+        <p>
+          <span className="font-medium text-slate-900">Symbole Yahoo mappé :</span>{" "}
+          {payload.yahooSymbolMapped}
+        </p>
+        <p className="mt-1">
+          <span className="font-medium text-slate-900">Séance de référence :</span>{" "}
+          {payload.referenceSessionDate}
+          {" · "}
+          <span className="font-medium text-slate-900">Veille (Positions) :</span>{" "}
+          {payload.priorSessionDate}
+          {payload.priorSessionCloseInDb != null ? (
+            <>
+              {" → "}
+              {formatCurrencyDetailed(payload.priorSessionCloseInDb, cur, 2)}
+            </>
+          ) : (
+            <span className="text-amber-700"> (absente en base)</span>
+          )}
+        </p>
+        {payload.liveQuote ? (
+          <p className="mt-1">
+            <span className="font-medium text-slate-900">Live en base :</span>{" "}
+            {formatCurrencyDetailed(payload.liveQuote.price, cur, 2)}
+            {payload.liveQuote.changeAmount != null ? (
+              <>
+                {" · changeAmount "}
+                {formatCurrencyDetailed(payload.liveQuote.changeAmount, cur, 2)}
+              </>
+            ) : null}
+            {payload.liveQuote.previousClose != null ? (
+              <>
+                {" · previousClose "}
+                {formatCurrencyDetailed(payload.liveQuote.previousClose, cur, 2)}
+              </>
+            ) : null}
+            {" · "}
+            {payload.liveQuote.yahooSymbol ?? "—"}
+            {" · "}
+            {new Date(payload.liveQuote.fetchedAt).toLocaleString("fr-CA")}
+          </p>
+        ) : (
+          <p className="mt-1 text-amber-800">Aucune ligne dans portfolio_live_quotes.</p>
+        )}
+        {payload.impliedSessionDelta != null ? (
+          <p className="mt-1">
+            <span className="font-medium text-slate-900">Δ implicite (live − veille base) :</span>{" "}
+            <span className={signedMoneyClass(payload.impliedSessionDelta)}>
+              {formatCurrencyDetailed(payload.impliedSessionDelta, cur, 2)}
+            </span>
+            {payload.impliedSessionDeltaPct != null ? (
+              <span className={signedMoneyClass(payload.impliedSessionDelta)}>
+                {" "}
+                ({formatPercent(payload.impliedSessionDeltaPct)})
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+        <p className="mt-2 text-[11px] text-slate-500">
+          Lecture seule — pas de rafraîchissement Yahoo ici. Compare avec ton courtier / Yahoo sur{" "}
+          {payload.yahooSymbolMapped}.
+        </p>
+      </div>
+
+      {payload.dailyCloses.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          Aucune clôture dans portfolio_daily_prices sur les {payload.days} derniers jours.
+        </p>
+      ) : (
+        <table className="w-full min-w-[640px] text-left text-xs">
+          <thead className="sticky top-0 bg-white text-[10px] uppercase text-slate-500">
+            <tr>
+              <th className="px-2 py-2 font-medium">Date</th>
+              <th className="px-2 py-2 font-medium">Clôture</th>
+              <th className="px-2 py-2 font-medium">Source</th>
+              <th className="px-2 py-2 font-medium">Symbole</th>
+              <th className="px-2 py-2 font-medium">Δ vs jour stocké avant</th>
+              <th className="px-2 py-2 font-medium">Δ %</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {payload.dailyCloses.map((row) => (
+              <tr
+                key={row.date}
+                className={
+                  row.date === payload.priorSessionDate
+                    ? "bg-amber-50/80 text-slate-800"
+                    : "text-slate-800"
+                }
+              >
+                <td className="whitespace-nowrap px-2 py-2 tabular-nums text-slate-600">
+                  {row.date}
+                  {row.date === payload.priorSessionDate ? (
+                    <span className="ml-1 text-[10px] font-medium text-amber-800">veille</span>
+                  ) : null}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 tabular-nums font-medium">
+                  {formatCurrencyDetailed(row.closePrice, cur, 2)}
+                </td>
+                <td className="px-2 py-2 text-slate-600">{row.source}</td>
+                <td className="max-w-[120px] truncate px-2 py-2 text-slate-500" title={row.yahooSymbol ?? ""}>
+                  {row.yahooSymbol ?? "—"}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 tabular-nums">
+                  {row.changeVsPrevStored != null ? (
+                    <span className={signedMoneyClass(row.changeVsPrevStored)}>
+                      {formatCurrencyDetailed(row.changeVsPrevStored, cur, 2)}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 tabular-nums">
+                  {row.changePctVsPrevStored != null ? (
+                    <span className={signedMoneyClass(row.changeVsPrevStored ?? 0)}>
+                      {formatPercent(row.changePctVsPrevStored)}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function PositionDetailQuoteSummary({ position }: { position: EnrichedPosition }) {
   const cur = normalizeCurrency(position.currency);
   const dpp = position.displayPrice;
@@ -142,9 +308,13 @@ export function PositionTransactionsModal({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const [tab, setTab] = useState<"operations" | "quotes">("operations");
   const [rows, setRows] = useState<ApiRow[] | null>(null);
+  const [quoteHistory, setQuoteHistory] = useState<QuoteHistoryPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -181,9 +351,38 @@ export function PositionTransactionsModal({
     }
   }, [position]);
 
+  const loadQuotes = useCallback(async () => {
+    if (!position) return;
+    setLoadingQuotes(true);
+    setQuoteError(null);
+    setQuoteHistory(null);
+    try {
+      const params = new URLSearchParams({
+        ticker: position.ticker,
+        currency: position.currency,
+        days: "90",
+      });
+      const res = await fetch(`/api/portfolio/position-quote-history?${params}`);
+      const data = (await res.json()) as QuoteHistoryPayload & { error?: string };
+      if (!res.ok) {
+        setQuoteError(data.error ?? "Échec du chargement des cours");
+        return;
+      }
+      setQuoteHistory(data);
+    } catch {
+      setQuoteError("Réseau ou serveur indisponible");
+    } finally {
+      setLoadingQuotes(false);
+    }
+  }, [position]);
+
   useEffect(() => {
-    if (open && position) void load();
-  }, [open, position, load]);
+    if (open && position) {
+      setTab("operations");
+      void load();
+      void loadQuotes();
+    }
+  }, [open, position, load, loadQuotes]);
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -205,18 +404,41 @@ export function PositionTransactionsModal({
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-4 py-3">
           <div>
             <h2 id={titleId} className="text-base font-semibold text-slate-950">
-              Opérations · {position.ticker}
+              Détail · {position.ticker}
             </h2>
             <p className="mt-0.5 max-w-xl text-xs text-slate-600 line-clamp-2">
               {position.securityName || "—"} · {position.accountName}
             </p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Mouvements importés reliés à cette ligne (même agrégation que les quantités).
-            </p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              <Button
+                type="button"
+                variant={tab === "operations" ? "secondary" : "ghost"}
+                className="h-7 px-2 text-xs"
+                onClick={() => setTab("operations")}
+              >
+                Opérations
+              </Button>
+              <Button
+                type="button"
+                variant={tab === "quotes" ? "secondary" : "ghost"}
+                className="h-7 px-2 text-xs"
+                onClick={() => setTab("quotes")}
+              >
+                Cours en base
+              </Button>
+            </div>
             <PositionDetailQuoteSummary position={position} />
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button type="button" variant="ghost" className="h-8 px-2 text-xs" onClick={() => void load()}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              onClick={() => {
+                void load();
+                void loadQuotes();
+              }}
+            >
               Actualiser
             </Button>
             <Button type="button" variant="secondary" className="h-8 px-2 text-xs" onClick={onClose}>
@@ -226,7 +448,15 @@ export function PositionTransactionsModal({
         </header>
 
         <div className="min-h-0 flex-1 overflow-auto p-4">
-          {loading ? (
+          {tab === "quotes" ? (
+            loadingQuotes ? (
+              <p className="text-sm text-slate-500">Chargement des clôtures…</p>
+            ) : quoteError ? (
+              <p className="text-sm text-red-600">{quoteError}</p>
+            ) : quoteHistory ? (
+              <PositionQuoteHistoryPanel payload={quoteHistory} currency={position.currency} />
+            ) : null
+          ) : loading ? (
             <p className="text-sm text-slate-500">Chargement…</p>
           ) : error ? (
             <p className="text-sm text-red-600">{error}</p>

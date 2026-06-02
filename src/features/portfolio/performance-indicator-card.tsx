@@ -81,6 +81,7 @@ const PRESET_LABELS: Record<PerformanceScopePreset, string> = {
 
 const PERIOD_ORDER: PerformancePeriodId[] = [
   "day",
+  "yesterday",
   "month",
   "month3",
   "year",

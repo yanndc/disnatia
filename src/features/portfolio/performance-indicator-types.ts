@@ -1,5 +1,6 @@
 export type PerformancePeriodId =
   | "day"
+  | "yesterday"
   | "month"
   | "month3"
   | "year"
