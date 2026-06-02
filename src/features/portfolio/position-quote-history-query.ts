@@ -2,8 +2,8 @@ import { prisma } from "@/lib/db/prisma";
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import {
   isoDateInToronto,
-  previousTradingDay,
-  referenceTradingSessionDay,
+  priorSessionDateIso,
+  referenceTradingSessionDayIso,
 } from "@/lib/market/equity-session";
 import { isoDateFromDbDate, parseIsoDateLocal } from "@/features/portfolio/daily-close-key";
 import { subDays } from "date-fns";
@@ -49,10 +49,8 @@ export async function getPositionQuoteHistory(
   const span = Math.min(365, Math.max(7, Math.floor(days)));
   const now = new Date();
 
-  const referenceSessionDate = isoDateInToronto(referenceTradingSessionDay(now));
-  const priorSessionDate = isoDateInToronto(
-    previousTradingDay(referenceTradingSessionDay(now), 1),
-  );
+  const referenceSessionDate = referenceTradingSessionDayIso(now);
+  const priorSessionDate = priorSessionDateIso(now);
 
   const [y, m, d] = referenceSessionDate.split("-").map(Number);
   const toDate = referenceSessionDate;

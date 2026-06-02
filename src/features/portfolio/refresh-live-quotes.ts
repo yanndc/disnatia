@@ -7,7 +7,7 @@ import {
   persistQuoteSessionCloses,
 } from "@/features/portfolio/daily-close-prices";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
-import { isoDateInToronto, previousTradingDay, referenceTradingSessionDay } from "@/lib/market/equity-session";
+import { isoDateInToronto, priorSessionDateIso } from "@/lib/market/equity-session";
 import { ensureDailyClosesPersistedForPairs } from "@/features/portfolio/daily-close-prices";
 import { recomputeAndPersistSessionGains } from "@/features/portfolio/performance-session-gains";
 import { subDays } from "date-fns";
@@ -163,9 +163,7 @@ export async function refreshLiveQuotesForLatestImport(
     );
   }
 
-  const priorDay = isoDateInToronto(
-    previousTradingDay(referenceTradingSessionDay(now), 1),
-  );
+  const priorDay = priorSessionDateIso(now);
   await ensureDailyClosesPersistedForPairs(pairs, [priorDay]);
 
   return {

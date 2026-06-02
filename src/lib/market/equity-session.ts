@@ -15,9 +15,22 @@ export function isoDateInToronto(now: Date): string {
   }).format(now);
 }
 
-function parseIsoDateLocal(s: string): Date {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
+/** Date calendrier ISO ancrée à midi UTC (évite les décalages fuseau sur @db.Date et itérations). */
+export function parseIsoCalendarDate(iso: string): Date {
+  return new Date(`${iso}T12:00:00.000Z`);
+}
+
+function isoDateFromUtcParts(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function subtractCalendarDays(iso: string, days: number): string {
+  const d = parseIsoCalendarDate(iso);
+  d.setUTCDate(d.getUTCDate() - days);
+  return isoDateFromUtcParts(d);
 }
 
 function torontoClock(now: Date): { day: number; minutes: number } {
@@ -49,15 +62,24 @@ function torontoClock(now: Date): { day: number; minutes: number } {
   };
 }
 
-/** Jour ouvré actions (lun–ven, heure de Toronto). */
+/** Jour ouvré lun–ven pour une date ISO (weekday évalué à Toronto). */
+export function isTradingDayIso(iso: string): boolean {
+  const wd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TORONTO_TZ,
+    weekday: "short",
+  }).format(parseIsoCalendarDate(iso));
+  return wd !== "Sat" && wd !== "Sun";
+}
+
+/** Jour ouvré actions (lun–ven, heure de Toronto) — pour un instant « maintenant ». */
 export function isTradingDay(now: Date): boolean {
   const { day } = torontoClock(now);
   return day >= 1 && day <= 5;
 }
 
-/** Jour ouvré pour une date ISO `YYYY-MM-DD` (interprétée en calendrier local). */
+/** Jour ouvré pour une date ISO `YYYY-MM-DD` (calendrier Toronto). */
 export function isTradingDayDate(isoDate: string): boolean {
-  return isTradingDay(parseIsoDateLocal(isoDate));
+  return isTradingDayIso(isoDate);
 }
 
 /** Séance actions en cours (lun–ven, 9 h 30–16 h, heure de Toronto). */
@@ -67,13 +89,13 @@ export function isEquityMarketSessionOpen(now = new Date()): boolean {
   return minutes >= SESSION_OPEN_MINUTES && minutes < SESSION_CLOSE_MINUTES;
 }
 
-/** Jour ouvré précédent (n séances en arrière). */
-export function previousTradingDay(from: Date, steps = 1): Date {
-  let cursor = parseIsoDateLocal(isoDateInToronto(from));
+/** Jour ouvré précédent (n séances en arrière), en ISO Toronto. */
+export function previousTradingDayIso(fromIso: string, steps = 1): string {
+  let cursor = fromIso;
   for (let i = 0; i < steps; i++) {
     do {
-      cursor = subDays(cursor, 1);
-    } while (!isTradingDay(cursor));
+      cursor = subtractCalendarDays(cursor, 1);
+    } while (!isTradingDayIso(cursor));
   }
   return cursor;
 }
@@ -82,21 +104,37 @@ export function previousTradingDay(from: Date, steps = 1): Date {
  * Séance de référence pour le P&L « jour » :
  * séance en cours, ou dernière séance complétée (week-end / avant l'ouverture / après la clôture).
  */
-export function referenceTradingSessionDay(now = new Date()): Date {
-  const today = parseIsoDateLocal(isoDateInToronto(now));
-  if (!isTradingDay(today)) {
-    return previousTradingDay(today, 1);
+export function referenceTradingSessionDayIso(now = new Date()): string {
+  const today = isoDateInToronto(now);
+  if (!isTradingDayIso(today)) {
+    return previousTradingDayIso(today, 1);
   }
   const { minutes } = torontoClock(now);
   if (minutes < SESSION_OPEN_MINUTES) {
-    return previousTradingDay(today, 1);
+    return previousTradingDayIso(today, 1);
   }
   return today;
 }
 
+/**
+ * Date de clôture « veille » pour Positions : séance complétée juste avant la séance de référence.
+ */
+export function priorSessionDateIso(now = new Date()): string {
+  return previousTradingDayIso(referenceTradingSessionDayIso(now), 1);
+}
+
+/** Jour ouvré précédent (n séances en arrière). */
+export function previousTradingDay(from: Date, steps = 1): Date {
+  return parseIsoCalendarDate(previousTradingDayIso(isoDateInToronto(from), steps));
+}
+
+export function referenceTradingSessionDay(now = new Date()): Date {
+  return parseIsoCalendarDate(referenceTradingSessionDayIso(now));
+}
+
 /** Séance complétée immédiatement avant la séance de référence du jour. */
 export function yesterdayTradingSessionDay(now = new Date()): Date {
-  return previousTradingDay(referenceTradingSessionDay(now), 1);
+  return parseIsoCalendarDate(priorSessionDateIso(now));
 }
 
 export function resolveDayPeriodLabels(now = new Date()): {

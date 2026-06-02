@@ -3,12 +3,14 @@ import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import { fetchYahooChartDailyCloses } from "@/lib/market/yahoo-chart-closes";
 import {
   isoDateInToronto,
-  previousTradingDay,
-  referenceTradingSessionDay,
+  previousTradingDayIso,
+  priorSessionDateIso,
+  referenceTradingSessionDayIso,
 } from "@/lib/market/equity-session";
 import type { YahooQuotePriceRow } from "@/lib/market/yahoo-quote";
 import {
   dailyCloseKey,
+  isoDateFromDbDate,
   isoDateLocal,
   parseIsoDateLocal,
   type DailyCloseKey,
@@ -50,7 +52,7 @@ export async function loadDailyCloseMap(
 
   const map = new Map<DailyCloseKey, number>();
   for (const row of rows) {
-    const date = isoDateLocal(row.priceDate);
+    const date = isoDateFromDbDate(row.priceDate);
     map.set(dailyCloseKey(row.ticker, row.currency, date), row.closePrice);
   }
   return map;
@@ -186,9 +188,8 @@ export function yesterdayCloseDates(now = new Date()): {
   sessionEnd: string;
   sessionStart: string;
 } {
-  const ref = referenceTradingSessionDay(now);
-  const sessionEnd = isoDateLocal(previousTradingDay(ref, 1));
-  const sessionStart = isoDateLocal(previousTradingDay(parseIsoDateLocal(sessionEnd), 1));
+  const sessionEnd = priorSessionDateIso(now);
+  const sessionStart = previousTradingDayIso(sessionEnd, 1);
   return { sessionEnd, sessionStart };
 }
 
@@ -256,12 +257,11 @@ export function pairsNeedingChartHistory(
       out.push({ ticker, currency });
       continue;
     }
-    let cursor = parseIsoDateLocal(sessionEnd);
+    let cursor = sessionEnd;
     let foundPrior = false;
     for (let i = 0; i < 8; i++) {
-      cursor = previousTradingDay(cursor, 1);
-      const iso = isoDateLocal(cursor);
-      if (closeInMap(closeMap, ticker, currency, iso)) {
+      cursor = previousTradingDayIso(cursor, 1);
+      if (closeInMap(closeMap, ticker, currency, cursor)) {
         foundPrior = true;
         break;
       }
@@ -282,12 +282,8 @@ export async function priorSessionCloseByPair(
 ): Promise<Map<string, number>> {
   if (pairs.length === 0) return new Map();
 
-  const priorDay = isoDateLocal(
-    previousTradingDay(referenceTradingSessionDay(now), 1),
-  );
-  const chartFrom = isoDateLocal(
-    previousTradingDay(parseIsoDateLocal(priorDay), 5),
-  );
+  const priorDay = priorSessionDateIso(now);
+  const chartFrom = previousTradingDayIso(priorDay, 5);
 
   let closeMap = await loadDailyCloseMap(pairs, chartFrom, priorDay);
   const missingPrior = pairsMissingCloses(pairs, closeMap, [priorDay]);
