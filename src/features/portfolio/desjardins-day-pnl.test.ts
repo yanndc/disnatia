@@ -131,7 +131,7 @@ describe("Desjardins 2026-04-30 — Performance dynamique (jour)", () => {
     const day = computePeriodResult(payload, filtersAll, "day");
 
     assert.equal(day.method, "session-chain");
-    assert.equal(day.gainCad, REF.yann.variationCad + REF.valerie.variationCad);
+    assert.ok(Math.abs((day.gainCad ?? 0) - (REF.yann.variationCad + REF.valerie.variationCad)) < 0.02);
     assert.equal(day.periodStart, REF.asOf);
     assert.equal(day.periodEnd, REF.asOf);
   });

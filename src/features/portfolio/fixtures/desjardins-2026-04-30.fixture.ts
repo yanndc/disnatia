@@ -152,12 +152,26 @@ export function desjardinsPerformancePayload(
 
   const sessionGainCad = REF.yann.variationCad + REF.valerie.variationCad;
   const sessionPriorCad = REF.consolidated.titresCad - sessionGainCad;
+  const priorDay = "2026-04-29";
 
   return {
     accounts,
     currentByAccount,
     snapshots: [],
-    historyPoints: [],
+    historyPoints: [
+      {
+        accountKey: yannKey,
+        asOf: priorDay,
+        totalValueNative: REF.yann.titresCad - REF.yann.variationCad,
+        currency: "CAD",
+      },
+      {
+        accountKey: valKey,
+        asOf: priorDay,
+        totalValueNative: REF.valerie.titresCad - REF.valerie.variationCad,
+        currency: "CAD",
+      },
+    ],
     dailyTotalsCad: [],
     sessionGainsByDate: marketOpen
       ? []

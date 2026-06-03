@@ -136,8 +136,10 @@ export function resolvePeriodBounds(
   const end = isoDate(refDay);
 
   switch (periodId) {
-    case "day":
-      return { start: end, end, baselineLookup: null };
+    case "day": {
+      const baseline = isoDate(previousTradingDay(refDay, 1));
+      return { start: end, end, baselineLookup: baseline };
+    }
     case "yesterday": {
       const sessionEnd = isoDate(yesterdayTradingSessionDay(now));
       const baseline = isoDate(previousTradingDay(parseIsoDate(sessionEnd), 1));
@@ -216,81 +218,7 @@ function computeDayPeriod(
 ): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> {
   const now = sessionClockForBounds(payload.asOfNow);
   const refDay = isoDate(referenceTradingSessionDay(now));
-  const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
-  const refSession = filteredSessions.find((g) => g.date === refDay);
   const sessionHealthNote = payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE;
-
-  if (refSession && !isEquityMarketSessionOpen(now)) {
-    const currentCad = accountKeys.reduce(
-      (s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0),
-      0,
-    );
-    return {
-      gainCad: refSession.gainCad,
-      gainPct:
-        refSession.priorCad > 0
-          ? (refSession.gainCad / refSession.priorCad) * 100
-          : null,
-      currentCad,
-      baselineCad: refSession.priorCad > 0 ? refSession.priorCad : null,
-      baselineDate: refDay,
-      periodStart: refDay,
-      periodEnd: refDay,
-      method: "session-chain",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
-      incomplete: false,
-      note: null,
-    };
-  }
-
-  if (!isEquityMarketSessionOpen(now)) {
-    return {
-      gainCad: null,
-      gainPct: null,
-      currentCad: currentCadTotal(accountKeys, payload),
-      baselineCad: null,
-      baselineDate: refDay,
-      periodStart: refDay,
-      periodEnd: refDay,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
-      incomplete: true,
-      note: sessionHealthNote,
-    };
-  }
-
-  let gain = 0;
-  let prior = 0;
-  let hasGain = false;
-  let hasPrior = false;
-  let incomplete = false;
-  let currentCad = 0;
-  let disnatWithTitres = 0;
-  let disnatWithDay = 0;
-
-  for (const key of accountKeys) {
-    const cur = payload.currentByAccount[key];
-    if (!cur) continue;
-    currentCad += cur.totalCad;
-
-    const acc = payload.accounts.find((a) => a.accountKey === key);
-    if (acc?.isExternal) continue;
-
-    if (cur.dayGainCad !== null) {
-      hasGain = true;
-      gain += cur.dayGainCad;
-      disnatWithDay++;
-    } else if (cur.positionsCad > 0) {
-      incomplete = true;
-    }
-    if (cur.positionsCad > 0) disnatWithTitres++;
-    if (cur.dayPriorCad !== null && cur.dayPriorCad > 0) {
-      hasPrior = true;
-      prior += cur.dayPriorCad;
-    }
-  }
 
   const onlyExternal =
     accountKeys.length > 0 &&
@@ -300,11 +228,11 @@ function computeDayPeriod(
     return {
       gainCad: null,
       gainPct: null,
-      currentCad,
+      currentCad: currentCadTotal(accountKeys, payload),
       baselineCad: null,
       baselineDate: null,
-      periodStart: payload.asOfNow,
-      periodEnd: payload.asOfNow,
+      periodStart: refDay,
+      periodEnd: refDay,
       method: "unavailable",
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
@@ -313,9 +241,71 @@ function computeDayPeriod(
     };
   }
 
-  if (disnatWithTitres > 0 && disnatWithDay === 0) {
-    const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
-    const refSession = filteredSessions.find((g) => g.date === refDay);
+  if (isEquityMarketSessionOpen(now)) {
+    let gain = 0;
+    let prior = 0;
+    let hasGain = false;
+    let hasPrior = false;
+    let incomplete = false;
+    let currentCad = 0;
+    let disnatWithTitres = 0;
+    let disnatWithDay = 0;
+
+    for (const key of accountKeys) {
+      const cur = payload.currentByAccount[key];
+      if (!cur) continue;
+      currentCad += cur.totalCad;
+
+      const acc = payload.accounts.find((a) => a.accountKey === key);
+      if (acc?.isExternal) continue;
+
+      if (cur.dayGainCad !== null) {
+        hasGain = true;
+        gain += cur.dayGainCad;
+        disnatWithDay++;
+      } else if (cur.positionsCad > 0) {
+        incomplete = true;
+      }
+      if (cur.positionsCad > 0) disnatWithTitres++;
+      if (cur.dayPriorCad !== null && cur.dayPriorCad > 0) {
+        hasPrior = true;
+        prior += cur.dayPriorCad;
+      }
+    }
+
+    if (hasGain) {
+      return {
+        gainCad: gain,
+        gainPct: hasPrior && prior > 0 ? (gain / prior) * 100 : null,
+        currentCad,
+        baselineCad: hasPrior ? prior : null,
+        baselineDate: null,
+        periodStart: refDay,
+        periodEnd: refDay,
+        method: "live-quotes",
+        accountsIncluded: accountKeys.length,
+        accountsWithBaseline: disnatWithDay,
+        incomplete,
+        note: incomplete
+          ? joinNotes(
+              "P&L partiel : cotation absente sur au moins une ligne titre.",
+              payload.sessionDataHealth.ok ? null : sessionHealthNote,
+            )
+          : null,
+      };
+    }
+
+    if (disnatWithTitres > 0) {
+      const fromDelta = dayPeriodFromTitresDelta(accountKeys, payload, refDay);
+      if (fromDelta) return fromDelta;
+    }
+  } else {
+    const fromDelta = dayPeriodFromTitresDelta(accountKeys, payload, refDay);
+    if (fromDelta) return fromDelta;
+
+    const refSession = aggregateSessionGainsForAccounts(payload, accountKeys).find(
+      (g) => g.date === refDay,
+    );
     if (refSession) {
       return {
         gainCad: refSession.gainCad,
@@ -323,7 +313,7 @@ function computeDayPeriod(
           refSession.priorCad > 0
             ? (refSession.gainCad / refSession.priorCad) * 100
             : null,
-        currentCad,
+        currentCad: currentCadTotal(accountKeys, payload),
         baselineCad: refSession.priorCad > 0 ? refSession.priorCad : null,
         baselineDate: refDay,
         periodStart: refDay,
@@ -332,49 +322,24 @@ function computeDayPeriod(
         accountsIncluded: accountKeys.length,
         accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
         incomplete: false,
-        note: "Cotation indisponible — P&L issu de la séance persistée.",
+        note: null,
       };
     }
-
-    return {
-      gainCad: null,
-      gainPct: null,
-      currentCad,
-      baselineCad: hasPrior ? prior : null,
-      baselineDate: null,
-      periodStart: payload.asOfNow,
-      periodEnd: payload.asOfNow,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
-      incomplete: true,
-      note: payload.sessionDataHealth.ok
-        ? "Cotation du jour indisponible pour calculer le P&L."
-        : joinNotes(
-            "Cotation du jour indisponible pour calculer le P&L.",
-            sessionHealthNote,
-          ),
-    };
   }
 
   return {
-    gainCad: hasGain ? gain : null,
-    gainPct: hasGain && hasPrior && prior > 0 ? (gain / prior) * 100 : null,
-    currentCad,
-    baselineCad: hasPrior ? prior : null,
-    baselineDate: null,
-    periodStart: payload.asOfNow,
-    periodEnd: payload.asOfNow,
-    method: "live-quotes",
+    gainCad: null,
+    gainPct: null,
+    currentCad: currentCadTotal(accountKeys, payload),
+    baselineCad: null,
+    baselineDate: refDay,
+    periodStart: refDay,
+    periodEnd: refDay,
+    method: "unavailable",
     accountsIncluded: accountKeys.length,
-    accountsWithBaseline: disnatWithDay,
-    incomplete,
-    note: incomplete
-      ? joinNotes(
-          "P&L partiel : cotation absente sur au moins une ligne titre.",
-          payload.sessionDataHealth.ok ? null : sessionHealthNote,
-        )
-      : null,
+    accountsWithBaseline: 0,
+    incomplete: true,
+    note: sessionHealthNote,
   };
 }
 
@@ -428,6 +393,177 @@ function currentPositionsCadInGainScope(
     (s, k) => s + (payload.currentByAccount[k]?.positionsCad ?? 0),
     0,
   );
+}
+
+function historyPointCad(
+  valueNative: number,
+  currency: string,
+  usdToCad: number | null,
+): number {
+  if (currency.toUpperCase() === "USD") {
+    return usdToCad !== null ? valueNative * usdToCad : valueNative;
+  }
+  return valueNative;
+}
+
+/** Valeur titres agrégée (CAD) au plus tard à `targetDate`, par compte. */
+export function titresCadAtOrBefore(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  targetDate: string,
+): { valueCad: number; asOf: string; accountsWithData: number } | null {
+  const keys = new Set(accountKeys);
+  const byAccount = new Map<string, { asOf: string; valueCad: number }>();
+
+  for (const pt of payload.historyPoints ?? []) {
+    if (!keys.has(pt.accountKey)) continue;
+    if (pt.asOf > targetDate) continue;
+    const valueCad = historyPointCad(
+      pt.totalValueNative,
+      pt.currency,
+      payload.usdToCad,
+    );
+    const cur = byAccount.get(pt.accountKey);
+    if (!cur || pt.asOf > cur.asOf) {
+      byAccount.set(pt.accountKey, { asOf: pt.asOf, valueCad });
+    }
+  }
+
+  if (byAccount.size === 0) return null;
+
+  let total = 0;
+  let coverageAsOf = targetDate;
+  for (const row of byAccount.values()) {
+    total += row.valueCad;
+    if (row.asOf < coverageAsOf) coverageAsOf = row.asOf;
+  }
+
+  return {
+    valueCad: total,
+    asOf: coverageAsOf,
+    accountsWithData: byAccount.size,
+  };
+}
+
+function resolveEndTitresCad(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): number | null {
+  const now = sessionClockForBounds(payload.asOfNow);
+  const refDay = isoDate(referenceTradingSessionDay(now));
+  if (endDate >= refDay) {
+    const live = currentPositionsCadInGainScope(accountKeys, payload);
+    if (live > 0) return live;
+  }
+  return titresCadAtOrBefore(accountKeys, payload, endDate)?.valueCad ?? null;
+}
+
+/**
+ * Gain titres = Δ valeur de marché − flux nets (cotisations / retraits).
+ * Exclut les apports de capitaux du gain affiché en $.
+ */
+export function computeTitresPeriodGain(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  bounds: { start: string | null; end: string; baselineLookup: string | null },
+): {
+  usable: boolean;
+  gainCad: number | null;
+  gainPct: number | null;
+  baselineCad: number | null;
+  baselineDate: string | null;
+  accountsWithBaseline: number;
+  incomplete: boolean;
+} {
+  const disnatKeys = disnatAccountKeysInScope(accountKeys, payload);
+  if (disnatKeys.length === 0 || !bounds.start) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      baselineCad: null,
+      baselineDate: null,
+      accountsWithBaseline: 0,
+      incomplete: true,
+    };
+  }
+
+  const lookup =
+    bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
+  const startHit = titresCadAtOrBefore(disnatKeys, payload, lookup);
+  const endCad = resolveEndTitresCad(disnatKeys, payload, bounds.end);
+
+  if (!startHit || endCad === null) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      baselineCad: null,
+      baselineDate: null,
+      accountsWithBaseline: 0,
+      incomplete: true,
+    };
+  }
+
+  const netFlowsCad = netExternalFlowsCad(
+    payload.cashFlows,
+    accountKeys,
+    bounds.start,
+    bounds.end,
+  );
+  const baselineCad = startHit.valueCad + netFlowsCad;
+  const gainCad = endCad - startHit.valueCad - netFlowsCad;
+  const gainPct =
+    baselineCad > 0 && Number.isFinite(gainCad)
+      ? (gainCad / baselineCad) * 100
+      : null;
+
+  const incomplete =
+    bounds.start != null &&
+    (startHit.asOf > latestAllowedFirstSessionDate(bounds.start) ||
+      startHit.accountsWithData < disnatKeys.length);
+
+  return {
+    usable: true,
+    gainCad,
+    gainPct,
+    baselineCad: baselineCad > 0 ? baselineCad : null,
+    baselineDate: lookup,
+    accountsWithBaseline: startHit.accountsWithData,
+    incomplete,
+  };
+}
+
+function dayPeriodFromTitresDelta(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  refDay: string,
+): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> | null {
+  const priorDay = isoDate(previousTradingDay(parseIsoDate(refDay), 1));
+  const calc = computeTitresPeriodGain(accountKeys, payload, {
+    start: refDay,
+    end: refDay,
+    baselineLookup: priorDay,
+  });
+  if (!calc.usable || calc.gainCad === null) return null;
+
+  return {
+    gainCad: calc.gainCad,
+    gainPct: calc.gainPct,
+    currentCad: currentCadTotal(accountKeys, payload),
+    baselineCad: calc.baselineCad,
+    baselineDate: priorDay,
+    periodStart: refDay,
+    periodEnd: refDay,
+    method: "session-chain",
+    accountsIncluded: accountKeys.length,
+    accountsWithBaseline: calc.accountsWithBaseline,
+    incomplete: calc.incomplete,
+    note: formatFlowAdjustmentNote(
+      netExternalFlowsCad(payload.cashFlows, accountKeys, refDay, refDay),
+    ),
+  };
 }
 
 /**
@@ -489,7 +625,7 @@ export function resolveSessionChainGainPct(
   };
 }
 
-/** P&L titres = somme des séances persistées sur la période (+ live du jour si séance ouverte). */
+/** P&L titres sur la période : Δ valeur marché − flux nets (priorité historique titres). */
 function computeSessionChainPeriod(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -537,6 +673,35 @@ function computeSessionChainPeriod(
     };
   }
 
+  const netFlowsCad = netExternalFlowsCad(
+    payload.cashFlows,
+    accountKeys,
+    bounds.start,
+    bounds.end,
+  );
+  const flowNote = formatFlowAdjustmentNote(netFlowsCad);
+
+  const valueDelta = computeTitresPeriodGain(accountKeys, payload, bounds);
+  if (valueDelta.usable && valueDelta.gainCad !== null) {
+    return {
+      usable: true,
+      gainCad: valueDelta.gainCad,
+      gainPct: valueDelta.gainPct,
+      currentCad,
+      baselineCad: valueDelta.baselineCad,
+      baselineDate: valueDelta.baselineDate,
+      accountsWithBaseline: valueDelta.accountsWithBaseline,
+      incomplete: valueDelta.incomplete,
+      note:
+        periodId === "all" || !valueDelta.incomplete
+          ? flowNote
+          : joinNotes(
+              "P&L partiel : historique titres incomplet sur la période.",
+              flowNote,
+            ),
+    };
+  }
+
   const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
   const sessions =
     periodId === "all"
@@ -555,13 +720,15 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
-      note: payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE,
+      note: joinNotes(
+        "Historique titres indisponible pour cette période.",
+        payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE,
+      ),
     };
   }
 
   let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
   const firstSessionPriorCad = sessions[0]!.priorCad;
-  /** « Depuis le début » = chaîne complète persistée ; pas de comparaison aux imports CSV. */
   const incomplete =
     periodId === "all"
       ? false
@@ -569,7 +736,7 @@ function computeSessionChainPeriod(
         sessions[0]!.date > latestAllowedFirstSessionDate(bounds.start);
 
   const now = sessionClockForBounds(payload.asOfNow);
-  const endIsToday = bounds.end === isoDate(now);
+  const endIsToday = bounds.end === isoDate(referenceTradingSessionDay(now));
   if (
     endIsToday &&
     periodId !== "yesterday" &&
@@ -585,10 +752,6 @@ function computeSessionChainPeriod(
   }
 
   const positionsCadNow = currentPositionsCadInGainScope(accountKeys, payload);
-  const netFlowsCad =
-    bounds.start != null
-      ? netExternalFlowsCad(payload.cashFlows, accountKeys, bounds.start, bounds.end)
-      : 0;
   const { gainPct, baselineCad } = resolveSessionChainGainPct(
     gainCad,
     firstSessionPriorCad,
@@ -596,8 +759,6 @@ function computeSessionChainPeriod(
     sessions.length,
     netFlowsCad,
   );
-
-  const flowNote = formatFlowAdjustmentNote(netFlowsCad);
 
   return {
     usable: true,
@@ -610,7 +771,7 @@ function computeSessionChainPeriod(
     incomplete,
     note:
       periodId === "all" || !incomplete
-        ? flowNote
+        ? joinNotes("Repli sur séances persistées.", flowNote)
         : joinNotes(
             "P&L partiel : historique de séances incomplet sur la période.",
             flowNote,
