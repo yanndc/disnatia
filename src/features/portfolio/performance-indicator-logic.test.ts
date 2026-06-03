@@ -267,6 +267,97 @@ describe("computePeriodResult", () => {
     assert.notEqual(day.gainCad, prec.gainCad);
   });
 
+  test("Préc. : complet malgré compte vide et historique figé 2024", () => {
+    const payload = mockPayload({
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "Actif",
+          owner: "Alice",
+          accountType: null,
+          currency: "CAD",
+          isExternal: false,
+        },
+        {
+          accountKey: "STALE|CAD",
+          label: "Inactif",
+          owner: "Alice",
+          accountType: null,
+          currency: "CAD",
+          isExternal: false,
+        },
+        {
+          accountKey: "EMPTY|CAD",
+          label: "Vide",
+          owner: "Alice",
+          accountType: null,
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-01",
+          totalValueNative: 90_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-02",
+          totalValueNative: 91_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "STALE|CAD",
+          asOf: "2024-03-10",
+          totalValueNative: 5_000,
+          currency: "CAD",
+        },
+      ],
+      asOfNow: "2026-06-03T08:10:00",
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 91_000,
+          positionsCad: 91_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+        "STALE|CAD": {
+          totalCad: 0,
+          positionsCad: 0,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+        "EMPTY|CAD": {
+          totalCad: 0,
+          positionsCad: 0,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+      },
+    });
+
+    const prec = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "yesterday",
+    );
+
+    assert.equal(prec.incomplete, false);
+    assert.equal(prec.note, null);
+    assert.ok(Math.abs((prec.gainCad ?? 0) - 1_000) < 1);
+  });
+
   test("depuis le début : % cohérent sur Δ valeur titres", () => {
     const positionsCad = 237_400;
     const payload = mockPayload({
@@ -500,6 +591,6 @@ describe("computePeriodResult", () => {
       "ytd",
     );
     assert.equal(ytd.incomplete, true);
-    assert.match(ytd.note ?? "", /historique titres incomplet/);
+    assert.match(ytd.note ?? "", /historique titres manquant/);
   });
 });

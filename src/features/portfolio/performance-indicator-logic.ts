@@ -18,6 +18,7 @@ import {
   isEquityMarketSessionOpen,
   latestAllowedFirstSessionDate,
   previousTradingDay,
+  previousTradingDayIso,
   referenceTradingSessionDay,
   referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
@@ -428,6 +429,33 @@ function historyPointCad(
   return valueNative;
 }
 
+/** Historique plus vieux que ce seuil (jours ouvrés) → ignoré pour V(t). */
+const TITRES_HISTORY_MAX_GAP_TRADING_DAYS = 5;
+
+function minAcceptableHistoryAsOf(targetDate: string): string {
+  return previousTradingDayIso(targetDate, TITRES_HISTORY_MAX_GAP_TRADING_DAYS);
+}
+
+/** Comptes Disnat avec titres en jeu (positions ou historique récent sur la période). */
+function disnatTitresMaterialKeys(
+  disnatKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  baselineLookup: string,
+  endDate: string,
+): string[] {
+  const minBase = minAcceptableHistoryAsOf(baselineLookup);
+  const minEnd = minAcceptableHistoryAsOf(endDate);
+  return disnatKeys.filter((k) => {
+    if ((payload.currentByAccount[k]?.positionsCad ?? 0) > 0) return true;
+    for (const pt of payload.historyPoints ?? []) {
+      if (pt.accountKey !== k) continue;
+      if (pt.asOf >= minBase && pt.asOf <= baselineLookup) return true;
+      if (pt.asOf >= minEnd && pt.asOf <= endDate) return true;
+    }
+    return false;
+  });
+}
+
 /** Valeur titres agrégée (CAD) au plus tard à `targetDate`, par compte. */
 export function titresCadAtOrBefore(
   accountKeys: string[],
@@ -436,10 +464,11 @@ export function titresCadAtOrBefore(
 ): { valueCad: number; asOf: string; accountsWithData: number } | null {
   const keys = new Set(accountKeys);
   const byAccount = new Map<string, { asOf: string; valueCad: number }>();
+  const minAsOf = minAcceptableHistoryAsOf(targetDate);
 
   for (const pt of payload.historyPoints ?? []) {
     if (!keys.has(pt.accountKey)) continue;
-    if (pt.asOf > targetDate) continue;
+    if (pt.asOf > targetDate || pt.asOf < minAsOf) continue;
     const valueCad = historyPointCad(
       pt.totalValueNative,
       pt.currency,
@@ -522,8 +551,26 @@ export function computeTitresPeriodGain(
 
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
-  const startHit = titresCadAtOrBefore(disnatKeys, payload, lookup);
-  const endCad = resolveEndTitresCad(disnatKeys, payload, bounds.end);
+  const materialKeys = disnatTitresMaterialKeys(
+    disnatKeys,
+    payload,
+    lookup,
+    bounds.end,
+  );
+  if (materialKeys.length === 0) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      baselineCad: null,
+      baselineDate: null,
+      accountsWithBaseline: 0,
+      incomplete: true,
+    };
+  }
+
+  const startHit = titresCadAtOrBefore(materialKeys, payload, lookup);
+  const endCad = resolveEndTitresCad(materialKeys, payload, bounds.end);
 
   if (!startHit || endCad === null) {
     return {
@@ -553,7 +600,7 @@ export function computeTitresPeriodGain(
   const incomplete =
     bounds.start != null &&
     (startHit.asOf > latestAllowedFirstSessionDate(bounds.start) ||
-      startHit.accountsWithData < disnatKeys.length);
+      startHit.accountsWithData < materialKeys.length);
 
   return {
     usable: true,
@@ -727,7 +774,7 @@ function computeSessionChainPeriod(
         periodId === "all" || !valueDelta.incomplete
           ? flowNote
           : joinNotes(
-              "P&L partiel : historique titres incomplet sur la période.",
+              "P&L partiel : historique titres manquant sur au moins un compte actif.",
               flowNote,
             ),
     };
