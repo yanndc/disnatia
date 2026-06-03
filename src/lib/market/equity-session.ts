@@ -121,6 +121,14 @@ export function isEquityMarketSessionOpen(now = new Date()): boolean {
   return minutes >= SESSION_OPEN_MINUTES && minutes < SESSION_CLOSE_MINUTES;
 }
 
+/** Jour ouvré Toronto, avant l'ouverture (9 h 30) — la séance du jour n'a pas commencé. */
+export function isBeforeTodaySessionOpen(now = new Date()): boolean {
+  const today = isoDateInToronto(now);
+  if (!isTradingDayIso(today)) return false;
+  const { minutes } = torontoClock(now);
+  return minutes < SESSION_OPEN_MINUTES;
+}
+
 /** Jour ouvré précédent (n séances en arrière), en ISO Toronto. */
 export function previousTradingDayIso(fromIso: string, steps = 1): string {
   let cursor = fromIso;
@@ -175,8 +183,8 @@ export function resolveDayPeriodLabels(now = new Date()): {
   label: string;
   shortLabel: string;
 } {
-  if (isEquityMarketSessionOpen(now)) {
-    return { label: "Aujourd'hui", shortLabel: "Jour" };
+  if (isBeforeTodaySessionOpen(now) || isEquityMarketSessionOpen(now)) {
+    return { label: "Aujourd'hui", shortLabel: "Séance" };
   }
   return { label: "Dernière séance", shortLabel: "Séance" };
 }

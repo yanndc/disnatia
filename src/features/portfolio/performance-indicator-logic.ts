@@ -14,10 +14,12 @@ import type {
 } from "./performance-indicator-types";
 import {
   isoDateInToronto,
+  isBeforeTodaySessionOpen,
   isEquityMarketSessionOpen,
   latestAllowedFirstSessionDate,
   previousTradingDay,
   referenceTradingSessionDay,
+  referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
   yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
@@ -217,8 +219,26 @@ function computeDayPeriod(
   payload: PerformanceIndicatorPayload,
 ): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> {
   const now = sessionClockForBounds(payload.asOfNow);
+  const today = isoDateInToronto(now);
   const refDay = isoDate(referenceTradingSessionDay(now));
   const sessionHealthNote = payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE;
+
+  if (isBeforeTodaySessionOpen(now)) {
+    return {
+      gainCad: null,
+      gainPct: null,
+      currentCad: currentCadTotal(accountKeys, payload),
+      baselineCad: null,
+      baselineDate: null,
+      periodStart: today,
+      periodEnd: today,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: 0,
+      incomplete: false,
+      note: null,
+    };
+  }
 
   const onlyExternal =
     accountKeys.length > 0 &&
@@ -301,7 +321,9 @@ function computeDayPeriod(
     }
   } else {
     const fromDelta = dayPeriodFromTitresDelta(accountKeys, payload, refDay);
-    if (fromDelta) return fromDelta;
+    if (fromDelta) {
+      return { ...fromDelta, periodStart: refDay, periodEnd: refDay };
+    }
 
     const refSession = aggregateSessionGainsForAccounts(payload, accountKeys).find(
       (g) => g.date === refDay,
@@ -451,11 +473,20 @@ function resolveEndTitresCad(
   endDate: string,
 ): number | null {
   const now = sessionClockForBounds(payload.asOfNow);
-  const refDay = isoDate(referenceTradingSessionDay(now));
-  if (endDate >= refDay) {
-    const live = currentPositionsCadInGainScope(accountKeys, payload);
-    if (live > 0) return live;
+  const today = isoDateInToronto(now);
+  const refDay = referenceTradingSessionDayIso(now);
+
+  // Avant l'ouverture : pas de clôture « live » pour une séance passée (évite doublon Séance/Préc.)
+  if (!isBeforeTodaySessionOpen(now)) {
+    const useLiveEnd =
+      endDate === refDay &&
+      (isEquityMarketSessionOpen(now) || endDate === today);
+    if (useLiveEnd) {
+      const live = currentPositionsCadInGainScope(accountKeys, payload);
+      if (live > 0) return live;
+    }
   }
+
   return titresCadAtOrBefore(accountKeys, payload, endDate)?.valueCad ?? null;
 }
 
@@ -538,12 +569,12 @@ export function computeTitresPeriodGain(
 function dayPeriodFromTitresDelta(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
-  refDay: string,
+  sessionEnd: string,
 ): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> | null {
-  const priorDay = isoDate(previousTradingDay(parseIsoDate(refDay), 1));
+  const priorDay = isoDate(previousTradingDay(parseIsoDate(sessionEnd), 1));
   const calc = computeTitresPeriodGain(accountKeys, payload, {
-    start: refDay,
-    end: refDay,
+    start: sessionEnd,
+    end: sessionEnd,
     baselineLookup: priorDay,
   });
   if (!calc.usable || calc.gainCad === null) return null;
@@ -554,14 +585,14 @@ function dayPeriodFromTitresDelta(
     currentCad: currentCadTotal(accountKeys, payload),
     baselineCad: calc.baselineCad,
     baselineDate: priorDay,
-    periodStart: refDay,
-    periodEnd: refDay,
+    periodStart: sessionEnd,
+    periodEnd: sessionEnd,
     method: "session-chain",
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: calc.accountsWithBaseline,
     incomplete: calc.incomplete,
     note: formatFlowAdjustmentNote(
-      netExternalFlowsCad(payload.cashFlows, accountKeys, refDay, refDay),
+      netExternalFlowsCad(payload.cashFlows, accountKeys, sessionEnd, sessionEnd),
     ),
   };
 }

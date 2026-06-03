@@ -190,6 +190,83 @@ describe("resolveSessionChainGainPct", () => {
 });
 
 describe("computePeriodResult", () => {
+  test("avant 9h30 : séance « — », précédente = clôture de la veille (pas positions live)", () => {
+    const payload = mockPayload({
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-05-29",
+          totalValueNative: 90_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-01",
+          totalValueNative: 91_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2026-05-29",
+          totalValueNative: 40_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2026-06-01",
+          totalValueNative: 40_500,
+          currency: "CAD",
+        },
+      ],
+      asOfNow: "2026-06-02T08:10:00",
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 200_000,
+          positionsCad: 200_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+        "ACC2|CAD": {
+          totalCad: 200_000,
+          positionsCad: 200_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+      },
+    });
+
+    const day = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "day",
+    );
+    const prec = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "yesterday",
+    );
+
+    assert.equal(day.gainCad, null);
+    assert.equal(day.method, "unavailable");
+    assert.ok((prec.gainCad ?? 0) > 0);
+    assert.ok((prec.gainCad ?? 0) < 5_000, "ne doit pas utiliser les positions live du matin");
+    assert.notEqual(day.gainCad, prec.gainCad);
+  });
+
   test("depuis le début : % cohérent sur Δ valeur titres", () => {
     const positionsCad = 237_400;
     const payload = mockPayload({
