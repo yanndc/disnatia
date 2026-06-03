@@ -358,17 +358,10 @@ describe("computePeriodResult", () => {
     assert.ok(Math.abs((prec.gainCad ?? 0) - 1_000) < 1);
   });
 
-  test("depuis le début : % cohérent sur Δ valeur titres", () => {
+  test("depuis le début : gain = Σ gains de séance, % pondéré-dollars borné", () => {
     const positionsCad = 237_400;
     const payload = mockPayload({
-      historyPoints: [
-        {
-          accountKey: "ACC|CAD",
-          asOf: "2022-03-21",
-          totalValueNative: 50_000,
-          currency: "CAD",
-        },
-      ],
+      // ACC : deux séances (gain 1 000 + 2 000), capital moyen ~90 500.
       asOfNow: "2026-05-29T22:00:00",
       currentByAccount: {
         "ACC|CAD": {
@@ -400,8 +393,11 @@ describe("computePeriodResult", () => {
       "all",
     );
 
-    assert.ok(Math.abs((all.gainCad ?? 0) - (positionsCad - 50_000)) < 1);
-    assert.ok((all.gainPct ?? 0) < 400);
+    // Gain = somme des P&L de séance (insensible aux cotisations), pas Δ valeur titres.
+    assert.ok(Math.abs((all.gainCad ?? 0) - 3_000) < 1);
+    // Capital moyen ~90 500 → ~3,3 %, jamais des centaines de %.
+    assert.ok((all.gainPct ?? 0) > 0 && (all.gainPct ?? 0) < 50);
+    assert.equal(all.annualized, false);
   });
 
   test("filtre propriétaire change le rendement 1 mois", () => {
@@ -483,30 +479,18 @@ describe("computePeriodResult", () => {
     assert.equal(month.gainCad, null);
   });
 
-  test("depuis le début : pas d alerte si historique dès le plus ancien import", () => {
+  test("depuis le début : pas d alerte, baseline = 1re séance persistée", () => {
     const payload = mockPayload({
-      snapshots: [
-        {
-          accountKey: "ACC|CAD",
-          asOf: "2022-03-21",
-          totalValueNative: 50_000,
-          currency: "CAD",
-        },
-      ],
-      historyPoints: [
-        {
-          accountKey: "ACC|CAD",
-          asOf: "2022-03-21",
-          totalValueNative: 50_000,
-          currency: "CAD",
-        },
-        {
-          accountKey: "ACC2|CAD",
-          asOf: "2022-03-21",
-          totalValueNative: 40_000,
-          currency: "CAD",
-        },
-      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2022-03-21", gainCad: 100, priorCad: 50_000 },
+          { date: "2026-05-27", gainCad: 2_000, priorCad: 91_000 },
+        ],
+        "ACC2|CAD": [
+          { date: "2022-03-21", gainCad: 80, priorCad: 40_000 },
+          { date: "2026-05-27", gainCad: 300, priorCad: 40_500 },
+        ],
+      },
       asOfNow: "2026-05-29T22:00:00",
     });
     const all = computePeriodResult(
@@ -523,24 +507,22 @@ describe("computePeriodResult", () => {
     assert.equal(all.incomplete, false);
     assert.equal(all.note, null);
     assert.equal(all.baselineDate, "2022-03-21");
+    // Span > 1 an → rendement annualisé.
+    assert.equal(all.annualized, true);
   });
 
-  test("AAJ : pas d alerte si historique dès le 1er jan", () => {
+  test("AAJ : pas d alerte si séances dès le début d année", () => {
     const payload = mockPayload({
-      historyPoints: [
-        {
-          accountKey: "ACC|CAD",
-          asOf: "2025-12-31",
-          totalValueNative: 200_000,
-          currency: "CAD",
-        },
-        {
-          accountKey: "ACC2|CAD",
-          asOf: "2025-12-31",
-          totalValueNative: 50_000,
-          currency: "CAD",
-        },
-      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2026-01-02", gainCad: 500, priorCad: 80_000 },
+          { date: "2026-05-29", gainCad: 1_000, priorCad: 90_000 },
+        ],
+        "ACC2|CAD": [
+          { date: "2026-01-02", gainCad: 200, priorCad: 40_000 },
+          { date: "2026-05-29", gainCad: 100, priorCad: 40_100 },
+        ],
+      },
       asOfNow: "2026-06-02T15:00:00",
     });
     const ytd = computePeriodResult(
@@ -556,26 +538,22 @@ describe("computePeriodResult", () => {
     );
     assert.equal(ytd.incomplete, false);
     assert.equal(ytd.note, null);
-    assert.equal(ytd.baselineDate, "2025-12-31");
+    assert.equal(ytd.baselineDate, "2026-01-02");
+    // < 1 an → rendement cumulé, pas annualisé.
+    assert.equal(ytd.annualized, false);
   });
 
-  test("AAJ : alerte si historique commence bien après le début d année", () => {
+  test("AAJ : alerte si séances commencent bien après le début d année", () => {
     const payload = mockPayload({
-      sessionGainsByAccount: {},
-      sessionGainsByDate: [],
-      historyPoints: [
-        {
-          accountKey: "ACC|CAD",
-          asOf: "2026-03-03",
-          totalValueNative: 200_000,
-          currency: "CAD",
-        },
-        {
-          accountKey: "ACC2|CAD",
-          asOf: "2025-12-31",
-          totalValueNative: 50_000,
-          currency: "CAD",
-        },
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2026-03-03", gainCad: 500, priorCad: 80_000 },
+          { date: "2026-05-29", gainCad: 1_000, priorCad: 90_000 },
+        ],
+      },
+      sessionGainsByDate: [
+        { date: "2026-03-03", gainCad: 500, priorCad: 80_000 },
+        { date: "2026-05-29", gainCad: 1_000, priorCad: 90_000 },
       ],
       asOfNow: "2026-06-02T15:00:00",
     });
@@ -591,6 +569,6 @@ describe("computePeriodResult", () => {
       "ytd",
     );
     assert.equal(ytd.incomplete, true);
-    assert.match(ytd.note ?? "", /historique titres manquant/);
+    assert.match(ytd.note ?? "", /historique de séances incomplet/);
   });
 });

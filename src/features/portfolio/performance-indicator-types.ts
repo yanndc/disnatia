@@ -130,6 +130,8 @@ export type PerformancePeriodResult = {
   accountsIncluded: number;
   accountsWithBaseline: number;
   incomplete: boolean;
+  /** true si gainPct est un taux annualisé (périodes > ~1 an). */
+  annualized: boolean;
   note: string | null;
 };
 

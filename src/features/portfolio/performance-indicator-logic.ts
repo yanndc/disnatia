@@ -29,6 +29,7 @@ import {
   formatFlowAdjustmentNote,
   netExternalFlowsCad,
 } from "./performance-cash-flows";
+import { computeMoneyWeightedReturn } from "./performance-money-weighted";
 
 const SESSION_GAINS_UNAVAILABLE_NOTE =
   "Actualise les cours pour calculer le P&L de séance.";
@@ -237,6 +238,7 @@ function computeDayPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: false,
+      annualized: false,
       note: null,
     };
   }
@@ -258,6 +260,7 @@ function computeDayPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: true,
+      annualized: false,
       note: "P&L jour disponible uniquement sur les titres Disnat avec cotation.",
     };
   }
@@ -307,6 +310,7 @@ function computeDayPeriod(
         accountsIncluded: accountKeys.length,
         accountsWithBaseline: disnatWithDay,
         incomplete,
+        annualized: false,
         note: incomplete
           ? joinNotes(
               "P&L partiel : cotation absente sur au moins une ligne titre.",
@@ -345,6 +349,7 @@ function computeDayPeriod(
         accountsIncluded: accountKeys.length,
         accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
         incomplete: false,
+        annualized: false,
         note: null,
       };
     }
@@ -362,6 +367,7 @@ function computeDayPeriod(
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: 0,
     incomplete: true,
+    annualized: false,
     note: sessionHealthNote,
   };
 }
@@ -638,6 +644,7 @@ function dayPeriodFromTitresDelta(
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: calc.accountsWithBaseline,
     incomplete: calc.incomplete,
+    annualized: false,
     note: formatFlowAdjustmentNote(
       netExternalFlowsCad(payload.cashFlows, accountKeys, sessionEnd, sessionEnd),
     ),
@@ -718,6 +725,7 @@ function computeSessionChainPeriod(
   baselineDate: string | null;
   accountsWithBaseline: number;
   incomplete: boolean;
+  annualized: boolean;
   note: string | null;
 } {
   const currentCad = currentCadTotal(accountKeys, payload);
@@ -732,6 +740,7 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
+      annualized: false,
       note: SESSION_GAINS_UNAVAILABLE_NOTE,
     };
   }
@@ -747,39 +756,35 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
+      annualized: false,
       note: "P&L disponible uniquement sur les comptes Disnat.",
     };
   }
 
-  const netFlowsCad = netExternalFlowsCad(
-    payload.cashFlows,
-    accountKeys,
-    bounds.start,
-    bounds.end,
-  );
-  const flowNote = formatFlowAdjustmentNote(netFlowsCad);
-
-  const valueDelta = computeTitresPeriodGain(accountKeys, payload, bounds);
-  if (valueDelta.usable && valueDelta.gainCad !== null) {
-    return {
-      usable: true,
-      gainCad: valueDelta.gainCad,
-      gainPct: valueDelta.gainPct,
-      currentCad,
-      baselineCad: valueDelta.baselineCad,
-      baselineDate: valueDelta.baselineDate,
-      accountsWithBaseline: valueDelta.accountsWithBaseline,
-      incomplete: valueDelta.incomplete,
-      note:
-        periodId === "all" || !valueDelta.incomplete
-          ? flowNote
-          : joinNotes(
-              "P&L partiel : historique titres manquant sur au moins un compte actif.",
-              flowNote,
-            ),
-    };
+  // « Séance précédente » : on conserve la logique éprouvée (Δ valeur titres sur
+  // une seule séance, équivalente au P&L de séance quand les flux du jour sont nuls).
+  if (periodId === "yesterday") {
+    const valueDelta = computeTitresPeriodGain(accountKeys, payload, bounds);
+    if (valueDelta.usable && valueDelta.gainCad !== null) {
+      return {
+        usable: true,
+        gainCad: valueDelta.gainCad,
+        gainPct: valueDelta.gainPct,
+        currentCad,
+        baselineCad: valueDelta.baselineCad,
+        baselineDate: valueDelta.baselineDate,
+        accountsWithBaseline: valueDelta.accountsWithBaseline,
+        incomplete: valueDelta.incomplete,
+        annualized: false,
+        note: valueDelta.incomplete
+          ? "P&L partiel : historique titres manquant sur au moins un compte actif."
+          : null,
+      };
+    }
   }
 
+  // P&L titres (Σ qty × Δ clôture) : insensible aux cotisations/retraits, donc
+  // utilisable directement comme gain $ et numérateur du rendement.
   const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
   const sessions =
     periodId === "all"
@@ -798,6 +803,7 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
+      annualized: false,
       note: joinNotes(
         "Historique titres indisponible pour cette période.",
         payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE,
@@ -806,54 +812,40 @@ function computeSessionChainPeriod(
   }
 
   let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
-  const firstSessionPriorCad = sessions[0]!.priorCad;
   const incomplete =
     periodId === "all"
       ? false
       : bounds.start != null &&
         sessions[0]!.date > latestAllowedFirstSessionDate(bounds.start);
 
+  // En séance ouverte, remplace le P&L persisté du jour par le P&L live.
   const now = sessionClockForBounds(payload.asOfNow);
-  const endIsToday = bounds.end === isoDate(referenceTradingSessionDay(now));
-  if (
-    endIsToday &&
-    periodId !== "yesterday" &&
-    isEquityMarketSessionOpen(now)
-  ) {
-    const todayIso = bounds.end;
-    const chainToday = sessions.find((g) => g.date === todayIso);
+  const refDay = isoDate(referenceTradingSessionDay(now));
+  const endIsToday = bounds.end === refDay;
+  if (endIsToday && periodId !== "yesterday" && isEquityMarketSessionOpen(now)) {
+    const chainToday = sessions.find((g) => g.date === refDay);
     const liveToday = sumLiveDayGainCad(accountKeys, payload);
-    if (chainToday) {
-      gainCad -= chainToday.gainCad;
-    }
+    if (chainToday) gainCad -= chainToday.gainCad;
     gainCad += liveToday;
   }
 
-  const positionsCadNow = currentPositionsCadInGainScope(accountKeys, payload);
-  const { gainPct, baselineCad } = resolveSessionChainGainPct(
-    gainCad,
-    firstSessionPriorCad,
-    positionsCadNow,
-    sessions.length,
-    netFlowsCad,
-  );
+  // Rendement pondéré-dollars (capital moyen investi), aligné Desjardins.
+  const mw = computeMoneyWeightedReturn(sessions, gainCad, bounds.end);
 
   return {
     usable: true,
     gainCad,
-    gainPct,
+    gainPct: mw.gainPct,
     currentCad,
-    baselineCad,
+    baselineCad: mw.baselineCad,
     baselineDate: sessions[0]?.date ?? bounds.baselineLookup,
     accountsWithBaseline: disnatKeys.length,
     incomplete,
+    annualized: mw.annualized,
     note:
       periodId === "all" || !incomplete
-        ? joinNotes("Repli sur séances persistées.", flowNote)
-        : joinNotes(
-            "P&L partiel : historique de séances incomplet sur la période.",
-            flowNote,
-          ),
+        ? null
+        : "P&L partiel : historique de séances incomplet sur la période.",
   };
 }
 
@@ -885,6 +877,7 @@ function buildChainPeriodResult(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: true,
+      annualized: false,
       note: SESSION_GAINS_UNAVAILABLE_NOTE,
     };
   }
@@ -906,6 +899,7 @@ function buildChainPeriodResult(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: calc.accountsWithBaseline,
       incomplete: true,
+      annualized: false,
       note: calc.note ?? SESSION_GAINS_UNAVAILABLE_NOTE,
     };
   }
@@ -925,6 +919,7 @@ function buildChainPeriodResult(
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: calc.accountsWithBaseline,
     incomplete: calc.incomplete,
+    annualized: calc.annualized,
     note: calc.note,
   };
 }
@@ -966,6 +961,7 @@ export function computePeriodResult(
       accountsIncluded: 0,
       accountsWithBaseline: 0,
       incomplete: true,
+      annualized: false,
       note: "Aucun compte sélectionné.",
     };
   }

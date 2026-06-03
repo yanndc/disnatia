@@ -12,6 +12,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { quoteAgeFromFetchedAt } from "@/lib/market/quote-age";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
   computeAllPeriodResults,
@@ -99,10 +100,10 @@ function formatGain(value: number | null, compact = false): string {
   return `${prefix}${formatCurrency(value, "CAD")}`;
 }
 
-function formatGainPct(value: number | null): string {
+function formatGainPct(value: number | null, annualized = false): string {
   if (value === null) return "—";
   const prefix = value > 0 ? "+" : "";
-  return `${prefix}${formatPercent(value)}`;
+  return `${prefix}${formatPercent(value)}${annualized ? "/an" : ""}`;
 }
 
 export function PerformanceIndicatorCard({
@@ -124,10 +125,16 @@ export function PerformanceIndicatorCard({
     };
   });
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
     saveStoredFilters(filters);
   }, [filters]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const owners = useMemo(
     () => uniquePortfolioOwners(payload.accounts.map((a) => a.owner)),
@@ -143,6 +150,14 @@ export function PerformanceIndicatorCard({
     () => computePeriodResult(payload, filters, filters.activePeriod),
     [payload, filters],
   );
+
+  const yahooQuoteAge = useMemo(
+    () => quoteAgeFromFetchedAt(payload.quotesAsOf, nowMs),
+    [payload.quotesAsOf, nowMs],
+  );
+
+  const sessionUsesLiveYahoo =
+    active.method === "live-quotes" || filters.activePeriod === "day";
 
   const updateFilters = useCallback(
     (patch: Partial<PerformanceFilterState>) => {
@@ -366,10 +381,30 @@ export function PerformanceIndicatorCard({
                   <p
                     className={`mt-1 text-xl tabular-nums ${signedGainClass(active.gainPct)}`}
                   >
-                    {formatGainPct(active.gainPct)}
+                    {formatGainPct(active.gainPct, active.annualized)}
+                    {active.annualized ? (
+                      <span className="ml-1 align-middle text-xs font-normal text-slate-400">
+                        annualisé
+                      </span>
+                    ) : null}
                   </p>
                 </div>
               </div>
+
+              {yahooQuoteAge && sessionUsesLiveYahoo ? (
+                <p
+                  className={`mt-3 rounded-lg px-3 py-2 text-xs ring-1 ${
+                    yahooQuoteAge.ageMinutes >= 15
+                      ? "bg-amber-50 font-medium text-amber-900 ring-amber-200"
+                      : "bg-slate-50 text-slate-600 ring-slate-200"
+                  }`}
+                >
+                  Cours Yahoo · il y a {yahooQuoteAge.shortLabel}
+                  {yahooQuoteAge.ageMinutes >= 15
+                    ? " — écart possible vs Disnat ; actualise les cours."
+                    : " — la Séance utilise ce prix (pas le flux Disnat)."}
+                </p>
+              ) : null}
 
               <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                 <span>
@@ -378,10 +413,9 @@ export function PerformanceIndicatorCard({
                 {active.baselineDate ? (
                   <span>Réf. {active.baselineDate}</span>
                 ) : null}
-                {active.method === "live-quotes" && payload.quotesAsOf ? (
-                  <span>
-                    Cours{" "}
-                    {new Date(payload.quotesAsOf).toLocaleString("fr-CA", {
+                {yahooQuoteAge ? (
+                  <span className="tabular-nums">
+                    Yahoo {new Date(payload.quotesAsOf!).toLocaleString("fr-CA", {
                       dateStyle: "short",
                       timeStyle: "short",
                     })}
@@ -429,7 +463,7 @@ export function PerformanceIndicatorCard({
                       {formatGain(row.gainCad, true)}
                     </p>
                     <p className={`text-xs tabular-nums ${signedGainClass(row.gainPct)}`}>
-                      {formatGainPct(row.gainPct)}
+                      {formatGainPct(row.gainPct, row.annualized)}
                     </p>
                     {row.incomplete && row.gainCad !== null ? (
                       <span
