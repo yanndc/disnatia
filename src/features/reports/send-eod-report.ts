@@ -1,6 +1,9 @@
 import { render } from "@react-email/render";
 import { EodReportEmail } from "@/emails/eod-report-email";
-import { recomputeRecentDailyPortfolioValues } from "@/features/portfolio/backfill-market-history";
+import {
+  ensureDailyHoldingsUpToDate,
+  recomputeRecentDailyPortfolioValues,
+} from "@/features/portfolio/backfill-market-history";
 import { refreshLiveQuotesForLatestImport } from "@/features/portfolio/refresh-live-quotes";
 import { sendHtmlEmail, getEodReportTo } from "@/lib/email/resend-client";
 import {
@@ -19,6 +22,7 @@ export type RunEodReportResult =
   | { skipped: true; reason: string };
 
 export async function runEodReportJob(now = new Date()): Promise<RunEodReportResult> {
+  await ensureDailyHoldingsUpToDate(now);
   await refreshLiveQuotesForLatestImport({ recomputeSessionGains: true });
   await recomputeRecentDailyPortfolioValues(7, now);
   const sessionDate = eodReportSessionDate(now);

@@ -306,6 +306,45 @@ export async function recomputeDailyPortfolioValues(
   return upserted;
 }
 
+export type EnsureDailyHoldingsResult = {
+  projected: boolean;
+  reason?: "empty" | "stale";
+};
+
+/** Projette les holdings journaliers si la table est vide ou en retard sur la séance attendue. */
+export async function ensureDailyHoldingsUpToDate(
+  now = new Date(),
+): Promise<EnsureDailyHoldingsResult> {
+  const expectedSession = isoDateInToronto(referenceTradingSessionDay(now));
+
+  const [dailyCount, maxHoldingRow, txCount] = await Promise.all([
+    prisma.portfolioDailyHolding.count(),
+    prisma.portfolioDailyHolding.findFirst({
+      orderBy: { holdingDate: "desc" },
+      select: { holdingDate: true },
+    }),
+    prisma.portfolioTransactionLine.count(),
+  ]);
+
+  if (txCount === 0) return { projected: false };
+
+  const maxHoldingDate = maxHoldingRow?.holdingDate
+    ? isoDateFromDbDate(maxHoldingRow.holdingDate)
+    : null;
+
+  let reason: EnsureDailyHoldingsResult["reason"];
+  if (dailyCount === 0) {
+    reason = "empty";
+  } else if (!maxHoldingDate || maxHoldingDate < expectedSession) {
+    reason = "stale";
+  } else {
+    return { projected: false };
+  }
+
+  await projectHoldingsFromTransactions();
+  return { projected: true, reason };
+}
+
 /** Fenêtre glissante pour le cron EOD (séance du jour incluse). */
 export async function recomputeRecentDailyPortfolioValues(
   trailingTradingDays = 7,
@@ -337,13 +376,7 @@ export async function backfillMarketHistory(options?: {
   const ensureDailyHoldings = options?.ensureDailyHoldings ?? true;
 
   if (ensureDailyHoldings) {
-    const dailyCount = await prisma.portfolioDailyHolding.count();
-    if (dailyCount === 0) {
-      const txCount = await prisma.portfolioTransactionLine.count();
-      if (txCount > 0) {
-        await projectHoldingsFromTransactions();
-      }
-    }
+    await ensureDailyHoldingsUpToDate();
   }
 
   const coverageRanges = await resolveTickerCoverageRanges();

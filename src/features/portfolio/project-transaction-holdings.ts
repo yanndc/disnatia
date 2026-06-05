@@ -11,6 +11,8 @@ import {
   standardizeDisnatTickerMarketDots,
 } from "@/lib/market/disnat-ticker";
 import type { TxCategory } from "@/generated/prisma/enums";
+import { isoDateInToronto } from "@/lib/market/equity-session";
+import { parseIsoDateLocal } from "./daily-close-key";
 
 type ProjectableTransaction = {
   id: string;
@@ -447,7 +449,7 @@ async function replaceDailyHoldings(
   if (eventDays.length === 0) return 0;
 
   let cursor = dateOnlyUtc(fromDate);
-  const today = dateOnlyUtc(new Date());
+  const today = parseIsoDateLocal(isoDateInToronto(new Date()));
   const open = new Map<string, PositionState>();
   const rows: {
     id: string;
