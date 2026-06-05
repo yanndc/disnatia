@@ -3,9 +3,9 @@ import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
   isTradingDayDate,
+  previousTradingDayIso,
   referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
-  yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { quotesAreStale } from "@/features/portfolio/refresh-live-quotes";
 import { normalizeCurrency } from "@/lib/utils";
@@ -34,14 +34,19 @@ export type SessionTickerLists = {
   losers: SessionTickerRow[];
 };
 
+export type SessionTickerView = {
+  sessionDate: string;
+  sessionLabel: string;
+  lists: SessionTickerLists;
+};
+
+/** Nombre max de séances ouvrées navigables en arrière. */
+export const SESSION_TICKER_MAX_LOOKBACK_DAYS = 252;
+
 export type SessionTickerMiniReport = {
-  currentSessionDate: string;
-  currentSessionLabel: string;
-  previousSessionDate: string | null;
-  previousSessionLabel: string | null;
-  showPreviousSession: boolean;
-  current: SessionTickerLists;
-  previous: SessionTickerLists;
+  view: SessionTickerView;
+  maxSessionDate: string;
+  minSessionDate: string;
 };
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
@@ -285,7 +290,7 @@ async function aggregateFromDailyHoldings(
   return finalizeBuckets(buckets, usdToCad);
 }
 
-function parsePayloadClock(asOfNow: string): Date {
+export function parsePayloadClock(asOfNow: string): Date {
   if (asOfNow.includes("T")) {
     const d = new Date(asOfNow);
     if (!Number.isNaN(d.getTime())) return d;
@@ -296,56 +301,77 @@ function parsePayloadClock(asOfNow: string): Date {
   return local;
 }
 
-export async function buildSessionTickerMiniReportFromPayload(
+function resolveSessionLabel(
+  sessionDate: string,
+  now: Date,
+  useLive: boolean,
+): string {
+  const refSessionDate = referenceTradingSessionDayIso(now);
+  const yesterday = previousTradingDayIso(refSessionDate, 1);
+  const dayBeforeYesterday = previousTradingDayIso(refSessionDate, 2);
+
+  if (sessionDate === refSessionDate) {
+    if (useLive) return resolveDayPeriodLabels(now).label;
+    return "Dernière séance";
+  }
+  if (sessionDate === yesterday) return "Hier";
+  if (sessionDate === dayBeforeYesterday) return "Avant-hier";
+
+  const [y, m, d] = sessionDate.split("-").map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString("fr-CA", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Toronto",
+  });
+}
+
+function disnatAccountKeysFromPayload(payload: PerformanceIndicatorPayload): string[] {
+  return payload.accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
+}
+
+export async function buildSessionTickerViewForDate(
   payload: PerformanceIndicatorPayload,
-): Promise<SessionTickerMiniReport> {
-  const now = parsePayloadClock(payload.asOfNow);
-  const marketOpen = isEquityMarketSessionOpen(now);
-  const currentSessionDate = referenceTradingSessionDayIso(now);
-  const previousSessionDate = isoDateInToronto(yesterdayTradingSessionDay(now));
-  const { label: currentSessionLabel } = resolveDayPeriodLabels(now);
+  sessionDate: string,
+  now = parsePayloadClock(payload.asOfNow),
+): Promise<SessionTickerView> {
+  const refSessionDate = referenceTradingSessionDayIso(now);
+  const disnatAccountKeys = disnatAccountKeysFromPayload(payload);
+  const useLive =
+    sessionDate === refSessionDate && shouldUseLiveForCurrentSession(payload, now);
 
-  const disnatAccountKeys = payload.accounts
-    .filter((a) => !a.isExternal)
-    .map((a) => a.accountKey);
-
-  const useLiveForCurrent = shouldUseLiveForCurrentSession(payload, now);
-
-  const dailyCurrentRows = await aggregateFromDailyHoldings(
-    currentSessionDate,
+  const dailyRows = await aggregateFromDailyHoldings(
+    sessionDate,
     disnatAccountKeys,
     payload.dailyCloses,
     payload.usdToCad,
   );
 
-  const currentRows = useLiveForCurrent
+  const rows = useLive
     ? mergeSessionTickerRows(
         aggregateFromEnriched(payload.enrichedHoldings ?? [], payload.usdToCad),
-        dailyCurrentRows,
+        dailyRows,
       )
-    : dailyCurrentRows;
-
-  const previousRows = marketOpen
-    ? await aggregateFromDailyHoldings(
-        previousSessionDate,
-        disnatAccountKeys,
-        payload.dailyCloses,
-        payload.usdToCad,
-      )
-    : [];
-
-  const liveCurrentLabel =
-    marketOpen || currentSessionDate === isoDateInToronto(now)
-      ? currentSessionLabel
-      : "Dernière séance";
+    : dailyRows;
 
   return {
-    currentSessionDate,
-    currentSessionLabel: useLiveForCurrent ? liveCurrentLabel : "Dernière séance",
-    previousSessionDate: marketOpen ? previousSessionDate : null,
-    previousSessionLabel: marketOpen ? "Séance précédente" : null,
-    showPreviousSession: marketOpen,
-    current: splitGainersLosers(currentRows),
-    previous: splitGainersLosers(previousRows),
+    sessionDate,
+    sessionLabel: resolveSessionLabel(sessionDate, now, useLive),
+    lists: splitGainersLosers(rows),
   };
+}
+
+export async function buildSessionTickerMiniReportFromPayload(
+  payload: PerformanceIndicatorPayload,
+): Promise<SessionTickerMiniReport> {
+  const now = parsePayloadClock(payload.asOfNow);
+  const maxSessionDate = referenceTradingSessionDayIso(now);
+  const minSessionDate = previousTradingDayIso(
+    maxSessionDate,
+    SESSION_TICKER_MAX_LOOKBACK_DAYS,
+  );
+  const view = await buildSessionTickerViewForDate(payload, maxSessionDate, now);
+
+  return { view, maxSessionDate, minSessionDate };
 }
