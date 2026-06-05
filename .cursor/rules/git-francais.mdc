@@ -1,0 +1,24 @@
+---
+description: Messages de commit et PR en français
+alwaysApply: true
+---
+
+# Git — langue française
+
+Lors de la génération de messages de commit, de descriptions de pull request ou de tout texte lié à un `git push` :
+
+- Rédiger **en français** (titre et corps).
+- Conserver les préfixes conventionnels (`fix:`, `feat:`, `refactor:`, `chore:`, etc.) suivis d’un résumé en français.
+- Le corps du message explique le **pourquoi**, en français, en 1–2 phrases si nécessaire.
+
+Exemples :
+
+```
+fix: corriger le select Prisma dans diagnose-qty-vs-import
+
+accountName vit sur PortfolioAccount, pas sur PortfolioPosition — le build TypeScript échouait en prod.
+```
+
+```
+feat: ajouter le rapport de séance par titre
+```

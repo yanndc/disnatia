@@ -10,3 +10,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Ligne 1 = verdict ou action** (ex. « Oui c’est corrigé », « À faire : … »). L’utilisateur lit souvent seulement la fin ; mettre l’essentiel **au début**.
 - Aller droit au fait ; détails ou citations code **seulement si demandés**.
 - La langue de travail avec cet utilisateur est le **français** pour le dialogue (sauf demande contraire).
+
+## Git (commits et push)
+
+- **Messages de commit** : toujours en **français** (titre + corps si présent).
+- Préfixe conventionnel conservé : `fix:`, `feat:`, `refactor:`, etc., suivi d’un résumé en français.
+- **Descriptions de PR** : en français (résumé, plan de test).
+- Exemple : `fix: corriger le select Prisma dans diagnose-qty-vs-import`

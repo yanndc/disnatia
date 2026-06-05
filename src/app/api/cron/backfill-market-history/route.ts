@@ -4,7 +4,10 @@ import { backfillMarketHistory } from "@/features/portfolio/backfill-market-hist
 import {
   checkSessionDataIntegrity,
   notifySessionIntegrityFailure,
+  repairSessionDataForExpectedSession,
 } from "@/features/portfolio/session-data-integrity";
+
+export const maxDuration = 300;
 
 function verifyCronSecret(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -33,7 +36,11 @@ export async function POST(request: NextRequest) {
       recomputeSessionGainsDays: 60,
       ensureDailyHoldings: true,
     });
-    const integrity = await checkSessionDataIntegrity();
+    let integrity = await checkSessionDataIntegrity();
+    if (!integrity.ok) {
+      await repairSessionDataForExpectedSession();
+      integrity = await checkSessionDataIntegrity();
+    }
     if (!integrity.ok) {
       await notifySessionIntegrityFailure("cron:backfill-market-history", integrity).catch(
         () => {

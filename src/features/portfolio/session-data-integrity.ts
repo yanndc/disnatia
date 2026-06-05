@@ -1,7 +1,18 @@
 import { prisma } from "@/lib/db/prisma";
 import { sendHtmlEmail } from "@/lib/email/resend-client";
-import { referenceTradingSessionDay, isoDateInToronto } from "@/lib/market/equity-session";
-import { isoDateLocal, isoDateFromDbDate, parseIsoDateLocal } from "./daily-close-key";
+import {
+  referenceTradingSessionDay,
+  referenceTradingSessionDayIso,
+  isoDateInToronto,
+  previousTradingDay,
+} from "@/lib/market/equity-session";
+import { parseIsoDateLocal, isoDateFromDbDate } from "./daily-close-key";
+import {
+  ensureDailyHoldingsUpToDate,
+  recomputeDailyPortfolioValues,
+} from "./backfill-market-history";
+import { recomputeAndPersistSessionGains } from "./performance-session-gains";
+import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 
 export type SessionIntegrityCheck = {
   ok: boolean;
@@ -64,7 +75,7 @@ export function formatSessionIntegrityForUser(check: SessionIntegrityCheck): str
 }
 
 export async function checkSessionDataIntegrity(
-  expectedSessionDate = isoDateInToronto(referenceTradingSessionDay(new Date())),
+  expectedSessionDate = referenceTradingSessionDayIso(new Date()),
 ): Promise<SessionIntegrityCheck> {
   const day = parseIsoDateLocal(expectedSessionDate);
   const [
@@ -190,6 +201,33 @@ export async function checkSessionDataIntegrity(
       maxSessionGainDate,
     },
   };
+}
+
+/** Aligne holdings, valeurs journalières et gains de séance sur la séance attendue. */
+export async function repairSessionDataForExpectedSession(
+  now = new Date(),
+  trailingDays = 60,
+): Promise<void> {
+  await ensureDailyHoldingsUpToDate(now);
+
+  const sessionEnd = referenceTradingSessionDayIso(now);
+  const fromDate = isoDateInToronto(
+    previousTradingDay(parseIsoDateLocal(sessionEnd), trailingDays),
+  );
+  await recomputeDailyPortfolioValues(fromDate, sessionEnd);
+
+  const disnatAccountKeys = (
+    await prisma.portfolioAccountState.findMany({ select: { accountKey: true } })
+  ).map((row) => row.accountKey);
+  if (disnatAccountKeys.length === 0) return;
+
+  const fx = await getUsdCadRateNear(now);
+  await recomputeAndPersistSessionGains(
+    disnatAccountKeys,
+    fromDate,
+    sessionEnd,
+    fx?.usdToCad ?? null,
+  );
 }
 
 export async function assertSessionDataIntegrity(

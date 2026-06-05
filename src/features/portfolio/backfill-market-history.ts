@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
@@ -5,7 +6,13 @@ import {
   fetchYahooChartDailyCloses,
   pickYahooChartRange,
 } from "@/lib/market/yahoo-chart-closes";
-import { isoDateInToronto, previousTradingDay, referenceTradingSessionDay } from "@/lib/market/equity-session";
+import {
+  addCalendarDays,
+  isoDateInToronto,
+  previousTradingDay,
+  referenceTradingSessionDay,
+  referenceTradingSessionDayIso,
+} from "@/lib/market/equity-session";
 import { normalizeCurrency } from "@/lib/utils";
 import { projectHoldingsFromTransactions } from "./project-transaction-holdings";
 import { dailyCloseKey, parseIsoDateLocal, isoDateLocal, isoDateFromDbDate } from "./daily-close-key";
@@ -32,8 +39,8 @@ export type BackfillMarketHistoryResult = {
   message?: string;
 };
 
-async function resolveTickerCoverageRanges(): Promise<TickerCoverageRange[]> {
-  const today = isoDateInToronto(new Date());
+async function resolveTickerCoverageRanges(now = new Date()): Promise<TickerCoverageRange[]> {
+  const sessionEnd = referenceTradingSessionDayIso(now);
   const grouped = await prisma.portfolioDailyHolding.groupBy({
     by: ["ticker", "currency"],
     where: { quantity: { gt: 0 } },
@@ -47,7 +54,7 @@ async function resolveTickerCoverageRanges(): Promise<TickerCoverageRange[]> {
       currency: normalizeCurrency(row.currency),
       yahooSymbol: disnatTickerToYahooSymbol(row.ticker, row.currency),
       fromDate: isoDateFromDbDate(row._min.holdingDate!),
-      toDate: isoDateFromDbDate(row._max.holdingDate!) > today ? today : isoDateFromDbDate(row._max.holdingDate!),
+      toDate: sessionEnd,
     }));
   }
 
@@ -78,10 +85,83 @@ async function resolveTickerCoverageRanges(): Promise<TickerCoverageRange[]> {
       currency,
       yahooSymbol: disnatTickerToYahooSymbol(ticker, currency),
       fromDate,
-      toDate: today,
+      toDate: sessionEnd,
     });
   }
   return [...unique.values()];
+}
+
+/**
+ * Propage les holdings du dernier jour connu jusqu'à la séance attendue (sans rejouer
+ * toutes les transactions). Rapide et fiable pour les crons Vercel.
+ */
+export async function extendDailyHoldingsToExpectedSession(
+  now = new Date(),
+): Promise<boolean> {
+  const expectedSession = referenceTradingSessionDayIso(now);
+  const maxRow = await prisma.portfolioDailyHolding.findFirst({
+    orderBy: { holdingDate: "desc" },
+    select: { holdingDate: true },
+  });
+  if (!maxRow) return false;
+
+  const maxDateIso = isoDateFromDbDate(maxRow.holdingDate);
+  if (maxDateIso >= expectedSession) return false;
+
+  const sourceHoldings = await prisma.portfolioDailyHolding.findMany({
+    where: {
+      holdingDate: maxRow.holdingDate,
+      quantity: { gt: 0 },
+    },
+  });
+  if (sourceHoldings.length === 0) return false;
+
+  const rows: {
+    id: string;
+    holdingDate: Date;
+    accountKey: string;
+    accountName: string | null;
+    accountNumber: string | null;
+    ticker: string;
+    securityName: string | null;
+    currency: string;
+    quantity: number;
+    averageCost: number | null;
+    source: string;
+    updatedAt: Date;
+  }[] = [];
+
+  let cursorIso = maxDateIso;
+  while (cursorIso < expectedSession) {
+    cursorIso = addCalendarDays(cursorIso, 1);
+    const holdingDate = parseIsoDateLocal(cursorIso);
+    for (const h of sourceHoldings) {
+      rows.push({
+        id: randomUUID(),
+        holdingDate,
+        accountKey: h.accountKey,
+        accountName: h.accountName,
+        accountNumber: h.accountNumber,
+        ticker: h.ticker,
+        securityName: h.securityName,
+        currency: h.currency,
+        quantity: h.quantity,
+        averageCost: h.averageCost,
+        source: h.source,
+        updatedAt: new Date(),
+      });
+    }
+  }
+
+  const chunkSize = 500;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    await prisma.portfolioDailyHolding.createMany({
+      data: rows.slice(i, i + chunkSize),
+      skipDuplicates: true,
+    });
+  }
+
+  return rows.length > 0;
 }
 
 const RECENT_TRADING_DAYS_TO_CHECK = 14;
@@ -315,7 +395,7 @@ export type EnsureDailyHoldingsResult = {
 export async function ensureDailyHoldingsUpToDate(
   now = new Date(),
 ): Promise<EnsureDailyHoldingsResult> {
-  const expectedSession = isoDateInToronto(referenceTradingSessionDay(now));
+  const expectedSession = referenceTradingSessionDayIso(now);
 
   const [dailyCount, maxHoldingRow, txCount] = await Promise.all([
     prisma.portfolioDailyHolding.count(),
@@ -332,17 +412,32 @@ export async function ensureDailyHoldingsUpToDate(
     ? isoDateFromDbDate(maxHoldingRow.holdingDate)
     : null;
 
-  let reason: EnsureDailyHoldingsResult["reason"];
-  if (dailyCount === 0) {
-    reason = "empty";
-  } else if (!maxHoldingDate || maxHoldingDate < expectedSession) {
-    reason = "stale";
-  } else {
-    return { projected: false };
+  if (!maxHoldingDate || maxHoldingDate < expectedSession) {
+    if (dailyCount === 0) {
+      await projectHoldingsFromTransactions();
+      return { projected: true, reason: "empty" };
+    }
+
+    const extended = await extendDailyHoldingsToExpectedSession(now);
+    if (!extended) {
+      await projectHoldingsFromTransactions();
+      return { projected: true, reason: "stale" };
+    }
+
+    const afterMax = await prisma.portfolioDailyHolding.findFirst({
+      orderBy: { holdingDate: "desc" },
+      select: { holdingDate: true },
+    });
+    const afterIso = afterMax?.holdingDate
+      ? isoDateFromDbDate(afterMax.holdingDate)
+      : null;
+    if (!afterIso || afterIso < expectedSession) {
+      await projectHoldingsFromTransactions();
+    }
+    return { projected: true, reason: "stale" };
   }
 
-  await projectHoldingsFromTransactions();
-  return { projected: true, reason };
+  return { projected: false };
 }
 
 /** Fenêtre glissante pour le cron EOD (séance du jour incluse). */
@@ -350,12 +445,11 @@ export async function recomputeRecentDailyPortfolioValues(
   trailingTradingDays = 7,
   now = new Date(),
 ): Promise<number> {
-  const toDate = isoDateInToronto(now);
-  const fromDate = previousTradingDay(parseIsoDateLocal(toDate), trailingTradingDays);
-  return recomputeDailyPortfolioValues(
-    isoDateInToronto(fromDate),
-    toDate,
+  const toDate = referenceTradingSessionDayIso(now);
+  const fromDate = isoDateInToronto(
+    previousTradingDay(parseIsoDateLocal(toDate), trailingTradingDays),
   );
+  return recomputeDailyPortfolioValues(fromDate, toDate);
 }
 
 export async function backfillMarketHistory(options?: {
@@ -368,6 +462,7 @@ export async function backfillMarketHistory(options?: {
   recomputeSessionGainsDays?: number;
   ensureDailyHoldings?: boolean;
 }): Promise<BackfillMarketHistoryResult> {
+  const now = new Date();
   const force = options?.force ?? false;
   const recomputeDailyValues = options?.recomputeDailyValues ?? true;
   const recomputeDailyValuesDays = options?.recomputeDailyValuesDays;
@@ -376,10 +471,10 @@ export async function backfillMarketHistory(options?: {
   const ensureDailyHoldings = options?.ensureDailyHoldings ?? true;
 
   if (ensureDailyHoldings) {
-    await ensureDailyHoldingsUpToDate();
+    await ensureDailyHoldingsUpToDate(now);
   }
 
-  const coverageRanges = await resolveTickerCoverageRanges();
+  const coverageRanges = await resolveTickerCoverageRanges(now);
   if (coverageRanges.length === 0) {
     return {
       ok: true,
@@ -412,7 +507,7 @@ export async function backfillMarketHistory(options?: {
   }
 
   let dailyValuesUpserted = 0;
-  const globalTo = isoDateInToronto(new Date());
+  const globalTo = referenceTradingSessionDayIso(now);
   let globalFrom = coverageRanges.map((r) => r.fromDate).toSorted()[0]!;
   if (recomputeDailyValues) {
     if (recomputeDailyValuesDays != null && recomputeDailyValuesDays > 0) {

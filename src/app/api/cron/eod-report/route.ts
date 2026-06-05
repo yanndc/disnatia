@@ -7,6 +7,9 @@ import {
   eodReportSessionDate,
   runEodReportJob,
 } from "@/features/reports/send-eod-report";
+
+export const maxDuration = 300;
+
 function verifyCronSecret(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) return false;
@@ -22,6 +25,15 @@ function missingEnvReason(): string | null {
   return null;
 }
 
+function cronNowFromRequest(request: NextRequest): Date {
+  const sessionDateParam = request.nextUrl.searchParams.get("sessionDate")?.trim();
+  if (sessionDateParam && /^\d{4}-\d{2}-\d{2}$/.test(sessionDateParam)) {
+    // Après clôture Toronto (21:00 UTC ≈ 17:00 EDT)
+    return new Date(`${sessionDateParam}T21:00:00.000Z`);
+  }
+  return new Date();
+}
+
 export async function POST(request: NextRequest) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -32,10 +44,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ skipped: true, reason: envReason });
   }
 
-  const now = new Date();
-  const force =
-    process.env.NODE_ENV === "development" &&
-    request.nextUrl.searchParams.get("force") === "1";
+  const now = cronNowFromRequest(request);
+  const force = request.nextUrl.searchParams.get("force") === "1";
 
   const sessionDate = eodReportSessionDate(now);
 

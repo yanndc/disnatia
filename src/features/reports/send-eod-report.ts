@@ -13,6 +13,7 @@ import {
 import {
   checkSessionDataIntegrity,
   notifySessionIntegrityFailure,
+  repairSessionDataForExpectedSession,
 } from "@/features/portfolio/session-data-integrity";
 import { buildEodReportData } from "./eod-report-data";
 import { markEodReportSent } from "./eod-report-delivery";
@@ -26,7 +27,11 @@ export async function runEodReportJob(now = new Date()): Promise<RunEodReportRes
   await refreshLiveQuotesForLatestImport({ recomputeSessionGains: true });
   await recomputeRecentDailyPortfolioValues(7, now);
   const sessionDate = eodReportSessionDate(now);
-  const integrity = await checkSessionDataIntegrity(sessionDate);
+  let integrity = await checkSessionDataIntegrity(sessionDate);
+  if (!integrity.ok) {
+    await repairSessionDataForExpectedSession(now, 7);
+    integrity = await checkSessionDataIntegrity(sessionDate);
+  }
   if (!integrity.ok) {
     await notifySessionIntegrityFailure("cron:eod-report", integrity).catch(() => {
       /* best effort; l'erreur principale doit remonter */

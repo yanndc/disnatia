@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { after, connection } from "next/server";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppSerwistProvider } from "@/components/pwa/serwist-provider";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
 import "./globals.css";
 
@@ -15,8 +16,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DisnatIA",
+  applicationName: "DisnatIA",
+  title: {
+    default: "DisnatIA",
+    template: "%s | DisnatIA",
+  },
   description: "Tableau de bord IA pour portefeuille Disnat",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DisnatIA",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
 };
 
 export default async function RootLayout({
@@ -34,7 +51,7 @@ export default async function RootLayout({
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen bg-slate-50 font-sans text-slate-950 antialiased">
-        {children}
+        <AppSerwistProvider>{children}</AppSerwistProvider>
       </body>
     </html>
   );
