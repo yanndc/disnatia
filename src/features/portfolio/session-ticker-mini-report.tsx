@@ -4,12 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatCurrencyDetailed } from "@/lib/utils";
+import { cn, formatCurrency, formatCurrencyDetailed } from "@/lib/utils";
 import {
   nextTradingDayIso,
   previousTradingDayIso,
 } from "@/lib/market/equity-session";
-import { signedGainClass } from "./performance-indicator-logic";
+import { signedGainBg, signedGainClass } from "./performance-indicator-logic";
 import type {
   SessionTickerMiniReport,
   SessionTickerRow,
@@ -204,6 +204,10 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
     void loadSession(nextTradingDayIso(view.sessionDate));
   }
 
+  const allRows = [...view.lists.gainers, ...view.lists.losers];
+  const sessionTotalCad = sumDayGainCad(allRows);
+  const sessionTitleCount = allRows.length;
+
   return (
     <Card className="border-slate-200 shadow-sm">
       <CardHeader className="pb-3">
@@ -227,35 +231,62 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-center gap-2 sm:justify-start">
-          <Button
-            type="button"
-            variant="secondary"
-            className="size-9 shrink-0 px-0"
-            onClick={goBack}
-            disabled={!canGoBack || loading}
-            aria-label="Séance précédente"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center justify-center gap-2 sm:justify-start">
+            <Button
+              type="button"
+              variant="secondary"
+              className="size-9 shrink-0 px-0"
+              onClick={goBack}
+              disabled={!canGoBack || loading}
+              aria-label="Séance précédente"
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
 
-          <div
-            className={`min-w-0 flex-1 text-center sm:flex-initial sm:text-left ${loading ? "opacity-60" : ""}`}
-          >
-            <p className="text-sm font-semibold text-slate-800">{view.sessionLabel}</p>
-            <p className="text-xs text-slate-500">{formatSessionDate(view.sessionDate)}</p>
+            <div
+              className={`min-w-0 text-center sm:text-left ${loading ? "opacity-60" : ""}`}
+            >
+              <p className="text-sm font-semibold text-slate-800">{view.sessionLabel}</p>
+              <p className="text-xs text-slate-500">{formatSessionDate(view.sessionDate)}</p>
+            </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              className="size-9 shrink-0 px-0"
+              onClick={goForward}
+              disabled={!canGoForward || loading}
+              aria-label="Séance suivante"
+            >
+              <ChevronRight className="size-4" />
+            </Button>
           </div>
 
-          <Button
-            type="button"
-            variant="secondary"
-            className="size-9 shrink-0 px-0"
-            onClick={goForward}
-            disabled={!canGoForward || loading}
-            aria-label="Séance suivante"
+          <div
+            className={cn(
+              "shrink-0 rounded-xl px-3 py-2 ring-1 ring-slate-200",
+              signedGainBg(sessionTitleCount > 0 ? sessionTotalCad : null),
+              loading ? "opacity-60" : "",
+            )}
           >
-            <ChevronRight className="size-4" />
-          </Button>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Total séance
+            </p>
+            <p
+              className={cn(
+                "text-lg font-semibold tabular-nums leading-tight",
+                signedGainClass(sessionTitleCount > 0 ? sessionTotalCad : null),
+              )}
+            >
+              {sessionTitleCount > 0 ? formatCurrency(sessionTotalCad, "CAD") : "—"}
+            </p>
+            {sessionTitleCount > 0 ? (
+              <p className="text-[10px] text-slate-500">
+                {sessionTitleCount} titre{sessionTitleCount > 1 ? "s" : ""}
+              </p>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
       <CardContent className={loading ? "pointer-events-none opacity-60" : undefined}>
