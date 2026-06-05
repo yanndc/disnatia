@@ -168,8 +168,14 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
         maxSessionDate: string;
         minSessionDate: string;
       };
-      if (data.ok) {
-        setView(data.view);
+      if (data.ok && data.view) {
+        setView({
+          ...data.view,
+          lists: {
+            gainers: data.view.lists?.gainers ?? [],
+            losers: data.view.lists?.losers ?? [],
+          },
+        });
         setMaxSessionDate(data.maxSessionDate);
         setMinSessionDate(data.minSessionDate);
       }
@@ -181,10 +187,12 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
   }, []);
 
   useEffect(() => {
-    setView(report.view);
-    setMaxSessionDate(report.maxSessionDate);
-    setMinSessionDate(report.minSessionDate);
-  }, [report]);
+    if (view.sessionDate === report.maxSessionDate) {
+      setView(report.view);
+      setMaxSessionDate(report.maxSessionDate);
+      setMinSessionDate(report.minSessionDate);
+    }
+  }, [report, view.sessionDate]);
 
   function goBack() {
     if (!canGoBack || loading) return;
@@ -195,8 +203,6 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
     if (!canGoForward || loading) return;
     void loadSession(nextTradingDayIso(view.sessionDate));
   }
-
-  const hasAny = view.lists.gainers.length + view.lists.losers.length > 0;
 
   return (
     <Card className="border-slate-200 shadow-sm">
@@ -252,15 +258,15 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        {!hasAny ? (
-          <p className="text-sm text-slate-500">
-            Aucune variation pour cette séance. Navigue vers une autre date ou actualise les
-            cours pour alimenter l&apos;historique.
+      <CardContent className={loading ? "pointer-events-none opacity-60" : undefined}>
+        <SessionBlock view={view} />
+        {!loading &&
+        view.lists.gainers.length + view.lists.losers.length === 0 ? (
+          <p className="mt-3 text-center text-xs text-slate-400">
+            Aucune variation enregistrée pour cette séance — historique de clôtures incomplet ou
+            positions inchangées.
           </p>
-        ) : (
-          <SessionBlock view={view} />
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

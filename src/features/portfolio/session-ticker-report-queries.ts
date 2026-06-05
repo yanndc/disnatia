@@ -9,6 +9,10 @@ import {
 } from "@/lib/market/equity-session";
 import { quotesAreStale } from "@/features/portfolio/refresh-live-quotes";
 import { normalizeCurrency } from "@/lib/utils";
+import {
+  ensureDailyClosesPersistedForPairs,
+  loadDailyCloseMap,
+} from "./daily-close-prices";
 import { parseIsoDateLocal } from "./daily-close-key";
 import {
   closeOnOrBefore,
@@ -250,8 +254,20 @@ async function aggregateFromDailyHoldings(
 ): Promise<SessionTickerRow[]> {
   if (!isTradingDayDate(sessionDate) || accountKeys.length === 0) return [];
 
-  const holdings = await loadHoldingsForSessionDate(sessionDate, accountKeys);
-  if (holdings.length === 0) return [];
+  const priorSessionDate = previousTradingDayIso(sessionDate, 1);
+  const [holdings, priorHoldings] = await Promise.all([
+    loadHoldingsForSessionDate(sessionDate, accountKeys),
+    loadHoldingsForSessionDate(priorSessionDate, accountKeys),
+  ]);
+  if (holdings.length === 0 && priorHoldings.length === 0) return [];
+
+  const qtyAtOpen = new Map<string, number>();
+  for (const h of priorHoldings) {
+    const ticker = h.ticker.toUpperCase();
+    const currency = normalizeCurrency(h.currency);
+    const key = `${ticker}|${currency}`;
+    qtyAtOpen.set(key, (qtyAtOpen.get(key) ?? 0) + h.quantity);
+  }
 
   const buckets = new Map<string, TickerBucket>();
 
@@ -268,12 +284,15 @@ async function aggregateFromDailyHoldings(
     const baseClose = series.get(priorDate);
     if (baseClose == null || baseClose <= 0) continue;
 
-    const gainNative = h.quantity * (endClose - baseClose);
+    const quantity = qtyAtOpen.get(seriesKey) ?? h.quantity;
+    if (quantity <= 0) continue;
+
+    const gainNative = quantity * (endClose - baseClose);
     if (gainNative === 0) continue;
 
     const existing = buckets.get(seriesKey);
     if (existing) {
-      existing.quantity += h.quantity;
+      existing.quantity += quantity;
       existing.gainNative += gainNative;
       existing.securityName = pickSecurityName(existing.securityName, h.securityName);
     } else {
@@ -281,7 +300,7 @@ async function aggregateFromDailyHoldings(
         ticker,
         securityName: (h.securityName ?? "").trim() || ticker,
         currency,
-        quantity: h.quantity,
+        quantity,
         gainNative,
       });
     }
@@ -331,6 +350,41 @@ function disnatAccountKeysFromPayload(payload: PerformanceIndicatorPayload): str
   return payload.accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
 }
 
+function holdingPairsFromPayload(payload: PerformanceIndicatorPayload) {
+  return [
+    ...new Map(
+      (payload.holdings ?? []).map((h) => [
+        `${h.ticker}|${h.currency}`,
+        { ticker: h.ticker, currency: h.currency },
+      ]),
+    ).values(),
+  ];
+}
+
+/** Charge assez d'historique de clôtures pour calculer le P&L d'une séance passée. */
+async function resolveDailyClosesForSessionDate(
+  payload: PerformanceIndicatorPayload,
+  sessionDate: string,
+): Promise<Record<string, number>> {
+  const pairs = holdingPairsFromPayload(payload);
+  const merged: Record<string, number> = { ...payload.dailyCloses };
+  if (pairs.length === 0) return merged;
+
+  const priorDate = previousTradingDayIso(sessionDate, 1);
+  const fromDate = previousTradingDayIso(sessionDate, 12);
+  const todayIso = isoDateInToronto(new Date());
+  const toDate = sessionDate > todayIso ? todayIso : sessionDate;
+
+  await ensureDailyClosesPersistedForPairs(pairs, [sessionDate, priorDate]);
+
+  const closeMap = await loadDailyCloseMap(pairs, fromDate, toDate);
+  for (const [key, value] of closeMap) {
+    merged[key] = value;
+  }
+
+  return merged;
+}
+
 export async function buildSessionTickerViewForDate(
   payload: PerformanceIndicatorPayload,
   sessionDate: string,
@@ -341,10 +395,14 @@ export async function buildSessionTickerViewForDate(
   const useLive =
     sessionDate === refSessionDate && shouldUseLiveForCurrentSession(payload, now);
 
+  const dailyCloses = useLive
+    ? payload.dailyCloses
+    : await resolveDailyClosesForSessionDate(payload, sessionDate);
+
   const dailyRows = await aggregateFromDailyHoldings(
     sessionDate,
     disnatAccountKeys,
-    payload.dailyCloses,
+    dailyCloses,
     payload.usdToCad,
   );
 
