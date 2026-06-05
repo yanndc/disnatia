@@ -23,3 +23,16 @@ select,
 textarea {
   font: inherit;
 }
+
+@keyframes market-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.market-ticker-track {
+  animation: market-ticker-scroll 45s linear infinite;
+}

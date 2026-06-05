@@ -10,6 +10,7 @@ import { getPostgresDeployHint } from "@/lib/db/postgres-deploy-hint";
 import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
 import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
 import { TopPositionsKpiCard } from "@/features/portfolio/top-positions-kpi-card";
+import { MarketIndicesTicker } from "@/features/market/market-indices-ticker";
 import { SessionTickerMiniReport } from "@/features/portfolio/session-ticker-mini-report";
 import { buildSessionTickerMiniReportFromPayload } from "@/features/portfolio/session-ticker-report-queries";
 import { formatCurrency, formatPercent } from "@/lib/utils";
@@ -121,6 +122,8 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-8">
+      <MarketIndicesTicker />
+
       <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-950 shadow-sm">
         <div className="relative isolate p-6 sm:p-8">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(5,150,105,0.06),transparent_30%)]" />
