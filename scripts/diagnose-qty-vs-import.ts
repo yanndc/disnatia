@@ -14,11 +14,11 @@ async function main() {
       positions: {
         select: {
           accountNumber: true,
-          accountName: true,
           currency: true,
           ticker: true,
           quantity: true,
           marketValue: true,
+          account: { select: { accountName: true } },
         },
       },
     },
@@ -31,7 +31,7 @@ async function main() {
 
   const importByKey = new Map<string, { qty: number; mv: number }>();
   for (const p of latestImport.positions) {
-    const key = `${makeAccountKey(p.accountName, p.currency, p.accountNumber ?? null)}|${p.ticker.toUpperCase()}|${normalizeCurrency(p.currency)}`;
+    const key = `${makeAccountKey(p.account?.accountName ?? "", p.currency, p.accountNumber ?? null)}|${p.ticker.toUpperCase()}|${normalizeCurrency(p.currency)}`;
     const cur = importByKey.get(key) ?? { qty: 0, mv: 0 };
     cur.qty += p.quantity;
     cur.mv += p.marketValue;
