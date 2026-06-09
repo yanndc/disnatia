@@ -20,8 +20,8 @@ export default function Home() {
         <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
           <Link href="/" className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
             <DisnatiaLogo className="h-10 w-auto shrink-0 text-white sm:h-11" />
-            <p className="text-xs text-slate-400 sm:max-w-[14rem] sm:leading-snug">
-              Portefeuille Disnat intelligent (DisnatIA)
+            <p className="text-xs text-slate-400 sm:max-w-[18rem] sm:leading-snug">
+              Suivi de portefeuilles avec intelligence artificielle
             </p>
           </Link>
           <Link
