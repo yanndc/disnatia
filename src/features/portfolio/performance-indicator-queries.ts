@@ -34,6 +34,7 @@ import {
   loadPersistedSessionGainsByAccount,
   recomputeAndPersistSessionGains,
 } from "./performance-session-gains";
+import { assessSessionDataHealth } from "./performance-facts-health";
 import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
@@ -65,7 +66,6 @@ async function ensureFreshQuotesDuringSession(now = new Date()): Promise<void> {
 async function ensureRecentSessionGainsPersisted(
   accountKeys: string[],
   existingDates: Set<string>,
-  usdToCad: number | null,
   now = new Date(),
 ): Promise<void> {
   if (accountKeys.length === 0) return;
@@ -80,11 +80,9 @@ async function ensureRecentSessionGainsPersisted(
     subDays(parseIsoDateLocal(earliestMissing), 7),
   );
   const to = isoDateInToronto(now);
-  await recomputeAndPersistSessionGains(accountKeys, from, to, usdToCad).catch(
-    (cause) => {
-      console.warn("[performance] recomputeAndPersistSessionGains", cause);
-    },
-  );
+  await recomputeAndPersistSessionGains(accountKeys, from, to).catch((cause) => {
+    console.warn("[performance] recomputeAndPersistSessionGains", cause);
+  });
 }
 
 function toCad(value: number, currency: string, usdToCad: number | null): number {
@@ -412,7 +410,6 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   await ensureRecentSessionGainsPersisted(
     disnatAccountKeys,
     existingSessionDates,
-    usdToCad,
     now,
   );
 
@@ -420,7 +417,6 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     disnatAccountKeys,
     sessionGainFrom,
     sessionGainTo,
-    usdToCad,
   );
 
   const sessionGainsByDate = disnatAccountKeys
@@ -436,16 +432,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   const sessionGainsByDateList = [...sessionGainsByDate.entries()]
     .map(([date, v]) => ({ date, gainCad: v.gainCad, priorCad: v.priorCad }))
     .toSorted((a, b) => a.date.localeCompare(b.date));
-  const sessionDataHealth = {
-    ok: sessionGainsByDateList.length > 0,
-    message:
-      sessionGainsByDateList.length > 0
-        ? null
-        : "Aucune séance persistée dans portfolio_daily_account_session_gains. Recalcul requis avant affichage fiable.",
-    persistedDays: sessionGainsByDateList.length,
-    firstDate: sessionGainsByDateList[0]?.date ?? null,
-    lastDate: sessionGainsByDateList.at(-1)?.date ?? null,
-  };
+  const sessionDataHealth = assessSessionDataHealth(sessionGainsByDateList, now);
 
   for (const s of snapshots) {
     yearSet.add(Number(s.asOf.slice(0, 4)));

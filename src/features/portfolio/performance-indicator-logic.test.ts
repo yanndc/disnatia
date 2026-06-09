@@ -190,8 +190,19 @@ describe("resolveSessionChainGainPct", () => {
 });
 
 describe("computePeriodResult", () => {
-  test("avant 9h30 : séance « — », précédente = clôture de la veille (pas positions live)", () => {
+  test("avant 9h30 : séance « — », précédente = gains persistés (pas positions live)", () => {
     const payload = mockPayload({
+      sessionGainsByAccount: {
+        "ACC|CAD": [{ date: "2026-06-01", gainCad: 800, priorCad: 90_000 }],
+        "ACC2|CAD": [{ date: "2026-06-01", gainCad: 700, priorCad: 40_000 }],
+      },
+      sessionDataHealth: {
+        ok: true,
+        message: null,
+        persistedDays: 1,
+        firstDate: "2026-06-01",
+        lastDate: "2026-06-01",
+      },
       historyPoints: [
         {
           accountKey: "ACC|CAD",
@@ -264,11 +275,23 @@ describe("computePeriodResult", () => {
     assert.equal(day.method, "unavailable");
     assert.ok((prec.gainCad ?? 0) > 0);
     assert.ok((prec.gainCad ?? 0) < 5_000, "ne doit pas utiliser les positions live du matin");
-    assert.notEqual(day.gainCad, prec.gainCad);
+    assert.equal(prec.gainCad, 1_500);
   });
 
   test("Préc. : complet malgré compte vide et historique figé 2024", () => {
     const payload = mockPayload({
+      sessionGainsByAccount: {
+        "ACC|CAD": [{ date: "2026-06-02", gainCad: 1_000, priorCad: 90_000 }],
+        "STALE|CAD": [],
+        "EMPTY|CAD": [],
+      },
+      sessionDataHealth: {
+        ok: true,
+        message: null,
+        persistedDays: 1,
+        firstDate: "2026-06-02",
+        lastDate: "2026-06-02",
+      },
       accounts: [
         {
           accountKey: "ACC|CAD",
@@ -358,18 +381,25 @@ describe("computePeriodResult", () => {
     assert.ok(Math.abs((prec.gainCad ?? 0) - 1_000) < 1);
   });
 
-  test("depuis le début : gain = Σ gains de séance, % pondéré-dollars borné", () => {
-    const positionsCad = 237_400;
+  test("depuis le début : gain = Σ séances, % via Dietz/TWR", () => {
+    const positionsCad = 203_000;
     const payload = mockPayload({
-      // ACC : deux séances (gain 1 000 + 2 000), capital moyen ~90 500.
       asOfNow: "2026-05-29T22:00:00",
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-04-28",
+          totalValueNative: 200_000,
+          currency: "CAD",
+        },
+      ],
       currentByAccount: {
         "ACC|CAD": {
           totalCad: positionsCad,
           positionsCad,
           cashCad: 0,
           dayGainCad: 500,
-          dayPriorCad: 236_899,
+          dayPriorCad: 202_500,
         },
         "ACC2|CAD": {
           totalCad: 0,
@@ -393,10 +423,8 @@ describe("computePeriodResult", () => {
       "all",
     );
 
-    // Gain = somme des P&L de séance (insensible aux cotisations), pas Δ valeur titres.
     assert.ok(Math.abs((all.gainCad ?? 0) - 3_000) < 1);
-    // Capital moyen ~90 500 → ~3,3 %, jamais des centaines de %.
-    assert.ok((all.gainPct ?? 0) > 0 && (all.gainPct ?? 0) < 50);
+    assert.ok((all.gainPct ?? 0) > 0 && (all.gainPct ?? 0) < 10);
     assert.equal(all.annualized, false);
   });
 
@@ -479,8 +507,22 @@ describe("computePeriodResult", () => {
     assert.equal(month.gainCad, null);
   });
 
-  test("depuis le début : pas d alerte, baseline = 1re séance persistée", () => {
+  test("depuis le début : pas d alerte, baseline Dietz = historique titres", () => {
     const payload = mockPayload({
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2022-03-20",
+          totalValueNative: 50_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2022-03-20",
+          totalValueNative: 40_000,
+          currency: "CAD",
+        },
+      ],
       sessionGainsByAccount: {
         "ACC|CAD": [
           { date: "2022-03-21", gainCad: 100, priorCad: 50_000 },
@@ -492,6 +534,22 @@ describe("computePeriodResult", () => {
         ],
       },
       asOfNow: "2026-05-29T22:00:00",
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 91_000,
+          positionsCad: 91_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+        "ACC2|CAD": {
+          totalCad: 40_500,
+          positionsCad: 40_500,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+      },
     });
     const all = computePeriodResult(
       payload,
@@ -506,8 +564,7 @@ describe("computePeriodResult", () => {
     );
     assert.equal(all.incomplete, false);
     assert.equal(all.note, null);
-    assert.equal(all.baselineDate, "2022-03-21");
-    // Span > 1 an → rendement annualisé.
+    assert.equal(all.baselineDate, "2022-03-20");
     assert.equal(all.annualized, true);
   });
 

@@ -1,0 +1,192 @@
+import type {
+  PerformanceCashFlow,
+  PerformanceSessionGain,
+} from "./performance-indicator-types";
+import { daysBetweenIso } from "./performance-money-weighted";
+
+/** Seuil au-delà duquel le rendement cumulé est annualisé (comme Desjardins). */
+const ANNUALIZE_MIN_SPAN_DAYS = 366;
+
+const FLOW_CATEGORIES = new Set<PerformanceCashFlow["txCategory"]>([
+  "CONTRIBUTION",
+  "TRANSFER_IN",
+  "TRANSFER_OUT",
+  "INTERNAL_TRANSFER",
+]);
+
+export type PeriodReturnAlgorithm = "session-single" | "modified-dietz" | "twr";
+
+export type PeriodReturnPercent = {
+  gainPct: number | null;
+  baselineCad: number | null;
+  annualized: boolean;
+  algorithm: PeriodReturnAlgorithm;
+};
+
+export function annualizeReturnDecimal(
+  cumulative: number,
+  spanDays: number,
+): { pct: number; annualized: boolean } {
+  const annualized = spanDays > ANNUALIZE_MIN_SPAN_DAYS && cumulative > -1;
+  const pct = annualized
+    ? (Math.pow(1 + cumulative, 365 / spanDays) - 1) * 100
+    : cumulative * 100;
+  return { pct, annualized };
+}
+
+/** TWR : ∏(1 + gain_j / prior_j) − 1 sur les séances de la période. */
+export function computeTwrFromSessions(
+  sessions: PerformanceSessionGain[],
+  periodEndIso: string,
+): PeriodReturnPercent {
+  if (sessions.length === 0) {
+    return {
+      gainPct: null,
+      baselineCad: null,
+      annualized: false,
+      algorithm: "twr",
+    };
+  }
+
+  if (sessions.length === 1) {
+    const s = sessions[0]!;
+    if (s.priorCad > 0 && Number.isFinite(s.gainCad)) {
+      return {
+        gainPct: (s.gainCad / s.priorCad) * 100,
+        baselineCad: s.priorCad,
+        annualized: false,
+        algorithm: "session-single",
+      };
+    }
+  }
+
+  let product = 1;
+  let used = 0;
+  for (const s of sessions) {
+    if (s.priorCad > 0 && Number.isFinite(s.gainCad)) {
+      product *= 1 + s.gainCad / s.priorCad;
+      used++;
+    }
+  }
+  if (used === 0) {
+    return {
+      gainPct: null,
+      baselineCad: null,
+      annualized: false,
+      algorithm: "twr",
+    };
+  }
+
+  const cumulative = product - 1;
+  const firstDate = sessions[0]!.date;
+  const spanDays = Math.max(1, daysBetweenIso(firstDate, periodEndIso));
+  const { pct, annualized } = annualizeReturnDecimal(cumulative, spanDays);
+  const avgPrior =
+    sessions.reduce((sum, s) => sum + (s.priorCad > 0 ? s.priorCad : 0), 0) /
+    used;
+
+  return {
+    gainPct: pct,
+    baselineCad: avgPrior > 0 ? avgPrior : null,
+    annualized,
+    algorithm: "twr",
+  };
+}
+
+/** Flux externes pondérés pour Modified Dietz (poids = fraction de période restante). */
+export function weightedExternalFlowsForDietz(
+  flows: PerformanceCashFlow[],
+  accountKeys: string[],
+  periodStart: string,
+  periodEnd: string,
+): { sumFlows: number; weightedFlows: number } {
+  const keySet = new Set(accountKeys);
+  const spanDays = Math.max(1, daysBetweenIso(periodStart, periodEnd));
+  let sumFlows = 0;
+  let weightedFlows = 0;
+
+  for (const f of flows) {
+    if (!keySet.has(f.accountKey)) continue;
+    if (!FLOW_CATEGORIES.has(f.txCategory)) continue;
+    if (f.tradeDate < periodStart || f.tradeDate > periodEnd) continue;
+    sumFlows += f.amountCad;
+    const weight = daysBetweenIso(f.tradeDate, periodEnd) / spanDays;
+    weightedFlows += weight * f.amountCad;
+  }
+
+  return { sumFlows, weightedFlows };
+}
+
+/**
+ * Modified Dietz : (EMV − BMV − ΣCF) / (BMV + Σ w_i × CF_i).
+ * Aligné sur les écrans Disnat (rendement ajusté des apports/retraits).
+ */
+export function computeModifiedDietzReturn(
+  bmv: number,
+  emv: number,
+  sumFlows: number,
+  weightedFlows: number,
+  periodStart: string,
+  periodEnd: string,
+): PeriodReturnPercent {
+  const denominator = bmv + weightedFlows;
+  if (!(denominator > 0) || !Number.isFinite(emv) || !Number.isFinite(bmv)) {
+    return {
+      gainPct: null,
+      baselineCad: null,
+      annualized: false,
+      algorithm: "modified-dietz",
+    };
+  }
+
+  const numerator = emv - bmv - sumFlows;
+  const cumulative = numerator / denominator;
+  const spanDays = Math.max(1, daysBetweenIso(periodStart, periodEnd));
+  const { pct, annualized } = annualizeReturnDecimal(cumulative, spanDays);
+
+  return {
+    gainPct: pct,
+    baselineCad: denominator,
+    annualized,
+    algorithm: "modified-dietz",
+  };
+}
+
+/**
+ * Résout le % de période : Dietz (Disnat) si BMV/EMV disponibles, sinon TWR.
+ * Le gain $ reste Σ session_gains (appelant).
+ */
+export function resolvePeriodReturnPercent(params: {
+  sessions: PerformanceSessionGain[];
+  periodStart: string;
+  periodEnd: string;
+  bmv: number | null;
+  emv: number | null;
+  flows: PerformanceCashFlow[];
+  accountKeys: string[];
+}): PeriodReturnPercent {
+  if (params.sessions.length === 1) {
+    const single = computeTwrFromSessions(params.sessions, params.periodEnd);
+    if (single.gainPct != null) return single;
+  }
+
+  if (params.bmv != null && params.emv != null && params.bmv > 0) {
+    const { sumFlows, weightedFlows } = weightedExternalFlowsForDietz(
+      params.flows,
+      params.accountKeys,
+      params.periodStart,
+      params.periodEnd,
+    );
+    const dietz = computeModifiedDietzReturn(
+      params.bmv,
+      params.emv,
+      sumFlows,
+      weightedFlows,
+      params.periodStart,
+      params.periodEnd,
+    );
+    if (dietz.gainPct != null) return dietz;
+  }
+
+  return computeTwrFromSessions(params.sessions, params.periodEnd);
+}

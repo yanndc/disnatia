@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
-import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import {
   fetchYahooChartDailyCloses,
@@ -532,12 +531,10 @@ export async function backfillMarketHistory(options?: {
       await prisma.portfolioAccountState.findMany({ select: { accountKey: true } })
     ).map((row) => row.accountKey);
     if (disnatAccountKeys.length > 0) {
-      const fx = await getUsdCadRateNear(new Date());
       const wrote = await recomputeAndPersistSessionGains(
         disnatAccountKeys,
         gainsFrom,
         globalTo,
-        fx?.usdToCad ?? null,
       );
       sessionGainsUpserted = wrote.rowsWritten;
     }

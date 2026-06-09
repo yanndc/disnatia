@@ -9,6 +9,8 @@
     "lint": "eslint",
     "icons": "node scripts/generate-icons.cjs",
     "test": "npx tsx --test src/features/portfolio/**/*.test.ts",
+    "test:performance": "npx tsx --test src/features/portfolio/performance-*.test.ts src/features/portfolio/performance-return-disnat.test.ts src/features/portfolio/desjardins-day-pnl.test.ts",
+    "rebuild:performance": "tsx scripts/rebuild-performance-facts.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",

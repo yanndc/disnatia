@@ -12,7 +12,6 @@ import {
   recomputeDailyPortfolioValues,
 } from "./backfill-market-history";
 import { recomputeAndPersistSessionGains } from "./performance-session-gains";
-import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 
 export type SessionIntegrityCheck = {
   ok: boolean;
@@ -221,12 +220,10 @@ export async function repairSessionDataForExpectedSession(
   ).map((row) => row.accountKey);
   if (disnatAccountKeys.length === 0) return;
 
-  const fx = await getUsdCadRateNear(now);
   await recomputeAndPersistSessionGains(
     disnatAccountKeys,
     fromDate,
     sessionEnd,
-    fx?.usdToCad ?? null,
   );
 }
 

@@ -152,15 +152,9 @@ export async function refreshLiveQuotesForLatestImport(
     await prisma.portfolioAccountState.findMany({ select: { accountKey: true } })
   ).map((a) => a.accountKey);
   if (recomputeSessionGains && accountKeys.length > 0 && quotesUpserted > 0) {
-    const fx = await getUsdCadRateNear(now);
     const to = isoDateInToronto(now);
     const from = isoDateInToronto(subDays(now, 45));
-    await recomputeAndPersistSessionGains(
-      accountKeys,
-      from,
-      to,
-      fx?.usdToCad ?? null,
-    );
+    await recomputeAndPersistSessionGains(accountKeys, from, to);
   }
 
   const priorDay = priorSessionDateIso(now);

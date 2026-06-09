@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
 import {
+  loadUsdCadRateMap,
+  usdCadRateOnDate,
+} from "@/lib/fx/usd-cad-rate-map";
+import {
   isTradingDayDate,
   previousTradingDay,
   previousTradingDayIso,
@@ -11,6 +15,7 @@ import type { PerformanceSessionGain } from "./performance-indicator-types";
 
 const ACCOUNT_DATE_KEY_SEP = "\u001F";
 const POSITION_DATE_KEY_SEP = "\u001F";
+const SESSION_GAIN_SOURCE = "holdings_closes_v2";
 
 function positionDateKey(
   accountKey: string,
@@ -36,10 +41,21 @@ export function sessionGainFromPriorQuantity(
   };
 }
 
-function toCad(value: number, currency: string, usdToCad: number | null): number {
+function toCadOnSessionDate(
+  value: number,
+  currency: string,
+  sessionDate: string,
+  rateMap: Map<string, number>,
+  missingFxDates: Set<string>,
+): number {
   const cur = normalizeCurrency(currency);
-  if (cur === "USD") return usdToCad !== null ? value * usdToCad : value;
-  return value;
+  if (cur === "CAD") return value;
+  const rate = usdCadRateOnDate(rateMap, sessionDate);
+  if (rate == null || !(rate > 0)) {
+    missingFxDates.add(sessionDate);
+    return Number.NaN;
+  }
+  return value * rate;
 }
 
 function closeOnOrBefore(
@@ -72,14 +88,19 @@ function priorCloseDateForSeries(
   return null;
 }
 
-/** Recalcule et persiste le P&L titres par compte / séance. */
+/** Valeurs persistées en CAD (gainNative / priorNative). */
+function persistedCadValue(value: number, currency: string): number {
+  if (normalizeCurrency(currency) === "CAD") return value;
+  return value;
+}
+
+/** Recalcule et persiste le P&L titres par compte / séance (FX BoC par jour). */
 export async function recomputeAndPersistSessionGains(
   accountKeys: string[],
   fromDate: string,
   toDate: string,
-  usdToCad: number | null,
-): Promise<{ rowsWritten: number }> {
-  if (accountKeys.length === 0) return { rowsWritten: 0 };
+): Promise<{ rowsWritten: number; missingFxDates: string[] }> {
+  if (accountKeys.length === 0) return { rowsWritten: 0, missingFxDates: [] };
 
   const holdingsFrom = isoDateLocal(
     previousTradingDay(parseIsoDateLocal(fromDate), 12),
@@ -105,7 +126,7 @@ export async function recomputeAndPersistSessionGains(
     const date = isoDateFromDbDate(h.holdingDate);
     return date >= fromDate && date <= toDate;
   });
-  if (holdings.length === 0) return { rowsWritten: 0 };
+  if (holdings.length === 0) return { rowsWritten: 0, missingFxDates: [] };
 
   const pairSet = new Set<string>();
   for (const h of holdings) {
@@ -153,6 +174,9 @@ export async function recomputeAndPersistSessionGains(
     priceSeries.set(key, series);
   }
 
+  const fxFrom = previousTradingDayIso(fromDate, 14);
+  const rateMap = await loadUsdCadRateMap(fxFrom, toDate);
+  const missingFxDates = new Set<string>();
   const byAccountDate = new Map<string, { gainCad: number; priorCad: number }>();
 
   for (const h of holdings) {
@@ -182,8 +206,24 @@ export async function recomputeAndPersistSessionGains(
       endClose,
       baseClose,
     );
-    bucket.gainCad += toCad(gainNative, h.currency, usdToCad);
-    bucket.priorCad += toCad(priorNative, h.currency, usdToCad);
+    const gainCad = toCadOnSessionDate(
+      gainNative,
+      h.currency,
+      date,
+      rateMap,
+      missingFxDates,
+    );
+    const priorCad = toCadOnSessionDate(
+      priorNative,
+      h.currency,
+      date,
+      rateMap,
+      missingFxDates,
+    );
+    if (!Number.isFinite(gainCad) || !Number.isFinite(priorCad)) continue;
+
+    bucket.gainCad += gainCad;
+    bucket.priorCad += priorCad;
     byAccountDate.set(aggKey, bucket);
   }
 
@@ -208,12 +248,14 @@ export async function recomputeAndPersistSessionGains(
       currency: "CAD",
       gainNative: v.gainCad,
       priorNative: v.priorCad,
-      source: "holdings_closes",
+      source: SESSION_GAIN_SOURCE,
       updatedAt: new Date(),
     };
   });
 
-  if (rows.length === 0) return { rowsWritten: 0 };
+  if (rows.length === 0) {
+    return { rowsWritten: 0, missingFxDates: [...missingFxDates].toSorted() };
+  }
 
   const chunkSize = 500;
   for (let i = 0; i < rows.length; i += chunkSize) {
@@ -222,7 +264,10 @@ export async function recomputeAndPersistSessionGains(
     });
   }
 
-  return { rowsWritten: rows.length };
+  return {
+    rowsWritten: rows.length,
+    missingFxDates: [...missingFxDates].toSorted(),
+  };
 }
 
 /** Charge le P&L agrégé en CAD depuis la table persistée (lecture rapide). */
@@ -230,7 +275,6 @@ export async function loadPersistedSessionGains(
   accountKeys: string[],
   fromDate: string,
   toDate: string,
-  usdToCad: number | null,
 ): Promise<PerformanceSessionGain[]> {
   if (accountKeys.length === 0) return [];
 
@@ -255,8 +299,8 @@ export async function loadPersistedSessionGains(
   for (const row of rows) {
     const date = isoDateFromDbDate(row.sessionDate);
     const bucket = byDate.get(date) ?? { gainCad: 0, priorCad: 0 };
-    bucket.gainCad += toCad(row.gainNative, row.currency, usdToCad);
-    bucket.priorCad += toCad(row.priorNative, row.currency, usdToCad);
+    bucket.gainCad += persistedCadValue(row.gainNative, row.currency);
+    bucket.priorCad += persistedCadValue(row.priorNative, row.currency);
     byDate.set(date, bucket);
   }
 
@@ -274,7 +318,6 @@ export async function loadPersistedSessionGainsByAccount(
   accountKeys: string[],
   fromDate: string,
   toDate: string,
-  usdToCad: number | null,
 ): Promise<Record<string, PerformanceSessionGain[]>> {
   if (accountKeys.length === 0) return {};
 
@@ -302,8 +345,8 @@ export async function loadPersistedSessionGainsByAccount(
     const date = isoDateFromDbDate(row.sessionDate);
     const accountMap = out[row.accountKey] ?? new Map();
     const bucket = accountMap.get(date) ?? { gainCad: 0, priorCad: 0 };
-    bucket.gainCad += toCad(row.gainNative, row.currency, usdToCad);
-    bucket.priorCad += toCad(row.priorNative, row.currency, usdToCad);
+    bucket.gainCad += persistedCadValue(row.gainNative, row.currency);
+    bucket.priorCad += persistedCadValue(row.priorNative, row.currency);
     accountMap.set(date, bucket);
     out[row.accountKey] = accountMap;
   }

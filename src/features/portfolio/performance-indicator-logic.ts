@@ -29,7 +29,7 @@ import {
   formatFlowAdjustmentNote,
   netExternalFlowsCad,
 } from "./performance-cash-flows";
-import { computeMoneyWeightedReturn } from "./performance-money-weighted";
+import { resolvePeriodReturnPercent } from "./performance-return-methods";
 
 const SESSION_GAINS_UNAVAILABLE_NOTE =
   "Actualise les cours pour calculer le P&L de séance.";
@@ -319,17 +319,7 @@ function computeDayPeriod(
           : null,
       };
     }
-
-    if (disnatWithTitres > 0) {
-      const fromDelta = dayPeriodFromTitresDelta(accountKeys, payload, refDay);
-      if (fromDelta) return fromDelta;
-    }
   } else {
-    const fromDelta = dayPeriodFromTitresDelta(accountKeys, payload, refDay);
-    if (fromDelta) {
-      return { ...fromDelta, periodStart: refDay, periodEnd: refDay };
-    }
-
     const refSession = aggregateSessionGainsForAccounts(payload, accountKeys).find(
       (g) => g.date === refDay,
     );
@@ -761,30 +751,7 @@ function computeSessionChainPeriod(
     };
   }
 
-  // « Séance précédente » : on conserve la logique éprouvée (Δ valeur titres sur
-  // une seule séance, équivalente au P&L de séance quand les flux du jour sont nuls).
-  if (periodId === "yesterday") {
-    const valueDelta = computeTitresPeriodGain(accountKeys, payload, bounds);
-    if (valueDelta.usable && valueDelta.gainCad !== null) {
-      return {
-        usable: true,
-        gainCad: valueDelta.gainCad,
-        gainPct: valueDelta.gainPct,
-        currentCad,
-        baselineCad: valueDelta.baselineCad,
-        baselineDate: valueDelta.baselineDate,
-        accountsWithBaseline: valueDelta.accountsWithBaseline,
-        incomplete: valueDelta.incomplete,
-        annualized: false,
-        note: valueDelta.incomplete
-          ? "P&L partiel : historique titres manquant sur au moins un compte actif."
-          : null,
-      };
-    }
-  }
-
-  // P&L titres (Σ qty × Δ clôture) : insensible aux cotisations/retraits, donc
-  // utilisable directement comme gain $ et numérateur du rendement.
+  // « Séance précédente » et multi-périodes : uniquement la chaîne session_gains persistée.
   const filteredSessions = aggregateSessionGainsForAccounts(payload, accountKeys);
   const sessions =
     periodId === "all"
@@ -829,19 +796,37 @@ function computeSessionChainPeriod(
     gainCad += liveToday;
   }
 
-  // Rendement pondéré-dollars (capital moyen investi), aligné Desjardins.
-  const mw = computeMoneyWeightedReturn(sessions, gainCad, bounds.end);
+  const lookup =
+    bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start!);
+  const materialKeys = disnatTitresMaterialKeys(
+    disnatKeys,
+    payload,
+    lookup,
+    bounds.end,
+  );
+  const startHit = titresCadAtOrBefore(materialKeys, payload, lookup);
+  const endCad = resolveEndTitresCad(materialKeys, payload, bounds.end);
+
+  const ret = resolvePeriodReturnPercent({
+    sessions,
+    periodStart: bounds.start!,
+    periodEnd: bounds.end,
+    bmv: startHit?.valueCad ?? null,
+    emv: endCad,
+    flows: payload.cashFlows,
+    accountKeys,
+  });
 
   return {
     usable: true,
     gainCad,
-    gainPct: mw.gainPct,
+    gainPct: ret.gainPct,
     currentCad,
-    baselineCad: mw.baselineCad,
-    baselineDate: sessions[0]?.date ?? bounds.baselineLookup,
+    baselineCad: ret.baselineCad,
+    baselineDate: startHit?.asOf ?? sessions[0]?.date ?? bounds.baselineLookup,
     accountsWithBaseline: disnatKeys.length,
     incomplete,
-    annualized: mw.annualized,
+    annualized: ret.annualized,
     note:
       periodId === "all" || !incomplete
         ? null
@@ -860,6 +845,27 @@ function buildChainPeriodResult(
   const earliest = earliestHistoryAmong(accountKeys, payload);
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
   const currentCad = currentCadTotal(accountKeys, payload);
+
+  if (!payload.sessionDataHealth.ok) {
+    return {
+      periodId,
+      label: meta.label,
+      shortLabel: meta.shortLabel,
+      gainCad: null,
+      gainPct: null,
+      currentCad,
+      baselineCad: null,
+      baselineDate: null,
+      periodStart: bounds.start,
+      periodEnd: bounds.end,
+      method: "unavailable",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: 0,
+      incomplete: true,
+      annualized: false,
+      note: payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE,
+    };
+  }
 
   if (periodId !== "all" && !bounds.start) {
     return {
