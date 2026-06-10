@@ -74,9 +74,12 @@ async function ensureRecentSessionGainsPersisted(
   const refDay = referenceTradingSessionDayIso(now);
   const yesterday = priorSessionDateIso(now);
   const missing = [refDay, yesterday].filter((d) => !existingDates.has(d));
-  if (missing.length === 0) return;
+  const toRecompute = isEquityMarketSessionOpen(now)
+    ? missing.filter((d) => d !== refDay)
+    : missing;
+  if (toRecompute.length === 0) return;
 
-  const earliestMissing = missing.toSorted()[0]!;
+  const earliestMissing = toRecompute.toSorted()[0]!;
   const from = isoDateInToronto(
     subDays(parseIsoDateLocal(earliestMissing), 7),
   );

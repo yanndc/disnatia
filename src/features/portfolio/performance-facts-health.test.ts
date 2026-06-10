@@ -30,4 +30,16 @@ describe("assessSessionDataHealth", () => {
     const health = assessSessionDataHealth(rows, new Date("2026-06-03T15:00:00"));
     assert.equal(health.ok, true);
   });
+
+  test("en séance ouverte : n exige pas les gains du jour courant", () => {
+    const days = listTradingDaysInRange("2026-05-12", "2026-06-09");
+    const rows = days.map((date) => ({
+      date,
+      gainCad: 100,
+      priorCad: 10_000,
+    }));
+
+    const health = assessSessionDataHealth(rows, new Date("2026-06-10T14:00:00-04:00"));
+    assert.equal(health.ok, true, health.message ?? undefined);
+  });
 });

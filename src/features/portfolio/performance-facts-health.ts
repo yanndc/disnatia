@@ -1,13 +1,24 @@
 import type { PerformanceSessionDataHealth } from "./performance-indicator-types";
 import {
   isBeforeTodaySessionOpen,
-  isoDateInToronto,
+  isEquityMarketSessionOpen,
+  priorSessionDateIso,
   referenceTradingSessionDayIso,
-  yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { listTradingDaysInRange } from "@/lib/fx/usd-cad-rate-map";
 
 const RECENT_GAP_CHECK_DAYS = 21;
+
+/**
+ * Dernière séance dont on exige des gains persistés.
+ * En séance ouverte, la séance courante est en live (cours Yahoo) — pas encore en base.
+ */
+export function expectedLastPersistedSessionDate(now = new Date()): string {
+  if (isBeforeTodaySessionOpen(now) || isEquityMarketSessionOpen(now)) {
+    return priorSessionDateIso(now);
+  }
+  return referenceTradingSessionDayIso(now);
+}
 
 /** Évalue la couverture des gains de séance persistés (sans fallback implicite). */
 export function assessSessionDataHealth(
@@ -41,9 +52,7 @@ export function assessSessionDataHealth(
     }
   }
 
-  const expectedLast = isBeforeTodaySessionOpen(now)
-    ? isoDateInToronto(yesterdayTradingSessionDay(now))
-    : referenceTradingSessionDayIso(now);
+  const expectedLast = expectedLastPersistedSessionDate(now);
 
   if (lastDate < expectedLast) {
     return {

@@ -7,6 +7,7 @@ import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
   isTradingDayDate,
+  priorSessionDateIso,
   previousTradingDayIso,
   referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
@@ -26,6 +27,7 @@ import {
 import type {
   PerformanceEnrichedHoldingRow,
   PerformanceIndicatorPayload,
+  PerformanceSessionDataHealth,
 } from "./performance-indicator-types";
 
 export type SessionTickerRow = {
@@ -58,6 +60,10 @@ export type SessionTickerMiniReport = {
   view: SessionTickerView;
   maxSessionDate: string;
   minSessionDate: string;
+  /** Même diagnostic que la carte Performance dynamique. */
+  sessionDataHealth: PerformanceSessionDataHealth;
+  /** Date « Séance préc. » dans Performance (séance complétée avant la référence). */
+  previousSessionDate: string;
 };
 
 function toCad(
@@ -94,6 +100,22 @@ export function sumPersistedSessionGainCad(
       total += hit.gainCad;
       found = true;
     }
+  }
+  return found ? total : null;
+}
+
+/** P&L séance live — même source que « Aujourd'hui » dans Performance. */
+function sumLiveDayGainCad(
+  payload: PerformanceIndicatorPayload,
+  accountKeys: string[],
+): number | null {
+  let total = 0;
+  let found = false;
+  for (const accountKey of accountKeys) {
+    const cur = payload.currentByAccount[accountKey];
+    if (!cur || cur.dayGainCad === null || !Number.isFinite(cur.dayGainCad)) continue;
+    total += cur.dayGainCad;
+    found = true;
   }
   return found ? total : null;
 }
@@ -462,8 +484,12 @@ export async function buildSessionTickerViewForDate(
     sessionDate,
     disnatAccountKeys,
   );
+  const liveTotal = useLive
+    ? sumLiveDayGainCad(payload, disnatAccountKeys)
+    : null;
   const rowTotal = rows.reduce((sum, row) => sum + row.dayGainCad, 0);
   const totalGainCad =
+    liveTotal ??
     persistedTotal ??
     (rows.length > 0 && Number.isFinite(rowTotal) ? rowTotal : null);
 
@@ -486,5 +512,11 @@ export async function buildSessionTickerMiniReportFromPayload(
   );
   const view = await buildSessionTickerViewForDate(payload, maxSessionDate, now);
 
-  return { view, maxSessionDate, minSessionDate };
+  return {
+    view,
+    maxSessionDate,
+    minSessionDate,
+    sessionDataHealth: payload.sessionDataHealth,
+    previousSessionDate: priorSessionDateIso(now),
+  };
 }

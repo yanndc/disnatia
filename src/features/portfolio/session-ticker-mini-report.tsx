@@ -149,6 +149,10 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
   const [view, setView] = useState(report.view);
   const [maxSessionDate, setMaxSessionDate] = useState(report.maxSessionDate);
   const [minSessionDate, setMinSessionDate] = useState(report.minSessionDate);
+  const [sessionDataHealth, setSessionDataHealth] = useState(report.sessionDataHealth);
+  const [previousSessionDate, setPreviousSessionDate] = useState(
+    report.previousSessionDate,
+  );
   const [loading, setLoading] = useState(false);
 
   const canGoBack = view.sessionDate > minSessionDate;
@@ -167,6 +171,8 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
         view: SessionTickerView;
         maxSessionDate: string;
         minSessionDate: string;
+        sessionDataHealth?: SessionTickerMiniReport["sessionDataHealth"];
+        previousSessionDate?: string;
       };
       if (data.ok && data.view) {
         setView({
@@ -178,6 +184,8 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
         });
         setMaxSessionDate(data.maxSessionDate);
         setMinSessionDate(data.minSessionDate);
+        if (data.sessionDataHealth) setSessionDataHealth(data.sessionDataHealth);
+        if (data.previousSessionDate) setPreviousSessionDate(data.previousSessionDate);
       }
     } catch {
       /* conserve la vue actuelle */
@@ -191,6 +199,8 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
       setView(report.view);
       setMaxSessionDate(report.maxSessionDate);
       setMinSessionDate(report.minSessionDate);
+      setSessionDataHealth(report.sessionDataHealth);
+      setPreviousSessionDate(report.previousSessionDate);
     }
   }, [report, view.sessionDate]);
 
@@ -207,10 +217,21 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
   const allRows = [...view.lists.gainers, ...view.lists.losers];
   const sessionTotalCad = view.totalGainCad;
   const sessionTitleCount = allRows.length;
+  const comparesToPerformancePrev = view.sessionDate === previousSessionDate;
 
   return (
     <Card className="border-slate-200 shadow-sm">
       <CardHeader className="pb-3">
+        {!sessionDataHealth.ok ? (
+          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900">
+            <p className="font-semibold">
+              Données de séance invalides — total peut différer de Performance
+            </p>
+            <p className="mt-1">
+              {sessionDataHealth.message ?? "Historisation des séances absente."}
+            </p>
+          </div>
+        ) : null}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <CardTitle className="text-base text-slate-800">
@@ -219,6 +240,16 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
             <p className="mt-1 text-xs text-slate-500">
               Symbole, nom, variation $/action (devise du titre), P&L du jour en CAD — trié du
               plus fort au plus faible.
+              {view.sessionDate === maxSessionDate && view.sessionDate !== previousSessionDate ? (
+                <>
+                  {" "}
+                  « Préc. » (Performance) = séance du{" "}
+                  {formatSessionDate(previousSessionDate)} — flèche ← pour comparer.
+                </>
+              ) : null}
+              {comparesToPerformancePrev ? (
+                <> Aligné sur « Préc. » dans Performance dynamique.</>
+              ) : null}
             </p>
           </div>
           <div className="flex shrink-0 gap-1">
