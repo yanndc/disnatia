@@ -50,7 +50,7 @@ import {
   refreshLiveQuotesForLatestImport,
 } from "./refresh-live-quotes";
 
-const DASHBOARD_QUOTES_MAX_AGE_MINUTES = 30;
+const DASHBOARD_QUOTES_MAX_AGE_MINUTES = 5;
 
 async function ensureFreshQuotesDuringSession(now = new Date()): Promise<void> {
   if (!isEquityMarketSessionOpen(now)) return;
