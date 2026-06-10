@@ -221,10 +221,10 @@ export function PerformanceIndicatorCard({
                 <p className="mt-1 text-sm text-slate-500">
                   Gains et pertes en $ et % · filtres par période, portée et comptes
                 </p>
-                {!payload.performanceSnapshots && payload.sessionDataHealth.ok ? (
+                {!payload.performanceSnapshots && !payload.sessionDataHealth.ok ? (
                   <p className="mt-1 text-xs text-amber-700">
-                    Snapshots absents — exécute{" "}
-                    <code className="rounded bg-amber-50 px-1">npm run rebuild:performance</code>
+                    {payload.sessionDataHealth.message ??
+                      "Historique de séance incomplet — indicateurs indisponibles."}
                   </p>
                 ) : null}
               </div>

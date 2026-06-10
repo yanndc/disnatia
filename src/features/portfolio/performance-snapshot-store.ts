@@ -152,3 +152,21 @@ export async function loadPerformanceSnapshots(
     byScopeKey,
   };
 }
+
+/** Crée les snapshots manquants pour la séance (prod : pas de CLI requise). */
+export async function maybePersistPerformanceSnapshots(
+  payload: PerformanceIndicatorPayload,
+  sessionDate: string,
+): Promise<PerformanceSnapshotsBundle | null> {
+  const existing = await loadPerformanceSnapshots(sessionDate);
+  if (existing) return existing;
+  if (!payload.sessionDataHealth.ok) return null;
+
+  try {
+    await persistPerformanceSnapshots(payload, sessionDate);
+    return await loadPerformanceSnapshots(sessionDate);
+  } catch (cause) {
+    console.warn("[performance] maybePersistPerformanceSnapshots", cause);
+    return null;
+  }
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { backfillMarketHistory } from "@/features/portfolio/backfill-market-history";
+import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
 import {
   checkSessionDataIntegrity,
   notifySessionIntegrityFailure,
@@ -58,6 +59,9 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+    await getPerformanceIndicatorPayload().catch((cause) => {
+      console.warn("[cron:backfill-market-history] performance snapshots", cause);
+    });
     return NextResponse.json(result);
   } catch (cause) {
     const message =
