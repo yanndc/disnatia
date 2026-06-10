@@ -179,13 +179,14 @@ export function resolvePeriodReturnPercent(params: {
     if (single.gainPct != null) return single;
   }
 
-  const dietzEligible =
+  if (
     params.boundaryCoverageComplete !== false &&
     params.bmv != null &&
     params.emv != null &&
-    params.bmv > 0;
-
-  if (dietzEligible) {
+    params.bmv > 0
+  ) {
+    const bmv = params.bmv;
+    const emv = params.emv;
     const { sumFlows, weightedFlows } = weightedExternalFlowsForDietz(
       params.flows,
       params.accountKeys,
@@ -193,8 +194,8 @@ export function resolvePeriodReturnPercent(params: {
       params.periodEnd,
     );
     const dietz = computeModifiedDietzReturn(
-      params.bmv,
-      params.emv,
+      bmv,
+      emv,
       sumFlows,
       weightedFlows,
       params.periodStart,
