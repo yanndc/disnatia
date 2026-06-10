@@ -523,6 +523,18 @@ describe("computePeriodResult", () => {
           totalValueNative: 40_000,
           currency: "CAD",
         },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-05-29",
+          totalValueNative: 91_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2026-05-29",
+          totalValueNative: 40_500,
+          currency: "CAD",
+        },
       ],
       sessionGainsByAccount: {
         "ACC|CAD": [
@@ -571,6 +583,32 @@ describe("computePeriodResult", () => {
 
   test("AAJ : pas d alerte si séances dès le début d année", () => {
     const payload = mockPayload({
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 80_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 40_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-02",
+          totalValueNative: 90_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2026-06-02",
+          totalValueNative: 40_100,
+          currency: "CAD",
+        },
+      ],
       sessionGainsByAccount: {
         "ACC|CAD": [
           { date: "2026-01-02", gainCad: 500, priorCad: 80_000 },
@@ -596,13 +634,94 @@ describe("computePeriodResult", () => {
     );
     assert.equal(ytd.incomplete, false);
     assert.equal(ytd.note, null);
-    assert.equal(ytd.baselineDate, "2026-01-02");
+    assert.equal(ytd.baselineDate, "2025-12-31");
     // < 1 an → rendement cumulé, pas annualisé.
     assert.equal(ytd.annualized, false);
   });
 
+  test("3 ans : pas de % aberrant si historique titres partiel aux bornes", () => {
+    const payload = mockPayload({
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2023-06-09",
+          totalValueNative: 5_000,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2025-06-02", gainCad: 500, priorCad: 200_000 },
+          { date: "2026-06-09", gainCad: 1_000, priorCad: 250_000 },
+        ],
+        "ACC2|CAD": [
+          { date: "2025-06-02", gainCad: 300, priorCad: 150_000 },
+          { date: "2026-06-09", gainCad: 800, priorCad: 180_000 },
+        ],
+      },
+      asOfNow: "2026-06-10T22:00:00",
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 250_000,
+          positionsCad: 250_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+        "ACC2|CAD": {
+          totalCad: 200_000,
+          positionsCad: 200_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+      },
+    });
+
+    const year3 = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "year3",
+    );
+
+    assert.ok((year3.gainPct ?? 0) < 80, `3 ans ne doit pas exploser: ${year3.gainPct}`);
+    assert.equal(year3.incomplete, true);
+  });
+
   test("AAJ : alerte si séances commencent bien après le début d année", () => {
     const payload = mockPayload({
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 80_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 40_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-02",
+          totalValueNative: 90_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2026-06-02",
+          totalValueNative: 40_100,
+          currency: "CAD",
+        },
+      ],
       sessionGainsByAccount: {
         "ACC|CAD": [
           { date: "2026-03-03", gainCad: 500, priorCad: 80_000 },

@@ -493,6 +493,69 @@ export function titresCadAtOrBefore(
   };
 }
 
+/**
+ * Valeur titres agrégée uniquement si chaque compte est résolu.
+ * Compte sans titres actuels et sans historique à la date → 0.
+ */
+export function titresCadFullCoverageAtOrBefore(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  targetDate: string,
+): { valueCad: number; asOf: string } | null {
+  if (accountKeys.length === 0) return null;
+
+  let total = 0;
+  let coverageAsOf = targetDate;
+
+  for (const key of accountKeys) {
+    const hit = titresCadAtOrBefore([key], payload, targetDate);
+    if (hit) {
+      total += hit.valueCad;
+      if (hit.asOf < coverageAsOf) coverageAsOf = hit.asOf;
+      continue;
+    }
+    const positionsNow = payload.currentByAccount[key]?.positionsCad ?? 0;
+    if (positionsNow <= 0) continue;
+    return null;
+  }
+
+  return { valueCad: total, asOf: coverageAsOf };
+}
+
+function titresCadAtPeriodEnd(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): { valueCad: number; asOf: string } | null {
+  const now = sessionClockForBounds(payload.asOfNow);
+  const refDay = referenceTradingSessionDayIso(now);
+
+  if (
+    !isBeforeTodaySessionOpen(now) &&
+    endDate === refDay &&
+    isEquityMarketSessionOpen(now)
+  ) {
+    let total = 0;
+    for (const key of accountKeys) {
+      const cur = payload.currentByAccount[key];
+      if (!cur) return null;
+      if (cur.positionsCad > 0) {
+        total += cur.positionsCad;
+        continue;
+      }
+      const hit = titresCadAtOrBefore([key], payload, endDate);
+      if (hit) {
+        total += hit.valueCad;
+        continue;
+      }
+      continue;
+    }
+    return { valueCad: total, asOf: endDate };
+  }
+
+  return titresCadFullCoverageAtOrBefore(accountKeys, payload, endDate);
+}
+
 function resolveEndTitresCad(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -566,8 +629,9 @@ export function computeTitresPeriodGain(
     };
   }
 
-  const startHit = titresCadAtOrBefore(materialKeys, payload, lookup);
-  const endCad = resolveEndTitresCad(materialKeys, payload, bounds.end);
+  const startHit = titresCadFullCoverageAtOrBefore(materialKeys, payload, lookup);
+  const endHit = titresCadFullCoverageAtOrBefore(materialKeys, payload, bounds.end);
+  const endCad = endHit?.valueCad ?? resolveEndTitresCad(materialKeys, payload, bounds.end);
 
   if (!startHit || endCad === null) {
     return {
@@ -597,7 +661,7 @@ export function computeTitresPeriodGain(
   const incomplete =
     bounds.start != null &&
     (startHit.asOf > latestAllowedFirstSessionDate(bounds.start) ||
-      startHit.accountsWithData < materialKeys.length);
+      endHit == null);
 
   return {
     usable: true,
@@ -605,7 +669,7 @@ export function computeTitresPeriodGain(
     gainPct,
     baselineCad: baselineCad > 0 ? baselineCad : null,
     baselineDate: lookup,
-    accountsWithBaseline: startHit.accountsWithData,
+    accountsWithBaseline: startHit ? materialKeys.length : 0,
     incomplete,
   };
 }
@@ -780,11 +844,6 @@ function computeSessionChainPeriod(
   }
 
   let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
-  const incomplete =
-    periodId === "all"
-      ? false
-      : bounds.start != null &&
-        sessions[0]!.date > latestAllowedFirstSessionDate(bounds.start);
 
   // En séance ouverte, remplace le P&L persisté du jour par le P&L live.
   const now = sessionClockForBounds(payload.asOfNow);
@@ -805,18 +864,34 @@ function computeSessionChainPeriod(
     lookup,
     bounds.end,
   );
-  const startHit = titresCadAtOrBefore(materialKeys, payload, lookup);
-  const endCad = resolveEndTitresCad(materialKeys, payload, bounds.end);
+  const baselineHit = titresCadFullCoverageAtOrBefore(
+    materialKeys,
+    payload,
+    lookup,
+  );
+  const endHit = titresCadAtPeriodEnd(materialKeys, payload, bounds.end);
+  const boundaryCoverageComplete = baselineHit != null && endHit != null;
 
   const ret = resolvePeriodReturnPercent({
     sessions,
     periodStart: bounds.start!,
     periodEnd: bounds.end,
-    bmv: startHit?.valueCad ?? null,
-    emv: endCad,
+    bmv: baselineHit?.valueCad ?? null,
+    emv: endHit?.valueCad ?? null,
+    boundaryCoverageComplete,
     flows: payload.cashFlows,
     accountKeys,
   });
+
+  const sessionsIncomplete =
+    periodId !== "all" &&
+    bounds.start != null &&
+    sessions[0]!.date > latestAllowedFirstSessionDate(bounds.start);
+  const boundaryIncomplete = !boundaryCoverageComplete;
+  const incomplete =
+    periodId === "all"
+      ? boundaryIncomplete
+      : sessionsIncomplete || boundaryIncomplete;
 
   return {
     usable: true,
@@ -824,14 +899,15 @@ function computeSessionChainPeriod(
     gainPct: ret.gainPct,
     currentCad,
     baselineCad: ret.baselineCad,
-    baselineDate: startHit?.asOf ?? sessions[0]?.date ?? bounds.baselineLookup,
-    accountsWithBaseline: disnatKeys.length,
+    baselineDate: baselineHit?.asOf ?? sessions[0]?.date ?? bounds.baselineLookup,
+    accountsWithBaseline: boundaryCoverageComplete ? materialKeys.length : 0,
     incomplete,
     annualized: ret.annualized,
-    note:
-      periodId === "all" || !incomplete
-        ? null
-        : "P&L partiel : historique de séances incomplet sur la période.",
+    note: boundaryIncomplete
+      ? "Rendement % sur chaîne de séances (historique titres incomplet aux bornes)."
+      : sessionsIncomplete
+        ? "P&L partiel : historique de séances incomplet sur la période."
+        : null,
   };
 }
 

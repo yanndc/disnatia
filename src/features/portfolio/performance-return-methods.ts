@@ -38,6 +38,8 @@ export function annualizeReturnDecimal(
 export function computeTwrFromSessions(
   sessions: PerformanceSessionGain[],
   periodEndIso: string,
+  /** Borne basse pour l'annualisation (période demandée, pas 1re séance mesurée). */
+  periodStartIso?: string,
 ): PeriodReturnPercent {
   if (sessions.length === 0) {
     return {
@@ -78,8 +80,8 @@ export function computeTwrFromSessions(
   }
 
   const cumulative = product - 1;
-  const firstDate = sessions[0]!.date;
-  const spanDays = Math.max(1, daysBetweenIso(firstDate, periodEndIso));
+  const spanStart = periodStartIso ?? sessions[0]!.date;
+  const spanDays = Math.max(1, daysBetweenIso(spanStart, periodEndIso));
   const { pct, annualized } = annualizeReturnDecimal(cumulative, spanDays);
   const avgPrior =
     sessions.reduce((sum, s) => sum + (s.priorCad > 0 ? s.priorCad : 0), 0) /
@@ -153,7 +155,8 @@ export function computeModifiedDietzReturn(
 }
 
 /**
- * Résout le % de période : Dietz (Disnat) si BMV/EMV disponibles, sinon TWR.
+ * Résout le % de période : Dietz (Disnat) si BMV/EMV couvrent tous les comptes,
+ * sinon TWR sur la chaîne de séances (évite les % aberrants sur BMV partielle).
  * Le gain $ reste Σ session_gains (appelant).
  */
 export function resolvePeriodReturnPercent(params: {
@@ -162,15 +165,27 @@ export function resolvePeriodReturnPercent(params: {
   periodEnd: string;
   bmv: number | null;
   emv: number | null;
+  /** false si au moins un compte titres manque à BMV ou EMV. */
+  boundaryCoverageComplete?: boolean;
   flows: PerformanceCashFlow[];
   accountKeys: string[];
 }): PeriodReturnPercent {
   if (params.sessions.length === 1) {
-    const single = computeTwrFromSessions(params.sessions, params.periodEnd);
+    const single = computeTwrFromSessions(
+      params.sessions,
+      params.periodEnd,
+      params.periodStart,
+    );
     if (single.gainPct != null) return single;
   }
 
-  if (params.bmv != null && params.emv != null && params.bmv > 0) {
+  const dietzEligible =
+    params.boundaryCoverageComplete !== false &&
+    params.bmv != null &&
+    params.emv != null &&
+    params.bmv > 0;
+
+  if (dietzEligible) {
     const { sumFlows, weightedFlows } = weightedExternalFlowsForDietz(
       params.flows,
       params.accountKeys,
@@ -188,5 +203,9 @@ export function resolvePeriodReturnPercent(params: {
     if (dietz.gainPct != null) return dietz;
   }
 
-  return computeTwrFromSessions(params.sessions, params.periodEnd);
+  return computeTwrFromSessions(
+    params.sessions,
+    params.periodEnd,
+    params.periodStart,
+  );
 }

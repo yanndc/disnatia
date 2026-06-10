@@ -3,4 +3,4 @@
  * Incrémenter lors d'un changement de formule (ex. Dietz → TWR) pour ne pas
  * écraser silencieusement les snapshots historiques.
  */
-export const PERFORMANCE_CALC_VERSION = 1;
+export const PERFORMANCE_CALC_VERSION = 2;

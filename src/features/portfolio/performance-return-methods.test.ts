@@ -74,6 +74,7 @@ describe("resolvePeriodReturnPercent", () => {
       periodEnd: "2026-05-02",
       bmv: 100_000,
       emv: 102_000,
+      boundaryCoverageComplete: true,
       flows,
       accountKeys: ["ACC|CAD"],
     });
@@ -88,10 +89,30 @@ describe("resolvePeriodReturnPercent", () => {
       periodEnd: "2026-05-01",
       bmv: null,
       emv: null,
+      boundaryCoverageComplete: false,
       flows: [],
       accountKeys: ["ACC|CAD"],
     });
     assert.equal(hit.algorithm, "session-single");
+  });
+
+  test("BMV partielle → TWR (évite Dietz aberrant)", () => {
+    const sessions = [
+      { date: "2023-06-12", gainCad: 500, priorCad: 200_000 },
+      { date: "2026-06-09", gainCad: 1_000, priorCad: 250_000 },
+    ];
+    const hit = resolvePeriodReturnPercent({
+      sessions,
+      periodStart: "2023-06-10",
+      periodEnd: "2026-06-10",
+      bmv: 10_000,
+      emv: 250_000,
+      boundaryCoverageComplete: false,
+      flows: [],
+      accountKeys: ["ACC|CAD"],
+    });
+    assert.equal(hit.algorithm, "twr");
+    assert.ok((hit.gainPct ?? 0) < 50, "ne doit pas utiliser Dietz sur BMV partielle");
   });
 });
 
