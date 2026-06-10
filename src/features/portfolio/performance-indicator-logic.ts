@@ -30,6 +30,7 @@ import {
   netExternalFlowsCad,
 } from "./performance-cash-flows";
 import { resolvePeriodReturnPercent } from "./performance-return-methods";
+import { performanceScopeKey } from "./performance-snapshot-scope";
 
 const SESSION_GAINS_UNAVAILABLE_NOTE =
   "Actualise les cours pour calculer le P&L de séance.";
@@ -1007,6 +1008,67 @@ export function computeAllPeriodResults(
     "all",
   ];
   return ids.map((id) => computePeriodResult(payload, filters, id));
+}
+
+const SNAPSHOT_PERIOD_IDS: PerformancePeriodId[] = [
+  "day",
+  "yesterday",
+  "month",
+  "month3",
+  "year",
+  "year3",
+  "ytd",
+  "all",
+];
+
+function snapshotRowsForFilters(
+  payload: PerformanceIndicatorPayload,
+  filters: Pick<
+    PerformanceFilterState,
+    "preset" | "owner" | "includedAccountKeys" | "excludedAccountKeys"
+  >,
+): PerformancePeriodResult[] | null {
+  const key = performanceScopeKey(filters);
+  return payload.performanceSnapshots?.byScopeKey[key] ?? null;
+}
+
+/** Lit les snapshots persistés ; recalcule le jour en live si séance ouverte. */
+export function computePeriodResultWithSnapshots(
+  payload: PerformanceIndicatorPayload,
+  filters: PerformanceFilterState,
+  periodId: PerformancePeriodId,
+): PerformancePeriodResult {
+  if (periodId !== "day") {
+    const rows = snapshotRowsForFilters(payload, filters);
+    const hit = rows?.find((r) => r.periodId === periodId);
+    if (hit) return hit;
+  }
+  return computePeriodResult(payload, filters, periodId);
+}
+
+export function computeAllPeriodResultsWithSnapshots(
+  payload: PerformanceIndicatorPayload,
+  filters: Pick<
+    PerformanceFilterState,
+    | "preset"
+    | "owner"
+    | "includedAccountKeys"
+    | "excludedAccountKeys"
+    | "selectedYear"
+    | "activePeriod"
+  >,
+): PerformancePeriodResult[] {
+  const rows = snapshotRowsForFilters(payload, filters);
+  if (!rows?.length) {
+    return computeAllPeriodResults(payload, filters);
+  }
+  const byId = new Map(rows.map((r) => [r.periodId, r]));
+  return SNAPSHOT_PERIOD_IDS.map((id) => {
+    if (id === "day") {
+      return computePeriodResult(payload, filters, "day");
+    }
+    return byId.get(id) ?? computePeriodResult(payload, filters, id);
+  });
 }
 
 export function defaultPerformanceFilters(

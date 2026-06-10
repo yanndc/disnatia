@@ -61,6 +61,7 @@ export const ModelName = {
   PortfolioDailyHolding: 'PortfolioDailyHolding',
   PortfolioDailyValue: 'PortfolioDailyValue',
   PortfolioDailyAccountSessionGain: 'PortfolioDailyAccountSessionGain',
+  PortfolioPerformanceSnapshot: 'PortfolioPerformanceSnapshot',
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
@@ -259,6 +260,35 @@ export const PortfolioDailyAccountSessionGainScalarFieldEnum = {
 } as const
 
 export type PortfolioDailyAccountSessionGainScalarFieldEnum = (typeof PortfolioDailyAccountSessionGainScalarFieldEnum)[keyof typeof PortfolioDailyAccountSessionGainScalarFieldEnum]
+
+
+export const PortfolioPerformanceSnapshotScalarFieldEnum = {
+  id: 'id',
+  sessionDate: 'sessionDate',
+  calcVersion: 'calcVersion',
+  periodId: 'periodId',
+  scopeKey: 'scopeKey',
+  owner: 'owner',
+  scopePreset: 'scopePreset',
+  label: 'label',
+  shortLabel: 'shortLabel',
+  gainCad: 'gainCad',
+  gainPct: 'gainPct',
+  currentCad: 'currentCad',
+  baselineCad: 'baselineCad',
+  baselineDate: 'baselineDate',
+  periodStart: 'periodStart',
+  periodEnd: 'periodEnd',
+  method: 'method',
+  accountsIncluded: 'accountsIncluded',
+  accountsWithBaseline: 'accountsWithBaseline',
+  incomplete: 'incomplete',
+  annualized: 'annualized',
+  note: 'note',
+  computedAt: 'computedAt'
+} as const
+
+export type PortfolioPerformanceSnapshotScalarFieldEnum = (typeof PortfolioPerformanceSnapshotScalarFieldEnum)[keyof typeof PortfolioPerformanceSnapshotScalarFieldEnum]
 
 
 export const PortfolioTransactionLineScalarFieldEnum = {

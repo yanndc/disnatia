@@ -188,6 +188,7 @@ export function desjardinsPerformancePayload(
       firstDate: marketOpen ? null : REF.asOf,
       lastDate: marketOpen ? null : REF.asOf,
     },
+    performanceSnapshots: null,
     cashFlows: [],
     holdings: [],
     enrichedHoldings: [],

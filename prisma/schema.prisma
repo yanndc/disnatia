@@ -230,6 +230,41 @@ model PortfolioDailyAccountSessionGain {
   @@map("portfolio_daily_account_session_gains")
 }
 
+/**
+ * Indicateurs performance précalculés (owner × période × portée × séance).
+ * Versionnés via calcVersion — ne pas recalculer rétroactivement sans bump.
+ */
+model PortfolioPerformanceSnapshot {
+  id                   String   @id @default(cuid())
+  sessionDate          DateTime @map("session_date") @db.Date
+  calcVersion          Int      @map("calc_version")
+  periodId             String   @map("period_id")
+  scopeKey             String   @map("scope_key")
+  owner                String?  @map("owner")
+  scopePreset          String   @map("scope_preset")
+  label                String
+  shortLabel           String   @map("short_label")
+  gainCad              Float?   @map("gain_cad")
+  gainPct              Float?   @map("gain_pct")
+  currentCad           Float    @map("current_cad")
+  baselineCad          Float?   @map("baseline_cad")
+  baselineDate         String?  @map("baseline_date")
+  periodStart          String?  @map("period_start")
+  periodEnd            String   @map("period_end")
+  method               String
+  accountsIncluded     Int      @map("accounts_included")
+  accountsWithBaseline Int      @map("accounts_with_baseline")
+  incomplete           Boolean  @default(false)
+  annualized           Boolean  @default(false)
+  note                 String?
+  computedAt           DateTime @default(now()) @map("computed_at")
+
+  @@unique([sessionDate, calcVersion, periodId, scopeKey])
+  @@index([sessionDate, calcVersion])
+  @@index([scopeKey])
+  @@map("portfolio_performance_snapshots")
+}
+
 model PortfolioTransactionLine {
   id              String      @id @default(cuid())
   importId        String

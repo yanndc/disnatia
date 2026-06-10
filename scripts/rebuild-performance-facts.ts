@@ -14,6 +14,7 @@ async function main() {
   console.log("Période :", result.fromDate, "→", result.toDate);
   console.log("Clôtures upsertées :", result.pricesUpserted);
   console.log("Lignes session_gains :", result.sessionGainsRows);
+  console.log("Snapshots :", result.snapshotRows);
   console.log("Santé :", result.health.ok ? "OK" : "ÉCHEC");
   if (result.health.message) console.log("→", result.health.message);
   if (result.missingFxDates.length > 0) {

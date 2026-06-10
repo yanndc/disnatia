@@ -15,8 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { quoteAgeFromFetchedAt } from "@/lib/market/quote-age";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
-  computeAllPeriodResults,
-  computePeriodResult,
+  computeAllPeriodResultsWithSnapshots,
+  computePeriodResultWithSnapshots,
   defaultPerformanceFilters,
   resolvePeriodMeta,
   signedGainBg,
@@ -142,12 +142,12 @@ export function PerformanceIndicatorCard({
   );
 
   const periodResults = useMemo(
-    () => computeAllPeriodResults(payload, filters),
+    () => computeAllPeriodResultsWithSnapshots(payload, filters),
     [payload, filters],
   );
 
   const active = useMemo(
-    () => computePeriodResult(payload, filters, filters.activePeriod),
+    () => computePeriodResultWithSnapshots(payload, filters, filters.activePeriod),
     [payload, filters],
   );
 
@@ -221,6 +221,12 @@ export function PerformanceIndicatorCard({
                 <p className="mt-1 text-sm text-slate-500">
                   Gains et pertes en $ et % · filtres par période, portée et comptes
                 </p>
+                {!payload.performanceSnapshots && payload.sessionDataHealth.ok ? (
+                  <p className="mt-1 text-xs text-amber-700">
+                    Snapshots absents — exécute{" "}
+                    <code className="rounded bg-amber-50 px-1">npm run rebuild:performance</code>
+                  </p>
+                ) : null}
               </div>
             </div>
 

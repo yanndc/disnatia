@@ -9,6 +9,8 @@ import { assessSessionDataHealth } from "./performance-facts-health";
 import { recomputeAndPersistSessionGains } from "./performance-session-gains";
 import type { PerformanceSessionDataHealth } from "./performance-indicator-types";
 import { referenceTradingSessionDayIso } from "@/lib/market/equity-session";
+import { getPerformanceIndicatorPayload } from "./performance-indicator-queries";
+import { persistPerformanceSnapshots } from "./performance-snapshot-store";
 
 export type RebuildPerformanceFactsResult = {
   ok: boolean;
@@ -18,6 +20,7 @@ export type RebuildPerformanceFactsResult = {
   holdingsProjected: boolean;
   pricesUpserted: number;
   sessionGainsRows: number;
+  snapshotRows: number;
   missingFxDates: string[];
   health: PerformanceSessionDataHealth;
   messages: string[];
@@ -105,6 +108,16 @@ export async function rebuildPerformanceFacts(options?: {
   const health = assessSessionDataHealth(sessionGainsByDate, now);
   const ok = health.ok && missingFxDates.length === 0;
 
+  let snapshotRows = 0;
+  if (ok) {
+    const payload = await getPerformanceIndicatorPayload();
+    const wrote = await persistPerformanceSnapshots(payload, toDate);
+    snapshotRows = wrote.rowsWritten;
+    messages.push(
+      `${wrote.rowsWritten} indicateurs snapshotés (${wrote.scopeCount} portées × périodes).`,
+    );
+  }
+
   return {
     ok,
     fromDate,
@@ -113,6 +126,7 @@ export async function rebuildPerformanceFacts(options?: {
     holdingsProjected: holdings.projected,
     pricesUpserted: backfill.pricesUpserted,
     sessionGainsRows,
+    snapshotRows,
     missingFxDates,
     health,
     messages,

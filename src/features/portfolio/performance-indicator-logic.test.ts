@@ -102,6 +102,7 @@ function mockPayload(
       firstDate: "2026-05-26",
       lastDate: "2026-05-27",
     },
+    performanceSnapshots: null,
     cashFlows: [],
     holdings: [],
     enrichedHoldings: [],

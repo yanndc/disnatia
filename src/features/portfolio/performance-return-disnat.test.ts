@@ -12,6 +12,7 @@ import { uniquePortfolioOwners } from "@/lib/portfolio/sanitize-portfolio-owner"
 import {
   DISNAT_RETURNS_BENCHMARK,
   DISNAT_RETURN_TOLERANCE_PCT,
+  DISNAT_RETURN_TOLERANCE_STRICT_PCT,
 } from "./fixtures/disnat-returns-benchmark.fixture";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -54,23 +55,19 @@ describe("Disnat % — convergence post Phase B", { skip: !hasDb }, () => {
     console.log("[disnat-benchmark]\n" + report.join("\n"));
   });
 
-  test("au moins une période Yann dans la tolérance large", async () => {
+  test("Yann 1 mois dans tolérance stricte (±2 pts)", async () => {
     const payload = await getPerformanceIndicatorPayload();
     const yann = uniquePortfolioOwners(payload.accounts.map((a) => a.owner)).find(
       (o) => o.toLowerCase().includes("yann"),
     );
     assert.ok(yann);
     const filters = { ...defaultPerformanceFilters(payload), owner: yann };
-    const ref = DISNAT_RETURNS_BENCHMARK.yann;
-
-    let hits = 0;
-    for (const periodId of ["month3", "ytd"] as const) {
-      const r = computePeriodResult(payload, filters, periodId);
-      if (r.gainPct == null) continue;
-      if (Math.abs(r.gainPct - ref[periodId]) <= DISNAT_RETURN_TOLERANCE_PCT) {
-        hits++;
-      }
-    }
-    assert.ok(hits >= 1, "au moins month3 ou ytd proche de Disnat (±8 pts)");
+    const r = computePeriodResult(payload, filters, "month");
+    const ref = DISNAT_RETURNS_BENCHMARK.yann.month;
+    assert.ok(r.gainPct != null);
+    assert.ok(
+      Math.abs(r.gainPct - ref) <= DISNAT_RETURN_TOLERANCE_STRICT_PCT,
+      `month ${r.gainPct} vs ${ref}`,
+    );
   });
 });

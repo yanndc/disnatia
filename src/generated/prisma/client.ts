@@ -100,6 +100,13 @@ export type PortfolioDailyValue = Prisma.PortfolioDailyValueModel
  */
 export type PortfolioDailyAccountSessionGain = Prisma.PortfolioDailyAccountSessionGainModel
 /**
+ * Model PortfolioPerformanceSnapshot
+ * *
+ *  * Indicateurs performance précalculés (owner × période × portée × séance).
+ *  * Versionnés via calcVersion — ne pas recalculer rétroactivement sans bump.
+ */
+export type PortfolioPerformanceSnapshot = Prisma.PortfolioPerformanceSnapshotModel
+/**
  * Model PortfolioTransactionLine
  * 
  */

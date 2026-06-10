@@ -86,6 +86,12 @@ export type PerformanceSessionDataHealth = {
   lastDate: string | null;
 };
 
+export type PerformanceSnapshotsBundle = {
+  calcVersion: number;
+  sessionDate: string;
+  byScopeKey: Record<string, PerformancePeriodResult[]>;
+};
+
 export type PerformanceIndicatorPayload = {
   accounts: PerformanceAccountRef[];
   currentByAccount: Record<string, PerformanceAccountCurrent>;
@@ -100,6 +106,8 @@ export type PerformanceIndicatorPayload = {
   sessionGainsByAccount: Record<string, PerformanceSessionGain[]>;
   /** État de fiabilité des séances persistées (aucun fallback implicite). */
   sessionDataHealth: PerformanceSessionDataHealth;
+  /** Indicateurs précalculés (Phase C) — null si rebuild requis. */
+  performanceSnapshots: PerformanceSnapshotsBundle | null;
   cashFlows: PerformanceCashFlow[];
   /** Positions projetées pour calcul P&L titres par séance */
   holdings: PerformanceHoldingRow[];

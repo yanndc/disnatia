@@ -35,6 +35,7 @@ import {
   recomputeAndPersistSessionGains,
 } from "./performance-session-gains";
 import { assessSessionDataHealth } from "./performance-facts-health";
+import { loadPerformanceSnapshots } from "./performance-snapshot-store";
 import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
@@ -501,6 +502,9 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     dailyCloses[key] = value;
   }
 
+  const refSession = referenceTradingSessionDayIso(now);
+  const performanceSnapshots = await loadPerformanceSnapshots(refSession);
+
   return {
     accounts,
     currentByAccount,
@@ -510,6 +514,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     sessionGainsByDate: sessionGainsByDateList,
     sessionGainsByAccount,
     sessionDataHealth,
+    performanceSnapshots,
     cashFlows,
     holdings: performanceHoldings,
     enrichedHoldings,

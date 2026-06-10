@@ -27,5 +27,8 @@ export const DISNAT_RETURNS_BENCHMARK = {
   },
 } as const;
 
-/** Tolérance % pour tests de convergence méthodologique (pas parité jour exacte). */
+/** Tolérance % stricte (Yann, périodes courtes). */
+export const DISNAT_RETURN_TOLERANCE_STRICT_PCT = 2;
+
+/** Tolérance % large (calibration en cours). */
 export const DISNAT_RETURN_TOLERANCE_PCT = 8;
