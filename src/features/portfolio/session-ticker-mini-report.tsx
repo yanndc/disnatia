@@ -114,8 +114,8 @@ function TickerTable({
 
 function SessionBlock({ view }: { view: SessionTickerView }) {
   const allRows = [...view.lists.gainers, ...view.lists.losers];
-  const netPnl = sumDayGainCad(allRows);
-  const hasRows = allRows.length > 0;
+  const netPnl = view.totalGainCad;
+  const hasRows = allRows.length > 0 || netPnl !== null;
 
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
@@ -131,7 +131,7 @@ function SessionBlock({ view }: { view: SessionTickerView }) {
           emptyHint="Aucun titre en baisse."
         />
       </div>
-      {hasRows ? (
+      {hasRows && netPnl !== null ? (
         <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-200 pt-3 text-sm">
           <span className="font-semibold text-slate-700">
             Total séance ({allRows.length} titres)
@@ -205,7 +205,7 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
   }
 
   const allRows = [...view.lists.gainers, ...view.lists.losers];
-  const sessionTotalCad = sumDayGainCad(allRows);
+  const sessionTotalCad = view.totalGainCad;
   const sessionTitleCount = allRows.length;
 
   return (
@@ -266,7 +266,7 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
           <div
             className={cn(
               "shrink-0 rounded-xl px-3 py-2 ring-1 ring-slate-200",
-              signedGainBg(sessionTitleCount > 0 ? sessionTotalCad : null),
+              signedGainBg(sessionTotalCad),
               loading ? "opacity-60" : "",
             )}
           >
@@ -276,10 +276,10 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
             <p
               className={cn(
                 "text-lg font-semibold tabular-nums leading-tight",
-                signedGainClass(sessionTitleCount > 0 ? sessionTotalCad : null),
+                signedGainClass(sessionTotalCad),
               )}
             >
-              {sessionTitleCount > 0 ? formatCurrency(sessionTotalCad, "CAD") : "—"}
+              {sessionTotalCad !== null ? formatCurrency(sessionTotalCad, "CAD") : "—"}
             </p>
             {sessionTitleCount > 0 ? (
               <p className="text-[10px] text-slate-500">

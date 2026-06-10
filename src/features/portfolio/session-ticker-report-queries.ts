@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db/prisma";
 import {
+  loadUsdCadRateMap,
+  usdCadRateOnDate,
+} from "@/lib/fx/usd-cad-rate-map";
+import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
   isTradingDayDate,
@@ -7,6 +11,7 @@ import {
   referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
 } from "@/lib/market/equity-session";
+import { sessionGainFromPriorQuantity } from "./performance-session-gains";
 import { quotesAreStale } from "@/features/portfolio/refresh-live-quotes";
 import { normalizeCurrency } from "@/lib/utils";
 import {
@@ -42,6 +47,8 @@ export type SessionTickerView = {
   sessionDate: string;
   sessionLabel: string;
   lists: SessionTickerLists;
+  /** Total P&L titres — même source que « Séance préc. » (session_gains persistés). */
+  totalGainCad: number | null;
 };
 
 /** Nombre max de séances ouvrées navigables en arrière. */
@@ -53,10 +60,42 @@ export type SessionTickerMiniReport = {
   minSessionDate: string;
 };
 
-function toCad(value: number, currency: string, usdToCad: number | null): number {
+function toCad(
+  value: number,
+  currency: string,
+  usdToCad: number | null,
+): number {
   const cur = normalizeCurrency(currency);
   if (cur === "USD" && usdToCad !== null) return value * usdToCad;
   return value;
+}
+
+function positionKey(
+  accountKey: string,
+  ticker: string,
+  currency: string,
+): string {
+  return `${accountKey}|${ticker.toUpperCase()}|${normalizeCurrency(currency)}`;
+}
+
+/** Σ gains persistés pour une séance — aligné carte Performance. */
+export function sumPersistedSessionGainCad(
+  payload: PerformanceIndicatorPayload,
+  sessionDate: string,
+  accountKeys: string[],
+): number | null {
+  let total = 0;
+  let found = false;
+  for (const accountKey of accountKeys) {
+    const hit = payload.sessionGainsByAccount?.[accountKey]?.find(
+      (g) => g.date === sessionDate,
+    );
+    if (hit) {
+      total += hit.gainCad;
+      found = true;
+    }
+  }
+  return found ? total : null;
 }
 
 type TickerBucket = {
@@ -212,6 +251,7 @@ async function loadHoldingsForSessionDate(
       quantity: { gt: 0 },
     },
     select: {
+      accountKey: true,
       ticker: true,
       securityName: true,
       currency: true,
@@ -238,6 +278,7 @@ async function loadHoldingsForSessionDate(
       quantity: { gt: 0 },
     },
     select: {
+      accountKey: true,
       ticker: true,
       securityName: true,
       currency: true,
@@ -261,11 +302,13 @@ async function aggregateFromDailyHoldings(
   ]);
   if (holdings.length === 0 && priorHoldings.length === 0) return [];
 
+  const fxFrom = previousTradingDayIso(sessionDate, 14);
+  const rateMap = await loadUsdCadRateMap(fxFrom, sessionDate);
+  const sessionFx = usdCadRateOnDate(rateMap, sessionDate) ?? usdToCad;
+
   const qtyAtOpen = new Map<string, number>();
   for (const h of priorHoldings) {
-    const ticker = h.ticker.toUpperCase();
-    const currency = normalizeCurrency(h.currency);
-    const key = `${ticker}|${currency}`;
+    const key = positionKey(h.accountKey, h.ticker, h.currency);
     qtyAtOpen.set(key, (qtyAtOpen.get(key) ?? 0) + h.quantity);
   }
 
@@ -275,6 +318,7 @@ async function aggregateFromDailyHoldings(
     const ticker = h.ticker.toUpperCase();
     const currency = normalizeCurrency(h.currency);
     const seriesKey = `${ticker}|${currency}`;
+    const posKey = positionKey(h.accountKey, ticker, currency);
     const series = closeSeriesForPair(dailyCloses, ticker, currency);
     if (series.size === 0) continue;
 
@@ -284,15 +328,15 @@ async function aggregateFromDailyHoldings(
     const baseClose = series.get(priorDate);
     if (baseClose == null || baseClose <= 0) continue;
 
-    const quantity = qtyAtOpen.get(seriesKey) ?? h.quantity;
-    if (quantity <= 0) continue;
+    const qtyHeld = qtyAtOpen.get(posKey) ?? 0;
+    if (qtyHeld <= 0) continue;
 
-    const gainNative = quantity * (endClose - baseClose);
+    const { gainNative } = sessionGainFromPriorQuantity(qtyHeld, endClose, baseClose);
     if (gainNative === 0) continue;
 
     const existing = buckets.get(seriesKey);
     if (existing) {
-      existing.quantity += quantity;
+      existing.quantity += qtyHeld;
       existing.gainNative += gainNative;
       existing.securityName = pickSecurityName(existing.securityName, h.securityName);
     } else {
@@ -300,13 +344,13 @@ async function aggregateFromDailyHoldings(
         ticker,
         securityName: (h.securityName ?? "").trim() || ticker,
         currency,
-        quantity,
+        quantity: qtyHeld,
         gainNative,
       });
     }
   }
 
-  return finalizeBuckets(buckets, usdToCad);
+  return finalizeBuckets(buckets, sessionFx);
 }
 
 export function parsePayloadClock(asOfNow: string): Date {
@@ -413,10 +457,21 @@ export async function buildSessionTickerViewForDate(
       )
     : dailyRows;
 
+  const persistedTotal = sumPersistedSessionGainCad(
+    payload,
+    sessionDate,
+    disnatAccountKeys,
+  );
+  const rowTotal = rows.reduce((sum, row) => sum + row.dayGainCad, 0);
+  const totalGainCad =
+    persistedTotal ??
+    (rows.length > 0 && Number.isFinite(rowTotal) ? rowTotal : null);
+
   return {
     sessionDate,
     sessionLabel: resolveSessionLabel(sessionDate, now, useLive),
     lists: splitGainersLosers(rows),
+    totalGainCad,
   };
 }
 
