@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import {
   Body,
   Container,
@@ -12,51 +13,137 @@ import {
 } from "@react-email/components";
 import type { EodReportData } from "@/features/reports/eod-report-types";
 import type { PerformancePeriodResult } from "@/features/portfolio/performance-indicator-types";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
+import type {
+  SessionTickerRow,
+  SessionTickerView,
+} from "@/features/portfolio/session-ticker-report-queries";
+import { formatCurrency, formatCurrencyDetailed, formatPercent } from "@/lib/utils";
+
+const palette = {
+  pageBg: "#f0f4f8",
+  cardBg: "#ffffff",
+  border: "#e2e8f0",
+  text: "#0f172a",
+  muted: "#64748b",
+  gain: "#059669",
+  gainBg: "#ecfdf5",
+  gainBorder: "#a7f3d0",
+  loss: "#e11d48",
+  lossBg: "#fff1f2",
+  lossBorder: "#fecdd3",
+  neutral: "#475569",
+  neutralBg: "#f8fafc",
+  accent: "#2563eb",
+  accentBg: "#eff6ff",
+};
 
 const styles = {
   body: {
-    backgroundColor: "#f4f4f5",
+    backgroundColor: palette.pageBg,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
     margin: 0,
     padding: "24px 0",
   },
   container: {
-    backgroundColor: "#ffffff",
-    borderRadius: "8px",
+    backgroundColor: palette.cardBg,
+    border: `1px solid ${palette.border}`,
+    borderRadius: "12px",
     margin: "0 auto",
-    maxWidth: "640px",
-    padding: "24px",
+    maxWidth: "720px",
+    padding: "28px",
   },
-  h1: { color: "#18181b", fontSize: "22px", fontWeight: 600, margin: "0 0 8px" },
-  muted: { color: "#71717a", fontSize: "13px", lineHeight: "20px", margin: "0 0 16px" },
-  kpiRow: { margin: "0 0 12px" },
-  kpiLabel: { color: "#52525b", fontSize: "13px", margin: "0 0 4px" },
-  kpiValue: { color: "#18181b", fontSize: "18px", fontWeight: 600, margin: 0 },
-  sectionTitle: {
-    color: "#18181b",
-    fontSize: "16px",
+  h1: { color: palette.text, fontSize: "24px", fontWeight: 700, margin: "0 0 6px" },
+  muted: { color: palette.muted, fontSize: "13px", lineHeight: "20px", margin: 0 },
+  kpiGrid: { width: "100%", borderCollapse: "collapse" as const, margin: "20px 0 0" },
+  kpiCell: {
+    backgroundColor: palette.neutralBg,
+    border: `1px solid ${palette.border}`,
+    borderRadius: "10px",
+    padding: "14px 16px",
+    verticalAlign: "top" as const,
+    width: "33%",
+  },
+  kpiLabel: {
+    color: palette.muted,
+    fontSize: "11px",
     fontWeight: 600,
-    margin: "24px 0 12px",
+    letterSpacing: "0.04em",
+    margin: "0 0 6px",
+    textTransform: "uppercase" as const,
+  },
+  kpiValue: { color: palette.text, fontSize: "20px", fontWeight: 700, margin: 0 },
+  kpiSub: { color: palette.muted, fontSize: "12px", margin: "4px 0 0" },
+  sectionTitle: {
+    color: palette.text,
+    fontSize: "15px",
+    fontWeight: 700,
+    margin: "28px 0 10px",
+  },
+  sessionHeader: {
+    backgroundColor: palette.accentBg,
+    border: `1px solid #bfdbfe`,
+    borderRadius: "10px",
+    margin: "0 0 12px",
+    padding: "12px 14px",
+  },
+  sessionHeaderTitle: {
+    color: palette.text,
+    fontSize: "14px",
+    fontWeight: 700,
+    margin: "0 0 2px",
+  },
+  sessionHeaderDate: { color: palette.muted, fontSize: "12px", margin: 0 },
+  sessionTotal: {
+    color: palette.text,
+    fontSize: "16px",
+    fontWeight: 700,
+    margin: 0,
+    textAlign: "right" as const,
   },
   table: { width: "100%", borderCollapse: "collapse" as const, fontSize: "13px" },
   th: {
-    borderBottom: "1px solid #e4e4e7",
-    color: "#52525b",
-    fontWeight: 600,
-    padding: "8px 6px",
+    backgroundColor: palette.neutralBg,
+    borderBottom: `1px solid ${palette.border}`,
+    color: palette.muted,
+    fontSize: "10px",
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    padding: "8px 10px",
     textAlign: "left" as const,
+    textTransform: "uppercase" as const,
   },
   td: {
-    borderBottom: "1px solid #f4f4f5",
-    color: "#3f3f46",
-    padding: "8px 6px",
-    verticalAlign: "top" as const,
+    borderBottom: `1px solid ${palette.border}`,
+    color: palette.text,
+    padding: "8px 10px",
+    verticalAlign: "middle" as const,
   },
-  note: { color: "#a16207", fontSize: "12px", margin: "8px 0 0" },
-  footer: { color: "#a1a1aa", fontSize: "12px", marginTop: "24px" },
+  tickerCol: { fontWeight: 600 },
+  nameCol: { color: palette.muted, fontSize: "12px", maxWidth: "140px" },
+  emptyHint: { color: palette.muted, fontSize: "12px", fontStyle: "italic" as const, margin: "8px 0" },
+  footer: { color: "#94a3b8", fontSize: "12px", marginTop: "24px" },
 };
+
+function gainTextColor(value: number | null): string {
+  if (value === null) return palette.muted;
+  if (value > 0) return palette.gain;
+  if (value < 0) return palette.loss;
+  return palette.neutral;
+}
+
+function gainCellStyle(value: number | null): CSSProperties {
+  const color = gainTextColor(value);
+  const isGain = value !== null && value > 0;
+  const isLoss = value !== null && value < 0;
+  return {
+    ...styles.td,
+    color,
+    fontWeight: 600,
+    textAlign: "right",
+    backgroundColor: isGain ? palette.gainBg : isLoss ? palette.lossBg : undefined,
+  };
+}
 
 function formatGain(value: number | null, pct: number | null): string {
   if (value === null) return "—";
@@ -67,25 +154,194 @@ function formatGain(value: number | null, pct: number | null): string {
   return `${main} (${pctSign}${formatPercent(pct)})`;
 }
 
-function periodBlock(title: string, period: PerformancePeriodResult) {
+function formatSessionDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString("fr-CA", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Toronto",
+  });
+}
+
+function periodKpiCell(period: PerformancePeriodResult) {
+  const color = gainTextColor(period.gainCad);
+  const bg =
+    period.gainCad !== null && period.gainCad > 0
+      ? palette.gainBg
+      : period.gainCad !== null && period.gainCad < 0
+        ? palette.lossBg
+        : palette.neutralBg;
+  const border =
+    period.gainCad !== null && period.gainCad > 0
+      ? palette.gainBorder
+      : period.gainCad !== null && period.gainCad < 0
+        ? palette.lossBorder
+        : palette.border;
+
   return (
-    <Section style={styles.kpiRow} key={title}>
-      <Text style={styles.kpiLabel}>{title}</Text>
-      <Text style={styles.kpiValue}>
+    <td style={{ ...styles.kpiCell, backgroundColor: bg, borderColor: border }}>
+      <Text style={styles.kpiLabel}>{period.label}</Text>
+      <Text style={{ ...styles.kpiValue, color }}>
         {formatGain(period.gainCad, period.gainPct)}
       </Text>
-      {period.note ? (
-        <Text style={styles.note}>{period.note}</Text>
-      ) : null}
+      {period.note ? <Text style={styles.kpiSub}>{period.note}</Text> : null}
       {period.incomplete ? (
-        <Text style={styles.note}>Données incomplètes ({period.method})</Text>
+        <Text style={styles.kpiSub}>Données incomplètes ({period.method})</Text>
       ) : null}
+    </td>
+  );
+}
+
+function TickerTable({
+  title,
+  rows,
+  accentColor,
+  accentBg,
+  emptyHint,
+}: {
+  title: string;
+  rows: SessionTickerRow[];
+  accentColor: string;
+  accentBg: string;
+  emptyHint: string;
+}) {
+  return (
+    <div style={{ marginBottom: "16px" }}>
+      <Text
+        style={{
+          color: accentColor,
+          fontSize: "11px",
+          fontWeight: 700,
+          letterSpacing: "0.05em",
+          margin: "0 0 8px",
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </Text>
+      {rows.length === 0 ? (
+        <Text style={styles.emptyHint}>{emptyHint}</Text>
+      ) : (
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Symbole</th>
+              <th style={styles.th}>Nom</th>
+              <th style={{ ...styles.th, textAlign: "right" }}>Δ $</th>
+              <th style={{ ...styles.th, textAlign: "right" }}>P&L jour</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.ticker}-${row.currency}`}>
+                <td style={{ ...styles.td, ...styles.tickerCol }}>{row.ticker}</td>
+                <td style={{ ...styles.td, ...styles.nameCol }}>{row.securityName}</td>
+                <td style={gainCellStyle(row.changePerShare)}>
+                  {formatCurrencyDetailed(row.changePerShare, row.currency, 2)}
+                </td>
+                <td style={gainCellStyle(row.dayGainCad)}>
+                  {formatCurrency(row.dayGainCad, "CAD")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td
+                colSpan={4}
+                style={{
+                  ...styles.td,
+                  backgroundColor: accentBg,
+                  borderBottom: "none",
+                  color: accentColor,
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  textAlign: "right",
+                }}
+              >
+                {rows.length} titre{rows.length > 1 ? "s" : ""} ·{" "}
+                {formatCurrency(
+                  rows.reduce((sum, row) => sum + row.dayGainCad, 0),
+                  "CAD",
+                )}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function SessionTickerBlock({ view }: { view: SessionTickerView }) {
+  const titleCount =
+    view.lists.gainers.length + view.lists.losers.length;
+
+  return (
+    <Section>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "12px" }}>
+        <tbody>
+          <tr>
+            <td style={styles.sessionHeader}>
+              <Text style={styles.sessionHeaderTitle}>{view.sessionLabel}</Text>
+              <Text style={styles.sessionHeaderDate}>
+                {formatSessionDate(view.sessionDate)}
+              </Text>
+            </td>
+            <td style={{ ...styles.sessionHeader, width: "160px" }}>
+              <Text style={styles.kpiLabel}>Total séance</Text>
+              <Text
+                style={{
+                  ...styles.sessionTotal,
+                  color: gainTextColor(view.totalGainCad),
+                }}
+              >
+                {view.totalGainCad !== null
+                  ? formatCurrency(view.totalGainCad, "CAD")
+                  : "—"}
+              </Text>
+              {titleCount > 0 ? (
+                <Text style={{ ...styles.sessionHeaderDate, textAlign: "right" }}>
+                  {titleCount} titre{titleCount > 1 ? "s" : ""}
+                </Text>
+              ) : null}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <tbody>
+          <tr>
+            <td style={{ verticalAlign: "top", width: "50%", paddingRight: "8px" }}>
+              <TickerTable
+                title="Hausse"
+                rows={view.lists.gainers}
+                accentColor={palette.gain}
+                accentBg={palette.gainBg}
+                emptyHint="Aucun titre en hausse."
+              />
+            </td>
+            <td style={{ verticalAlign: "top", width: "50%", paddingLeft: "8px" }}>
+              <TickerTable
+                title="Baisse"
+                rows={view.lists.losers}
+                accentColor={palette.loss}
+                accentBg={palette.lossBg}
+                emptyHint="Aucun titre en baisse."
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Section>
   );
 }
 
 export function EodReportEmail({ data }: { data: EodReportData }) {
-  const preview = `DisnatIA — ${data.sessionDate} — ${formatCurrency(data.totalValueCad, "CAD")}`;
+  const preview = `DisnatIA — ${data.sessionDate} — ${formatCurrency(data.disnatTotalValueCad, "CAD")}`;
 
   return (
     <Html lang="fr">
@@ -104,107 +360,33 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
             (Toronto)
           </Text>
 
-          <Section>
-            <Text style={styles.kpiLabel}>Valeur totale (CAD)</Text>
-            <Text style={styles.kpiValue}>
-              {formatCurrency(data.totalValueCad, "CAD")}
-            </Text>
-          </Section>
-
-          {periodBlock(data.dayPeriod.label, data.dayPeriod)}
-          {periodBlock(data.yesterdayPeriod.label, data.yesterdayPeriod)}
-
-          <Hr style={{ borderColor: "#e4e4e7", margin: "24px 0" }} />
-
-          <Text style={styles.sectionTitle}>Par compte</Text>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Compte</th>
-                <th style={styles.th}>Total</th>
-                <th style={styles.th}>Titres</th>
-                <th style={styles.th}>Cash</th>
-                <th style={styles.th}>P&L jour</th>
-              </tr>
-            </thead>
+          <table style={styles.kpiGrid}>
             <tbody>
-              {data.accounts.map((a) => (
-                <tr key={a.accountKey}>
-                  <td style={styles.td}>
-                    {a.label}
-                    {a.owner ? (
-                      <>
-                        <br />
-                        <span style={{ color: "#a1a1aa", fontSize: "12px" }}>
-                          {a.owner}
-                        </span>
-                      </>
-                    ) : null}
-                  </td>
-                  <td style={styles.td}>{formatCurrency(a.totalCad, "CAD")}</td>
-                  <td style={styles.td}>
-                    {formatCurrency(a.positionsCad, "CAD")}
-                  </td>
-                  <td style={styles.td}>{formatCurrency(a.cashCad, "CAD")}</td>
-                  <td style={styles.td}>
-                    {a.dayGainCad !== null
-                      ? formatGain(a.dayGainCad, null)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
+              <tr>
+                <td style={styles.kpiCell}>
+                  <Text style={styles.kpiLabel}>Portefeuilles Disnat</Text>
+                  <Text style={styles.kpiValue}>
+                    {formatCurrency(data.disnatTotalValueCad, "CAD")}
+                  </Text>
+                  <Text style={styles.kpiSub}>Titres + cash (CAD)</Text>
+                </td>
+                {periodKpiCell(data.dayPeriod)}
+                {periodKpiCell(data.yesterdayPeriod)}
+              </tr>
             </tbody>
           </table>
 
-          <Text style={styles.sectionTitle}>Positions</Text>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Titre</th>
-                <th style={styles.th}>Compte</th>
-                <th style={styles.th}>Qté</th>
-                <th style={styles.th}>Valeur CAD</th>
-                <th style={styles.th}>P&L jour</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.positions.map((p) => (
-                <tr key={`${p.accountKey}-${p.ticker}-${p.currency}`}>
-                  <td style={styles.td}>
-                    <strong>{p.ticker}</strong>
-                    {p.securityName ? (
-                      <>
-                        <br />
-                        <span style={{ fontSize: "12px", color: "#a1a1aa" }}>
-                          {p.securityName}
-                        </span>
-                      </>
-                    ) : null}
-                  </td>
-                  <td style={styles.td}>{p.accountLabel}</td>
-                  <td style={styles.td}>{formatNumber(p.quantity, 4)}</td>
-                  <td style={styles.td}>
-                    {formatCurrency(p.marketValueCad, "CAD")}
-                    {!p.usesLiveQuote ? (
-                      <>
-                        <br />
-                        <span style={{ fontSize: "11px", color: "#a1a1aa" }}>
-                          snapshot
-                        </span>
-                      </>
-                    ) : null}
-                  </td>
-                  <td style={styles.td}>
-                    {p.dayGainCad !== null
-                      ? formatGain(p.dayGainCad, null)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
 
-          <Hr style={{ borderColor: "#e4e4e7", margin: "24px 0" }} />
+          <Text style={styles.sectionTitle}>Titres — séance courante</Text>
+          <SessionTickerBlock view={data.currentSession} />
+
+          <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
+
+          <Text style={styles.sectionTitle}>Titres — séance précédente</Text>
+          <SessionTickerBlock view={data.previousSession} />
+
+          <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
 
           <Text style={styles.sectionTitle}>Qualité des données</Text>
           <Text style={styles.muted}>
@@ -221,14 +403,16 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
           ) : null}
           {data.usdToCad !== null ? (
             <Text style={styles.muted}>
-              USD→CAD : {formatNumber(data.usdToCad, 4)}
+              USD→CAD : {data.usdToCad.toFixed(4)}
               {data.usdToCadDate ? ` (${data.usdToCadDate})` : ""}
             </Text>
           ) : null}
 
           {data.appUrl ? (
             <Text style={styles.footer}>
-              <Link href={data.appUrl}>{data.appUrl}</Link>
+              <Link href={data.appUrl} style={{ color: palette.accent }}>
+                {data.appUrl}
+              </Link>
             </Text>
           ) : null}
 
