@@ -109,6 +109,11 @@ export type PerformanceIndicatorPayload = {
   /** Indicateurs précalculés (Phase C) — null si rebuild requis. */
   performanceSnapshots: PerformanceSnapshotsBundle | null;
   cashFlows: PerformanceCashFlow[];
+  /** Soldes cash cumulés par compte (ledger transactions). */
+  accountCashLedgers: Record<
+    string,
+    { date: string; balanceCad: number }[]
+  >;
   /** Positions projetées pour calcul P&L titres par séance */
   holdings: PerformanceHoldingRow[];
   /** Positions enrichies (P&L séance déjà calculé par ligne). */

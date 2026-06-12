@@ -29,6 +29,7 @@ import {
   formatFlowAdjustmentNote,
   netExternalFlowsCad,
 } from "./performance-cash-flows";
+import { cashCadAtOrBefore } from "./performance-cash-ledger";
 import { resolvePeriodReturnPercent } from "./performance-return-methods";
 import { performanceScopeKey } from "./performance-snapshot-scope";
 
@@ -630,10 +631,44 @@ export function computeTitresPeriodGain(
   }
 
   const startHit = titresCadFullCoverageAtOrBefore(materialKeys, payload, lookup);
-  const endHit = titresCadFullCoverageAtOrBefore(materialKeys, payload, bounds.end);
-  const endCad = endHit?.valueCad ?? resolveEndTitresCad(materialKeys, payload, bounds.end);
+  if (!startHit) {
+    return {
+      usable: false,
+      gainCad: null,
+      gainPct: null,
+      baselineCad: null,
+      baselineDate: null,
+      accountsWithBaseline: 0,
+      incomplete: true,
+    };
+  }
 
-  if (!startHit || endCad === null) {
+  const endHit = titresCadFullCoverageAtOrBefore(materialKeys, payload, bounds.end);
+  const ledgers = payload.accountCashLedgers ?? {};
+  const cashStartCad = cashCadAtOrBefore(materialKeys, ledgers, lookup);
+  /** Cash non investi au début : significatif seulement au-delà de ce seuil (évite bruit ledger). */
+  const startCad =
+    startHit.valueCad + (cashStartCad >= 3000 ? cashStartCad : 0);
+
+  const now = sessionClockForBounds(payload.asOfNow);
+  const refDay = referenceTradingSessionDayIso(now);
+  const endIsLive =
+    !isBeforeTodaySessionOpen(now) && bounds.end === refDay;
+  let endCad: number | null;
+  if (endIsLive) {
+    endCad = currentCadTotal(accountKeys, payload);
+  } else {
+    const endTitres =
+      endHit?.valueCad ?? resolveEndTitresCad(materialKeys, payload, bounds.end);
+    if (endTitres === null) {
+      endCad = null;
+    } else {
+      const cashEndCad = cashCadAtOrBefore(materialKeys, ledgers, bounds.end);
+      endCad = endTitres + cashEndCad;
+    }
+  }
+
+  if (endCad === null) {
     return {
       usable: false,
       gainCad: null,
@@ -651,8 +686,8 @@ export function computeTitresPeriodGain(
     bounds.start,
     bounds.end,
   );
-  const baselineCad = startHit.valueCad + netFlowsCad;
-  const gainCad = endCad - startHit.valueCad - netFlowsCad;
+  const baselineCad = startCad + netFlowsCad;
+  const gainCad = endCad - startCad - netFlowsCad;
   const gainPct =
     baselineCad > 0 && Number.isFinite(gainCad)
       ? (gainCad / baselineCad) * 100
@@ -843,18 +878,20 @@ function computeSessionChainPeriod(
     };
   }
 
-  let gainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
+  let sessionGainCad = sessions.reduce((s, g) => s + g.gainCad, 0);
 
-  // En séance ouverte, remplace le P&L persisté du jour par le P&L live.
+  // En séance ouverte, remplace le P&L persisté du jour par le P&L live (repli seulement).
   const now = sessionClockForBounds(payload.asOfNow);
   const refDay = isoDate(referenceTradingSessionDay(now));
   const endIsToday = bounds.end === refDay;
   if (endIsToday && periodId !== "yesterday" && isEquityMarketSessionOpen(now)) {
     const chainToday = sessions.find((g) => g.date === refDay);
     const liveToday = sumLiveDayGainCad(accountKeys, payload);
-    if (chainToday) gainCad -= chainToday.gainCad;
-    gainCad += liveToday;
+    if (chainToday) sessionGainCad -= chainToday.gainCad;
+    sessionGainCad += liveToday;
   }
+
+  const titresCalc = computeTitresPeriodGain(accountKeys, payload, bounds);
 
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start!);
@@ -888,26 +925,53 @@ function computeSessionChainPeriod(
     bounds.start != null &&
     sessions[0]!.date > latestAllowedFirstSessionDate(bounds.start);
   const boundaryIncomplete = !boundaryCoverageComplete;
-  const incomplete =
-    periodId === "all"
+  const useTitresGain = titresCalc.usable && titresCalc.gainCad !== null;
+  const gainCad = useTitresGain ? titresCalc.gainCad : sessionGainCad;
+  const incomplete = useTitresGain
+    ? titresCalc.incomplete
+    : periodId === "all"
       ? boundaryIncomplete
       : sessionsIncomplete || boundaryIncomplete;
+
+  const netFlowsCad = netExternalFlowsCad(
+    payload.cashFlows,
+    accountKeys,
+    bounds.start!,
+    bounds.end,
+  );
 
   return {
     usable: true,
     gainCad,
     gainPct: ret.gainPct,
     currentCad,
-    baselineCad: ret.baselineCad,
-    baselineDate: baselineHit?.asOf ?? sessions[0]?.date ?? bounds.baselineLookup,
-    accountsWithBaseline: boundaryCoverageComplete ? materialKeys.length : 0,
+    baselineCad: useTitresGain
+      ? (titresCalc.baselineCad ?? ret.baselineCad)
+      : ret.baselineCad,
+    baselineDate:
+      (useTitresGain ? titresCalc.baselineDate : null) ??
+      baselineHit?.asOf ??
+      sessions[0]?.date ??
+      bounds.baselineLookup,
+    accountsWithBaseline: useTitresGain
+      ? titresCalc.accountsWithBaseline
+      : boundaryCoverageComplete
+        ? materialKeys.length
+        : 0,
     incomplete,
     annualized: ret.annualized,
-    note: boundaryIncomplete
-      ? "Rendement % sur chaîne de séances (historique titres incomplet aux bornes)."
-      : sessionsIncomplete
-        ? "P&L partiel : historique de séances incomplet sur la période."
-        : null,
+    note: joinNotes(
+      useTitresGain ? formatFlowAdjustmentNote(netFlowsCad) : null,
+      useTitresGain
+        ? boundaryIncomplete
+          ? "Rendement % sur chaîne de séances (historique titres incomplet aux bornes)."
+          : null
+        : boundaryIncomplete
+          ? "Rendement % sur chaîne de séances (historique titres incomplet aux bornes)."
+          : sessionsIncomplete
+            ? "P&L partiel : historique de séances incomplet sur la période."
+            : null,
+    ),
   };
 }
 

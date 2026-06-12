@@ -157,7 +157,7 @@ export function computeModifiedDietzReturn(
 /**
  * Résout le % de période : Dietz (Disnat) si BMV/EMV couvrent tous les comptes,
  * sinon TWR sur la chaîne de séances (évite les % aberrants sur BMV partielle).
- * Le gain $ reste Σ session_gains (appelant).
+ * Le gain $ est calculé côté appelant (Δ titres − flux ; repli Σ séances).
  */
 export function resolvePeriodReturnPercent(params: {
   sessions: PerformanceSessionGain[];

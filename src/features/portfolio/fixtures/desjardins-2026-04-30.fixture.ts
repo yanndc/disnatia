@@ -203,6 +203,7 @@ export function desjardinsPerformancePayload(
     },
     performanceSnapshots: null,
     cashFlows: [],
+    accountCashLedgers: {},
     holdings: [],
     enrichedHoldings: [],
     dailyCloses: {},

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { buildPerformanceCashFlowsFromTxRows } from "./performance-cash-flows";
 import {
   aggregateSessionGainsForAccounts,
   computePeriodResult,
@@ -104,6 +105,7 @@ function mockPayload(
     },
     performanceSnapshots: null,
     cashFlows: [],
+    accountCashLedgers: {},
     holdings: [],
     enrichedHoldings: [],
     dailyCloses: {},
@@ -694,34 +696,9 @@ describe("computePeriodResult", () => {
     assert.equal(year3.incomplete, true);
   });
 
-  test("AAJ : alerte si séances commencent bien après le début d année", () => {
+  test("AAJ : alerte si séances tardives sans historique titres au début d année", () => {
     const payload = mockPayload({
-      historyPoints: [
-        {
-          accountKey: "ACC|CAD",
-          asOf: "2025-12-31",
-          totalValueNative: 80_000,
-          currency: "CAD",
-        },
-        {
-          accountKey: "ACC2|CAD",
-          asOf: "2025-12-31",
-          totalValueNative: 40_000,
-          currency: "CAD",
-        },
-        {
-          accountKey: "ACC|CAD",
-          asOf: "2026-06-02",
-          totalValueNative: 90_000,
-          currency: "CAD",
-        },
-        {
-          accountKey: "ACC2|CAD",
-          asOf: "2026-06-02",
-          totalValueNative: 40_100,
-          currency: "CAD",
-        },
-      ],
+      historyPoints: [],
       sessionGainsByAccount: {
         "ACC|CAD": [
           { date: "2026-03-03", gainCad: 500, priorCad: 80_000 },
@@ -746,6 +723,141 @@ describe("computePeriodResult", () => {
       "ytd",
     );
     assert.equal(ytd.incomplete, true);
-    assert.match(ytd.note ?? "", /historique de séances incomplet/);
+    assert.match(ytd.note ?? "", /historique de séances incomplet|historique titres incomplet/);
+  });
+});
+
+describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
+  test("YTD : gain $ ≠ Σ séances quand des cotisations tombent dans la période", () => {
+    const sessionGainsByAccount = {
+      "ACC|CAD": [
+        { date: "2026-03-03", gainCad: 2_000, priorCad: 11_000 },
+        { date: "2026-06-11", gainCad: 1_500, priorCad: 14_000 },
+      ],
+    };
+    const sessionGainsByDate = [
+      { date: "2026-03-03", gainCad: 2_000, priorCad: 11_000 },
+      { date: "2026-06-11", gainCad: 1_500, priorCad: 14_000 },
+    ];
+    const payload = mockPayload({
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "CELI",
+          owner: "Alice",
+          accountType: "CELI",
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 15_000,
+          positionsCad: 15_000,
+          cashCad: 0,
+          dayGainCad: 50,
+          dayPriorCad: 14_950,
+        },
+      },
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 10_000,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount,
+      sessionGainsByDate,
+      cashFlows: [
+        {
+          accountKey: "ACC|CAD",
+          tradeDate: "2026-04-15",
+          txCategory: "CONTRIBUTION",
+          amountCad: 4_900,
+        },
+      ],
+      asOfNow: "2026-06-12T15:00:00",
+    });
+
+    const ytd = computePeriodResult(
+      payload,
+      {
+        preset: "all",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "ytd",
+    );
+
+    assert.equal(ytd.gainCad, 100);
+    assert.notEqual(ytd.gainCad, 3_500);
+    assert.match(ytd.note ?? "", /entrées de capitaux/i);
+  });
+
+  test("buildPerformanceCashFlows : settlementDate alimente le calcul", () => {
+    const flows = buildPerformanceCashFlowsFromTxRows(
+      [
+        {
+          accountKey: "ACC|CAD",
+          tradeDate: null,
+          settlementDate: new Date("2026-04-15T16:00:00Z"),
+          txCategory: "CONTRIBUTION",
+          amount: 4_900,
+          currency: "CAD",
+        },
+      ],
+      null,
+    );
+    const payload = mockPayload({
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "CELI",
+          owner: "Alice",
+          accountType: "CELI",
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 15_000,
+          positionsCad: 15_000,
+          cashCad: 0,
+          dayGainCad: 0,
+          dayPriorCad: 15_000,
+        },
+      },
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 10_000,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [{ date: "2026-06-11", gainCad: 9_999, priorCad: 14_000 }],
+      },
+      sessionGainsByDate: [{ date: "2026-06-11", gainCad: 9_999, priorCad: 14_000 }],
+      cashFlows: flows,
+      asOfNow: "2026-06-12T15:00:00",
+    });
+
+    const ytd = computePeriodResult(
+      payload,
+      {
+        preset: "all",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "ytd",
+    );
+    assert.equal(ytd.gainCad, 100);
   });
 });

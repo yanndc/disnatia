@@ -20,7 +20,6 @@ import {
 import type {
   PerformanceAccountCurrent,
   PerformanceAccountRef,
-  PerformanceCashFlow,
   PerformanceEnrichedHoldingRow,
   PerformanceHoldingRow,
   PerformanceIndicatorPayload,
@@ -35,6 +34,8 @@ import {
   recomputeAndPersistSessionGains,
 } from "./performance-session-gains";
 import { assessSessionDataHealth } from "./performance-facts-health";
+import { buildPerformanceCashFlowsFromTxRows } from "./performance-cash-flows";
+import { buildAccountCashLedgers } from "./performance-cash-ledger";
 import { maybePersistPerformanceSnapshots } from "./performance-snapshot-store";
 import {
   isoDateInToronto,
@@ -169,7 +170,7 @@ async function loadQuotesForHoldings(
 
 export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndicatorPayload> {
   await ensureFreshQuotesDuringSession();
-  const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots, txFlows] =
+  const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots, txFlows, cashLedgerTxs] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
         orderBy: [{ owner: "asc" }, { accountType: "asc" }],
@@ -208,7 +209,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       prisma.portfolioTransactionLine.findMany({
         where: {
           accountKey: { not: null },
-          tradeDate: { not: null },
+          OR: [{ tradeDate: { not: null } }, { settlementDate: { not: null } }],
           txCategory: {
             in: ["CONTRIBUTION", "TRANSFER_IN", "TRANSFER_OUT", "INTERNAL_TRANSFER"],
           },
@@ -216,6 +217,26 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
         select: {
           accountKey: true,
           tradeDate: true,
+          settlementDate: true,
+          transactionType: true,
+          txCategory: true,
+          amount: true,
+          currency: true,
+          quantity: true,
+          ticker: true,
+          fingerprint: true,
+          importId: true,
+        },
+      }),
+      prisma.portfolioTransactionLine.findMany({
+        where: {
+          accountKey: { not: null },
+          OR: [{ tradeDate: { not: null } }, { settlementDate: { not: null } }],
+        },
+        select: {
+          accountKey: true,
+          tradeDate: true,
+          settlementDate: true,
           txCategory: true,
           amount: true,
           currency: true,
@@ -454,18 +475,8 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       ? new Date(Math.max(...quotes.map((q) => q.fetchedAt.getTime()))).toISOString()
       : null;
 
-  const cashFlows: PerformanceCashFlow[] = [];
-  for (const tx of txFlows) {
-    if (!tx.accountKey || !tx.tradeDate || !tx.txCategory) continue;
-    const amount = tx.amount;
-    if (amount === null || !Number.isFinite(amount) || Math.abs(amount) < 0.01) continue;
-    cashFlows.push({
-      accountKey: tx.accountKey,
-      tradeDate: isoDate(tx.tradeDate),
-      txCategory: tx.txCategory as PerformanceCashFlow["txCategory"],
-      amountCad: toCad(amount, tx.currency ?? "CAD", usdToCad),
-    });
-  }
+  const cashFlows = buildPerformanceCashFlowsFromTxRows(txFlows, usdToCad);
+  const accountCashLedgers = buildAccountCashLedgers(cashLedgerTxs, usdToCad);
 
   const performanceHoldings: PerformanceHoldingRow[] = holdings
     .filter((h) => h.quantity > 0)
@@ -518,6 +529,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     sessionDataHealth,
     performanceSnapshots: null,
     cashFlows,
+    accountCashLedgers,
     holdings: performanceHoldings,
     enrichedHoldings,
     dailyCloses,

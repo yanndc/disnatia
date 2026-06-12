@@ -48,6 +48,7 @@ function miniPayload(): PerformanceIndicatorPayload {
     },
     performanceSnapshots: null,
     cashFlows: [],
+    accountCashLedgers: {},
     holdings: [],
     enrichedHoldings: [],
     dailyCloses: {},
