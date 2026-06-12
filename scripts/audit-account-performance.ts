@@ -120,15 +120,23 @@ async function main() {
         filters.selectedYear,
         "2022-03-23",
       );
+      const scoped = (payload.sessionGainsByAccount[accountKey] ?? []).filter(
+        (g) => g.date >= (bounds.start ?? "") && g.date <= bounds.end,
+      );
       const manual = bounds.start
-        ? sumSessionGainsInRange(payload.sessionGainsByDate, bounds.start, bounds.end)
+        ? sumSessionGainsInRange(scoped, bounds.start, bounds.end)
         : null;
-      const scoped = payload.sessionGainsByDate
-        .filter((g) => g.date >= (bounds.start ?? "") && g.date <= bounds.end)
-        .flatMap((g) => g.accounts.filter((a) => a.accountKey === accountKey));
-      const sumGain = scoped.reduce((s, a) => s + a.gainCad, 0);
-      const sumPrior = scoped.reduce((s, a) => s + a.priorCad, 0);
-      const twr = resolvePeriodReturnPercent(scoped, bounds.end, bounds.start ?? undefined);
+      const sumGain = scoped.reduce((s, g) => s + g.gainCad, 0);
+      const sumPrior = scoped.reduce((s, g) => s + g.priorCad, 0);
+      const twr = resolvePeriodReturnPercent({
+        sessions: scoped,
+        periodStart: bounds.start ?? "",
+        periodEnd: bounds.end,
+        bmv: null,
+        emv: null,
+        flows: payload.cashFlows,
+        accountKeys: [accountKey],
+      });
       console.log(`\n${p.toUpperCase()} détail (${bounds.start} → ${bounds.end}):`);
       console.log(`  séances compte: ${scoped.length}`);
       console.log(`  Σ gain (brut): ${Math.round(sumGain)}`);
