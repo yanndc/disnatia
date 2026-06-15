@@ -1,17 +1,16 @@
-import { prisma } from "@/lib/db/prisma";
 import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
 import {
-  aggregateBmvTitresCad,
-  computeTitresPeriodGain,
+  computePeriodResult,
   defaultPerformanceFilters,
+  resolveActiveAccountKeys,
   resolvePeriodBounds,
-  titresCadAtPeriodEnd,
   titresCadFullCoverageAtOrBefore,
 } from "@/features/portfolio/performance-indicator-logic";
-import { netExternalFlowsCad } from "@/features/portfolio/performance-cash-flows";
-import { weightedExternalFlowsForDietz } from "@/features/portfolio/performance-return-methods";
+import {
+  gainCadFromPeriodReturn,
+  resolvePeriodReturnPercent,
+} from "@/features/portfolio/performance-return-methods";
 import { uniquePortfolioOwners } from "@/lib/portfolio/sanitize-portfolio-owner";
-import { resolveActiveAccountKeys } from "@/features/portfolio/performance-indicator-logic";
 
 const AS_OF = "2026-06-12T15:00:00";
 
@@ -31,43 +30,29 @@ async function main() {
     filters.owner,
   );
   const lookup = bounds.baselineLookup!;
+  const sessions = (payload.sessionGainsByDate ?? []).filter(
+    (g) => g.date >= bounds.start! && g.date <= bounds.end,
+  );
+  const bmv = titresCadFullCoverageAtOrBefore(keys, payload, lookup);
+  const emv = titresCadFullCoverageAtOrBefore(keys, payload, bounds.end);
+  const ret = resolvePeriodReturnPercent({
+    sessions,
+    periodStart: bounds.start!,
+    periodEnd: bounds.end,
+    bmv: bmv?.valueCad ?? null,
+    emv: emv?.valueCad ?? null,
+    boundaryCoverageComplete: bmv != null && emv != null,
+    flows: payload.cashFlows,
+    accountKeys: keys,
+  });
+  const fromPct = gainCadFromPeriodReturn(ret, bounds.start!, bounds.end);
+  const r = computePeriodResult(payload, filters, "ytd");
 
-  const bmv =
-    aggregateBmvTitresCad(keys, payload, bounds.start!, lookup) ??
-    titresCadFullCoverageAtOrBefore(keys, payload, lookup);
-  const emv = titresCadAtPeriodEnd(keys, payload, bounds.end);
-  const flows = netExternalFlowsCad(
-    payload.cashFlows,
-    keys,
-    bounds.start!,
-    bounds.end,
-  );
-  const wFlows = weightedExternalFlowsForDietz(
-    payload.cashFlows,
-    keys,
-    bounds.start!,
-    bounds.end,
-  );
-  const titres = computeTitresPeriodGain(keys, payload, bounds, "ytd");
-
-  console.log("keys", keys.length);
-  console.log("BMV", Math.round(bmv?.valueCad ?? 0), "@", bmv?.asOf);
-  console.log("EMV", Math.round(emv?.valueCad ?? 0), "@", emv?.asOf);
-  console.log("flux nets", Math.round(flows));
-  console.log("flux pondérés", Math.round(wFlows.sumFlows));
-  console.log(
-    "EMV-BMV-flux",
-    Math.round((emv?.valueCad ?? 0) - (bmv?.valueCad ?? 0) - flows),
-  );
-  console.log(
-    "Dietz num",
-    Math.round(
-      (emv?.valueCad ?? 0) - (bmv?.valueCad ?? 0) - wFlows.sumFlows,
-    ),
-  );
-  console.log("titresCalc gain", Math.round(titres.gainCad ?? 0));
+  console.log("BMV", Math.round(bmv?.valueCad ?? 0), "EMV", Math.round(emv?.valueCad ?? 0));
+  console.log("%", ret.gainPct?.toFixed(2), "algo", ret.algorithm);
+  console.log("$ from %", Math.round(fromPct ?? 0));
+  console.log("$ app", Math.round(r.gainCad ?? 0));
+  console.log("disnat $298 %13.49");
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+main().catch(console.error);
