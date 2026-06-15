@@ -157,7 +157,7 @@ export function computeModifiedDietzReturn(
 /**
  * Résout le % de période : Dietz (Disnat) si BMV/EMV couvrent tous les comptes,
  * sinon TWR sur la chaîne de séances (évite les % aberrants sur BMV partielle).
- * Le gain $ est calculé côté appelant (Δ titres − flux ; repli Σ séances).
+ * Le gain $ affiché est la somme compte par compte (Dietz ou TWR), cohérente avec le %.
  */
 export function resolvePeriodReturnPercent(params: {
   sessions: PerformanceSessionGain[];
@@ -209,4 +209,25 @@ export function resolvePeriodReturnPercent(params: {
     params.periodEnd,
     params.periodStart,
   );
+}
+
+/**
+ * Gain $ d'affichage cohérent avec le % résolu (même signe, même méthode).
+ * Pour % annualisé, dé-annualise sur la durée réelle de la période.
+ */
+export function gainCadFromPeriodReturn(
+  ret: PeriodReturnPercent,
+  periodStart: string,
+  periodEnd: string,
+): number | null {
+  if (ret.gainPct == null || ret.baselineCad == null || ret.baselineCad <= 0) {
+    return null;
+  }
+  const spanDays = Math.max(1, daysBetweenIso(periodStart, periodEnd));
+  let cumulativePct = ret.gainPct;
+  if (ret.annualized) {
+    cumulativePct =
+      (Math.pow(1 + ret.gainPct / 100, spanDays / 365) - 1) * 100;
+  }
+  return (cumulativePct / 100) * ret.baselineCad;
 }

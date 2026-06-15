@@ -797,7 +797,7 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
     assert.match(ytd.note ?? "", /entrées de capitaux/i);
   });
 
-  test("YTD multi-comptes : somme par compte avec BMV = prior 1re séance", () => {
+  test("YTD multi-comptes : BMV ancré sur max(prior séance, historique 31 déc)", () => {
     const sessionGainsByAccount = {
       "ACC|CAD": [{ date: "2026-01-02", gainCad: 100, priorCad: 10_000 }],
       "ACC2|USD": [{ date: "2026-01-02", gainCad: 200, priorCad: 11_200 }],
@@ -918,9 +918,9 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
         },
       ],
       sessionGainsByAccount: {
-        "ACC|CAD": [{ date: "2026-06-11", gainCad: 9_999, priorCad: 14_000 }],
+        "ACC|CAD": [{ date: "2026-06-11", gainCad: 9_999, priorCad: 10_000 }],
       },
-      sessionGainsByDate: [{ date: "2026-06-11", gainCad: 9_999, priorCad: 14_000 }],
+      sessionGainsByDate: [{ date: "2026-06-11", gainCad: 9_999, priorCad: 10_000 }],
       cashFlows: flows,
       asOfNow: "2026-06-12T15:00:00",
     });

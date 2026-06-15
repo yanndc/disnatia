@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 import {
   computeModifiedDietzReturn,
   computeTwrFromSessions,
+  gainCadFromPeriodReturn,
   resolvePeriodReturnPercent,
   weightedExternalFlowsForDietz,
 } from "./performance-return-methods";
@@ -140,5 +141,21 @@ describe("weightedExternalFlowsForDietz", () => {
     );
     assert.equal(sumFlows, 15_000);
     assert.ok(weightedFlows > 0 && weightedFlows < sumFlows);
+  });
+});
+
+describe("gainCadFromPeriodReturn", () => {
+  test("% annualisé → gain $ cumulé positif cohérent", () => {
+    const dollars = gainCadFromPeriodReturn(
+      {
+        gainPct: 20,
+        baselineCad: 100_000,
+        annualized: true,
+        algorithm: "twr",
+      },
+      "2023-06-01",
+      "2026-06-01",
+    );
+    assert.ok(dollars != null && dollars > 0);
   });
 });

@@ -192,6 +192,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
               accountNumber: true,
               currency: true,
               totalValue: true,
+              marketValue: true,
             },
           },
         },
@@ -375,6 +376,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
         accountKey,
         asOf: asOfStr,
         totalValueNative: acc.totalValue,
+        marketValueNative: acc.marketValue,
         currency: normalizeCurrency(acc.currency),
       });
     }

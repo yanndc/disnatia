@@ -25,6 +25,8 @@ export type PerformanceSnapshotPoint = {
   /** ISO date (YYYY-MM-DD) */
   asOf: string;
   totalValueNative: number;
+  /** Valeur des titres seulement (import portefeuille Disnat), si disponible. */
+  marketValueNative?: number;
   currency: string;
 };
 
