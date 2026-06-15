@@ -29,7 +29,12 @@ import {
   formatFlowAdjustmentNote,
   netExternalFlowsCad,
 } from "./performance-cash-flows";
-import { resolvePeriodReturnPercent, weightedExternalFlowsForDietz, gainCadFromPeriodReturn } from "./performance-return-methods";
+import {
+  resolvePeriodReturnPercent,
+  weightedExternalFlowsForDietz,
+  gainCadFromPeriodReturn,
+  type PeriodReturnPercent,
+} from "./performance-return-methods";
 import { performanceScopeKey } from "./performance-snapshot-scope";
 
 const SESSION_GAINS_UNAVAILABLE_NOTE =
@@ -625,20 +630,21 @@ function accountBmvTitresCad(
 }
 
 /**
- * Si le 1er import de l'année montre un portefeuille nettement plus élevé que le BMV titres
- * projeté (pas d'import au 31 déc), Disnat utilise la valeur importée comme base YTD $.
+ * Si le 1er import de la période montre un portefeuille nettement plus élevé que le BMV titres
+ * projeté (pas d'import au pic de début), Disnat utilise la valeur importée comme base $.
  */
-const YTD_IMPORT_BMV_FLOOR_RATIO = 1.2;
+const IMPORT_BMV_FLOOR_RATIO = 1.2;
 
-function firstImportMarketCadInYear(
+function firstImportMarketCadInPeriod(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
-  year: number,
+  periodStart: string,
+  periodEnd: string,
 ): { valueCad: number; asOf: string } | null {
   let best: { asOf: string; valueCad: number } | null = null;
   for (const pt of payload.snapshots ?? []) {
     if (pt.accountKey !== accountKey) continue;
-    if (Number(pt.asOf.slice(0, 4)) !== year) continue;
+    if (pt.asOf < periodStart || pt.asOf > periodEnd) continue;
     const native = pt.marketValueNative ?? pt.totalValueNative;
     const valueCad = historyPointCad(native, pt.currency, payload.usdToCad);
     if (!best || pt.asOf < best.asOf) {
@@ -648,16 +654,15 @@ function firstImportMarketCadInYear(
   return best;
 }
 
+/** BMV $ affiché : max(historique, prior séance), plancher import si ancrage tardif. */
 function resolveBmvCadForPeriodGain(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
-  periodId: PerformancePeriodId,
   titresBmv: { valueCad: number; asOf: string },
   periodStart: string,
+  periodEnd: string,
   baselineLookup: string,
 ): number {
-  if (periodId !== "ytd") return titresBmv.valueCad;
-
   const historyHit =
     titresCadFullCoverageAtOrBefore(
       [accountKey],
@@ -667,17 +672,23 @@ function resolveBmvCadForPeriodGain(
   const historyCad = historyHit?.valueCad ?? titresBmv.valueCad;
   const anchorCad = Math.max(titresBmv.valueCad, historyCad);
 
-  const year = Number(periodStart.slice(0, 4));
-  const importHit = firstImportMarketCadInYear(accountKey, payload, year);
+  const isCalendarYtdStart = periodStart.endsWith("-01-01");
+  const importHit = firstImportMarketCadInPeriod(
+    accountKey,
+    payload,
+    periodStart,
+    periodEnd,
+  );
   const hasSnapAtBaseline = (payload.snapshots ?? []).some(
     (pt) => pt.accountKey === accountKey && pt.asOf <= baselineLookup,
   );
 
   if (
+    isCalendarYtdStart &&
     !hasSnapAtBaseline &&
     importHit &&
     importHit.asOf > baselineLookup &&
-    importHit.valueCad > historyCad * YTD_IMPORT_BMV_FLOOR_RATIO
+    importHit.valueCad > historyCad * IMPORT_BMV_FLOOR_RATIO
   ) {
     return importHit.valueCad;
   }
@@ -704,24 +715,17 @@ function aggregateBmvTitresCad(
   return { valueCad: total, asOf };
 }
 
+/** EMV titres pour gain $ : clôture historique (pas le live en séance). */
 function resolveAccountEmvTitresCad(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
   endDate: string,
-  periodId?: PerformancePeriodId,
 ): number | null {
-  if (periodId === "ytd") {
-    const hist =
-      titresCadFullCoverageAtOrBefore([accountKey], payload, endDate)
-        ?.valueCad ??
-      titresCadAtPeriodEnd([accountKey], payload, endDate)?.valueCad ??
-      null;
-    if (hist != null) return hist;
-    const live = payload.currentByAccount[accountKey]?.positionsCad ?? 0;
-    return live > 0 ? live : null;
-  }
-  const endHit = titresCadAtPeriodEnd([accountKey], payload, endDate);
-  if (endHit?.valueCad != null) return endHit.valueCad;
+  const hist =
+    titresCadFullCoverageAtOrBefore([accountKey], payload, endDate)?.valueCad ??
+    titresCadAtPeriodEnd([accountKey], payload, endDate)?.valueCad ??
+    null;
+  if (hist != null) return hist;
   const live = payload.currentByAccount[accountKey]?.positionsCad ?? 0;
   return live > 0 ? live : null;
 }
@@ -752,12 +756,13 @@ function sumPerAccountDisplayGainCad(
           );
 
     const bmv = accountBmvTitresCad(key, payload, bounds.start, lookup);
-    const emvCad = resolveAccountEmvTitresCad(key, payload, bounds.end, periodId);
+    const emvCad = resolveAccountEmvTitresCad(key, payload, bounds.end);
 
-    if (!bmv || emvCad == null || sessions.length === 0) {
+    if (!bmv || emvCad == null) {
       incomplete = true;
       continue;
     }
+    if (sessions.length === 0) incomplete = true;
 
     const sumFlows = netExternalFlowsCad(
       payload.cashFlows,
@@ -768,9 +773,9 @@ function sumPerAccountDisplayGainCad(
     const bmvCadForGain = resolveBmvCadForPeriodGain(
       key,
       payload,
-      periodId,
       bmv,
       bounds.start,
+      bounds.end,
       lookup,
     );
     const dollars = emvCad - bmvCadForGain - sumFlows;
@@ -799,7 +804,6 @@ function computeAccountTitresPeriodGain(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
   bounds: { start: string; end: string; baselineLookup: string | null },
-  periodId?: PerformancePeriodId,
 ): {
   usable: boolean;
   gainCad: number | null;
@@ -810,16 +814,7 @@ function computeAccountTitresPeriodGain(
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
   const bmv = accountBmvTitresCad(accountKey, payload, bounds.start, lookup);
-  const endHit = titresCadAtPeriodEnd([accountKey], payload, bounds.end);
-  let emvCad =
-    periodId === "ytd"
-      ? (resolveAccountEmvTitresCad(accountKey, payload, bounds.end, "ytd") ??
-        null)
-      : (endHit?.valueCad ?? null);
-  if (emvCad == null) {
-    const livePositions = payload.currentByAccount[accountKey]?.positionsCad ?? 0;
-    if (livePositions > 0) emvCad = livePositions;
-  }
+  const emvCad = resolveAccountEmvTitresCad(accountKey, payload, bounds.end);
 
   if (!bmv || emvCad == null) {
     return {
@@ -837,20 +832,23 @@ function computeAccountTitresPeriodGain(
     bounds.start,
     bounds.end,
   );
-  const bmvCadForGain = periodId
-    ? resolveBmvCadForPeriodGain(
-        accountKey,
-        payload,
-        periodId,
-        bmv,
-        bounds.start,
-        lookup,
-      )
-    : bmv.valueCad;
+  const bmvCadForGain = resolveBmvCadForPeriodGain(
+    accountKey,
+    payload,
+    bmv,
+    bounds.start,
+    bounds.end,
+    lookup,
+  );
   const gainCad = emvCad - bmvCadForGain - netFlows;
   const baselineCad = bmv.valueCad + netFlows;
+  const endHist = titresCadFullCoverageAtOrBefore(
+    [accountKey],
+    payload,
+    bounds.end,
+  );
   const incomplete =
-    bmv.asOf > latestAllowedFirstSessionDate(bounds.start) || endHit == null;
+    bmv.asOf > latestAllowedFirstSessionDate(bounds.start) || endHist == null;
 
   return {
     usable: true,
@@ -923,12 +921,7 @@ export function computeTitresPeriodGain(
   };
 
   for (const key of materialKeys) {
-    const hit = computeAccountTitresPeriodGain(
-      key,
-      payload,
-      periodBounds,
-      periodId,
-    );
+    const hit = computeAccountTitresPeriodGain(key, payload, periodBounds);
     if (!hit.usable || hit.gainCad === null) {
       incomplete = true;
       continue;
@@ -1056,6 +1049,32 @@ export function resolveSessionChainGainPct(
     gainPct: (gainCad / baselineCad) * 100,
     baselineCad,
   };
+}
+
+/** $ affiché : somme compte par compte, sauf conflit de signe avec le % résolu. */
+function pickPeriodGainCad(params: {
+  ret: PeriodReturnPercent;
+  displayGainCad: number | null;
+  gainCadFromPct: number | null;
+  portfolioDietzNumerator: number | null;
+  sessionGainCad: number;
+}): number | null {
+  const {
+    ret,
+    displayGainCad,
+    gainCadFromPct,
+    portfolioDietzNumerator,
+    sessionGainCad,
+  } = params;
+
+  if (ret.annualized && gainCadFromPct != null) return gainCadFromPct;
+
+  return (
+    displayGainCad ??
+    gainCadFromPct ??
+    portfolioDietzNumerator ??
+    sessionGainCad
+  );
 }
 
 /** P&L titres sur la période : Δ valeur marché − flux nets (priorité historique titres). */
@@ -1215,12 +1234,13 @@ function computeSessionChainPeriod(
     bounds.end,
   );
 
-  const gainCad = ret.annualized
-    ? (gainCadFromPct ?? portfolioDietzNumerator ?? sessionGainCad)
-    : (displayGain.gainCad ??
-        gainCadFromPct ??
-        portfolioDietzNumerator ??
-        sessionGainCad);
+  const gainCad = pickPeriodGainCad({
+    ret,
+    displayGainCad: displayGain.gainCad,
+    gainCadFromPct,
+    portfolioDietzNumerator,
+    sessionGainCad,
+  });
 
   const incomplete =
     displayGain.gainCad != null
