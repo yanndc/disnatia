@@ -23,6 +23,10 @@ export const DISNAT_DOLLARS_BENCHMARK = {
       "5L3APY0|CAD": { ytd: 1_038.5 },
     } as Record<string, Partial<Record<"ytd", number>>>,
   },
+  owners: {
+    yann: { ytd: 2_760.25 },
+    valerie: { ytd: 1_275.82 },
+  },
 } as const;
 
 /** Tolérance $ par compte (court terme). */

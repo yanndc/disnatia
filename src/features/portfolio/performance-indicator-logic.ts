@@ -730,7 +730,92 @@ function resolveAccountEmvTitresCad(
   return live > 0 ? live : null;
 }
 
-/** Gain $ affiché = Σ par compte (Dietz $ ou TWR × base), aligné Disnat. */
+/** Dernier import Disnat (valeur titres) au plus tard à `endDate`. */
+function latestImportTitresCadAtOrBefore(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): number | null {
+  let best: { asOf: string; valueCad: number } | null = null;
+  for (const pt of payload.snapshots ?? []) {
+    if (pt.accountKey !== accountKey || pt.asOf > endDate) continue;
+    const native = pt.marketValueNative ?? pt.totalValueNative;
+    const valueCad = historyPointCad(native, pt.currency, payload.usdToCad);
+    if (!best || pt.asOf > best.asOf) {
+      best = { asOf: pt.asOf, valueCad };
+    }
+  }
+  return best?.valueCad ?? null;
+}
+
+/**
+ * Valeur titres de référence à la fin de période : cours live (séance courante)
+ * ou dernier import Disnat, sinon historique projeté.
+ */
+function resolveAccountReferenceTitresCad(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): number | null {
+  const now = sessionClockForBounds(payload.asOfNow);
+  const refDay = referenceTradingSessionDayIso(now);
+  const live = payload.currentByAccount[accountKey]?.positionsCad;
+
+  if (endDate >= refDay && live != null && live > 0) {
+    return live;
+  }
+
+  return (
+    latestImportTitresCadAtOrBefore(accountKey, payload, endDate) ??
+    resolveAccountEmvTitresCad(accountKey, payload, endDate)
+  );
+}
+
+/**
+ * Gain $ Disnat (tableau portefeuille, colonne AAJ) = valeur titres de référence
+ * − historique projeté à la fin de période. Le % reste TWR/Dietz sur les séances.
+ */
+function accountDisnatYtdGainCad(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): number | null {
+  const refCad = resolveAccountReferenceTitresCad(accountKey, payload, endDate);
+  const histCad = resolveAccountEmvTitresCad(accountKey, payload, endDate);
+  if (refCad == null || histCad == null) return null;
+  return refCad - histCad;
+}
+
+/** Gain $ titres classique = EMV − BMV − flux (séance, mois, total, etc.). */
+function accountLegacyTitresGainCad(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  bounds: { start: string; end: string; baselineLookup: string | null },
+): number | null {
+  const lookup =
+    bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
+  const bmv = accountBmvTitresCad(accountKey, payload, bounds.start, lookup);
+  const emvCad = resolveAccountEmvTitresCad(accountKey, payload, bounds.end);
+  if (!bmv || emvCad == null) return null;
+
+  const sumFlows = netExternalFlowsCad(
+    payload.cashFlows,
+    [accountKey],
+    bounds.start,
+    bounds.end,
+  );
+  const bmvCadForGain = resolveBmvCadForPeriodGain(
+    accountKey,
+    payload,
+    bmv,
+    bounds.start,
+    bounds.end,
+    lookup,
+  );
+  return emvCad - bmvCadForGain - sumFlows;
+}
+
+/** Gain $ affiché = Σ par compte (AAJ Disnat ou legacy selon période). */
 function sumPerAccountDisplayGainCad(
   materialKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -755,39 +840,22 @@ function sumPerAccountDisplayGainCad(
             (g) => g.date >= bounds.start && g.date <= bounds.end,
           );
 
-    const bmv = accountBmvTitresCad(key, payload, bounds.start, lookup);
-    const emvCad = resolveAccountEmvTitresCad(key, payload, bounds.end);
+    const dollars =
+      periodId === "ytd"
+        ? accountDisnatYtdGainCad(key, payload, bounds.end)
+        : accountLegacyTitresGainCad(key, payload, bounds);
 
-    if (!bmv || emvCad == null) {
-      incomplete = true;
-      continue;
-    }
-    if (sessions.length === 0) incomplete = true;
-
-    const sumFlows = netExternalFlowsCad(
-      payload.cashFlows,
-      [key],
-      bounds.start,
-      bounds.end,
-    );
-    const bmvCadForGain = resolveBmvCadForPeriodGain(
-      key,
-      payload,
-      bmv,
-      bounds.start,
-      bounds.end,
-      lookup,
-    );
-    const dollars = emvCad - bmvCadForGain - sumFlows;
-
-    if (!Number.isFinite(dollars)) {
+    if (dollars == null || !Number.isFinite(dollars)) {
       incomplete = true;
       continue;
     }
 
     total += dollars;
     count++;
-    if (bmv.asOf > latestAllowedFirstSessionDate(bounds.start)) {
+
+    const bmv = accountBmvTitresCad(key, payload, bounds.start, lookup);
+    if (sessions.length === 0) incomplete = true;
+    if (bmv && bmv.asOf > latestAllowedFirstSessionDate(bounds.start)) {
       incomplete = true;
     }
   }

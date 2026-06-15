@@ -755,8 +755,8 @@ describe("computePeriodResult", () => {
   });
 });
 
-describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
-  test("YTD : gain $ ≠ Σ séances quand des cotisations tombent dans la période", () => {
+describe("gain $ — aligné Disnat (référence live − historique fin période)", () => {
+  test("YTD : gain $ = positions live − historique projeté (pas Σ séances)", () => {
     const sessionGainsByAccount = {
       "ACC|CAD": [
         { date: "2026-03-03", gainCad: 2_000, priorCad: 11_000 },
@@ -794,6 +794,12 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
           totalValueNative: 10_000,
           currency: "CAD",
         },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-12",
+          totalValueNative: 14_900,
+          currency: "CAD",
+        },
       ],
       sessionGainsByAccount,
       sessionGainsByDate,
@@ -825,7 +831,7 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
     assert.match(ytd.note ?? "", /entrées de capitaux/i);
   });
 
-  test("YTD multi-comptes : BMV ancré sur max(prior séance, historique 31 déc)", () => {
+  test("YTD multi-comptes : somme des écarts live − historique", () => {
     const sessionGainsByAccount = {
       "ACC|CAD": [{ date: "2026-01-02", gainCad: 100, priorCad: 10_000 }],
       "ACC2|USD": [{ date: "2026-01-02", gainCad: 200, priorCad: 11_200 }],
@@ -878,6 +884,18 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
           totalValueNative: 8_000,
           currency: "USD",
         },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-12",
+          totalValueNative: 10_600,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|USD",
+          asOf: "2026-06-12",
+          totalValueNative: 7_571.43,
+          currency: "USD",
+        },
       ],
       sessionGainsByAccount,
       sessionGainsByDate: [
@@ -900,7 +918,7 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
       "ytd",
     );
 
-    assert.equal(ytd.gainCad, 3_800);
+    assert.ok(Math.abs((ytd.gainCad ?? 0) - 3_800) < 1);
   });
 
   test("buildPerformanceCashFlows : settlementDate alimente le calcul", () => {
@@ -942,6 +960,12 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
           accountKey: "ACC|CAD",
           asOf: "2025-12-31",
           totalValueNative: 10_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-12",
+          totalValueNative: 14_900,
           currency: "CAD",
         },
       ],

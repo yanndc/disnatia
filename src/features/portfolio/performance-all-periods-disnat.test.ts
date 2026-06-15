@@ -16,12 +16,20 @@ import {
 import {
   DISNAT_DOLLARS_BENCHMARK,
   DISNAT_DOLLARS_TOLERANCE_ACCOUNT,
+  DISNAT_DOLLARS_TOLERANCE_OWNER,
 } from "./fixtures/disnat-dollars-benchmark.fixture";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
-const AS_OF = "2026-06-12T15:00:00";
+const AS_OF = "2026-06-15T14:07:00";
 
-const ACCOUNT_KEYS = ["5KFZEZ2|CAD", "5L3APY0|CAD"] as const;
+const ACCOUNT_KEYS = [
+  "5KFZEZ2|CAD",
+  "5KFZET5|USD",
+  "5KFZEY4|CAD",
+  "5KFZEU3|USD",
+  "5KFZES7|USD",
+  "5L3APY0|CAD",
+] as const;
 
 describe("Performance — toutes périodes vs Disnat", { skip: !hasDb }, () => {
   test("$ et % même signe sur périodes annualisées (year3, all)", async () => {
@@ -41,7 +49,7 @@ describe("Performance — toutes périodes vs Disnat", { skip: !hasDb }, () => {
     }
   });
 
-  test("$ par compte — toutes périodes benchmarkées", async () => {
+  test("$ YTD par compte vs capture Disnat", async () => {
     const payload = await getPerformanceIndicatorPayload();
     payload.asOfNow = AS_OF;
 
@@ -49,27 +57,52 @@ describe("Performance — toutes périodes vs Disnat", { skip: !hasDb }, () => {
       const ref =
         DISNAT_DOLLARS_BENCHMARK.yann.byAccountKey[accountKey] ??
         DISNAT_DOLLARS_BENCHMARK.valerie.byAccountKey[accountKey];
-      assert.ok(ref, `${accountKey} absent du benchmark`);
+      assert.ok(ref?.ytd != null, `${accountKey} absent du benchmark`);
 
-      for (const [periodId, disnatRef] of Object.entries(ref)) {
-        if (disnatRef == null) continue;
-        const r = computePeriodResult(
-          payload,
-          {
-            ...defaultPerformanceFilters(payload),
-            preset: "custom",
-            includedAccountKeys: [accountKey],
-            excludedAccountKeys: [],
-          },
-          periodId as "ytd",
-        );
-        assert.ok(r.gainCad != null, `${accountKey} ${periodId} gainCad null`);
-        const delta = Math.abs(r.gainCad - disnatRef);
-        assert.ok(
-          delta < DISNAT_DOLLARS_TOLERANCE_ACCOUNT,
-          `${accountKey} ${periodId} $=${Math.round(r.gainCad)} vs disnat=${disnatRef} (Δ=${Math.round(delta)})`,
-        );
-      }
+      const r = computePeriodResult(
+        payload,
+        {
+          ...defaultPerformanceFilters(payload),
+          preset: "custom",
+          includedAccountKeys: [accountKey],
+          excludedAccountKeys: [],
+        },
+        "ytd",
+      );
+      assert.ok(r.gainCad != null, `${accountKey} ytd gainCad null`);
+      const delta = Math.abs(r.gainCad - ref.ytd!);
+      assert.ok(
+        delta < DISNAT_DOLLARS_TOLERANCE_ACCOUNT,
+        `${accountKey} ytd $=${Math.round(r.gainCad)} vs disnat=${ref.ytd} (Δ=${Math.round(delta)})`,
+      );
+    }
+  });
+
+  test("$ YTD titulaire vs capture Disnat", async () => {
+    const payload = await getPerformanceIndicatorPayload();
+    payload.asOfNow = AS_OF;
+    const owners = uniquePortfolioOwners(payload.accounts.map((a) => a.owner));
+
+    for (const owner of owners) {
+      const lower = owner.toLowerCase();
+      const ref = lower.includes("yann")
+        ? DISNAT_DOLLARS_BENCHMARK.owners.yann
+        : lower.includes("valerie") || lower.includes("degrandpre")
+          ? DISNAT_DOLLARS_BENCHMARK.owners.valerie
+          : null;
+      if (!ref) continue;
+
+      const r = computePeriodResult(
+        payload,
+        { ...defaultPerformanceFilters(payload), owner, preset: "disnat" },
+        "ytd",
+      );
+      assert.ok(r.gainCad != null, `${owner} ytd gainCad null`);
+      const delta = Math.abs(r.gainCad - ref.ytd);
+      assert.ok(
+        delta < DISNAT_DOLLARS_TOLERANCE_OWNER,
+        `${owner} ytd $=${Math.round(r.gainCad)} vs disnat=${ref.ytd} (Δ=${Math.round(delta)})`,
+      );
     }
   });
 
