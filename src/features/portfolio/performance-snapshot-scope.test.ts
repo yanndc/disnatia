@@ -79,7 +79,7 @@ describe("performanceScopeKey", () => {
 });
 
 describe("computeAllPeriodResultsWithSnapshots", () => {
-  test("utilise snapshot sauf jour recalculé live", () => {
+  test("recalcule en live (ignore les snapshots persistés)", () => {
     const payload = miniPayload();
     const scope = standardPerformanceScopeFilters(payload)[0]!;
     const key = performanceScopeKey(scope);
@@ -111,9 +111,9 @@ describe("computeAllPeriodResultsWithSnapshots", () => {
     const results = computeAllPeriodResultsWithSnapshots(payload, filters);
     const month = results.find((r) => r.periodId === "month");
     const day = results.find((r) => r.periodId === "day");
-    assert.equal(month?.gainCad, 42);
+    const liveMonth = computePeriodResult(payload, filters, "month");
+    assert.equal(month?.gainCad, liveMonth.gainCad);
+    assert.notEqual(month?.gainCad, 42);
     assert.notEqual(day?.method, "unavailable");
-    const liveDay = computePeriodResult(payload, filters, "day");
-    assert.equal(day?.gainCad, liveDay.gainCad);
   });
 });

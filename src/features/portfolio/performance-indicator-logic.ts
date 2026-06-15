@@ -35,7 +35,6 @@ import {
   gainCadFromPeriodReturn,
   type PeriodReturnPercent,
 } from "./performance-return-methods";
-import { performanceScopeKey } from "./performance-snapshot-scope";
 
 const SESSION_GAINS_UNAVAILABLE_NOTE =
   "Actualise les cours pour calculer le P&L de séance.";
@@ -771,6 +770,37 @@ function resolveAccountReferenceTitresCad(
   );
 }
 
+/** Seuil : historique du jour trop proche du live → ancrage veille ouvrée (AAJ Disnat). */
+const DISNAT_YTD_SAME_DAY_HIST_MAX_GAP_RATIO = 0.002;
+
+/**
+ * Date d'ancrage « historique projeté » pour le gain $ AAJ Disnat (par compte).
+ * En séance, si l'historique du jour est quasi-live, on prend la veille ouvrée.
+ */
+function disnatYtdHistoricalLookupDate(
+  accountKey: string,
+  endDate: string,
+  payload: PerformanceIndicatorPayload,
+): string {
+  const now = sessionClockForBounds(payload.asOfNow);
+  const refDay = referenceTradingSessionDayIso(now);
+  const inLiveSession =
+    isEquityMarketSessionOpen(now) || isBeforeTodaySessionOpen(now);
+  if (!inLiveSession || endDate < refDay) return endDate;
+
+  const live = payload.currentByAccount[accountKey]?.positionsCad;
+  const sameDayHist = resolveAccountEmvTitresCad(accountKey, payload, endDate);
+  if (
+    live != null &&
+    live > 0 &&
+    sameDayHist != null &&
+    Math.abs(live - sameDayHist) / live <= DISNAT_YTD_SAME_DAY_HIST_MAX_GAP_RATIO
+  ) {
+    return previousTradingDayIso(endDate, 1);
+  }
+  return endDate;
+}
+
 /**
  * Gain $ Disnat (tableau portefeuille, colonne AAJ) = valeur titres de référence
  * − historique projeté à la fin de période. Le % reste TWR/Dietz sur les séances.
@@ -781,7 +811,8 @@ function accountDisnatYtdGainCad(
   endDate: string,
 ): number | null {
   const refCad = resolveAccountReferenceTitresCad(accountKey, payload, endDate);
-  const histCad = resolveAccountEmvTitresCad(accountKey, payload, endDate);
+  const histLookup = disnatYtdHistoricalLookupDate(accountKey, endDate, payload);
+  const histCad = resolveAccountEmvTitresCad(accountKey, payload, histLookup);
   if (refCad == null || histCad == null) return null;
   return refCad - histCad;
 }
@@ -1119,13 +1150,14 @@ export function resolveSessionChainGainPct(
   };
 }
 
-/** $ affiché : somme compte par compte, sauf conflit de signe avec le % résolu. */
+/** $ affiché : AAJ = formule Disnat ; autres périodes = $ cohérent avec le %. */
 function pickPeriodGainCad(params: {
   ret: PeriodReturnPercent;
   displayGainCad: number | null;
   gainCadFromPct: number | null;
   portfolioDietzNumerator: number | null;
   sessionGainCad: number;
+  periodId: PerformancePeriodId;
 }): number | null {
   const {
     ret,
@@ -1133,13 +1165,23 @@ function pickPeriodGainCad(params: {
     gainCadFromPct,
     portfolioDietzNumerator,
     sessionGainCad,
+    periodId,
   } = params;
 
   if (ret.annualized && gainCadFromPct != null) return gainCadFromPct;
 
+  if (periodId === "ytd" || periodId === "all" || periodId === "year3") {
+    return (
+      displayGainCad ??
+      gainCadFromPct ??
+      portfolioDietzNumerator ??
+      sessionGainCad
+    );
+  }
+
   return (
-    displayGainCad ??
     gainCadFromPct ??
+    displayGainCad ??
     portfolioDietzNumerator ??
     sessionGainCad
   );
@@ -1308,6 +1350,7 @@ function computeSessionChainPeriod(
     gainCadFromPct,
     portfolioDietzNumerator,
     sessionGainCad,
+    periodId,
   });
 
   const incomplete =
@@ -1368,26 +1411,8 @@ function buildChainPeriodResult(
   const bounds = resolvePeriodBounds(periodId, now, selectedYear, earliest);
   const currentCad = currentCadTotal(accountKeys, payload);
 
-  if (!payload.sessionDataHealth.ok) {
-    return {
-      periodId,
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      gainCad: null,
-      gainPct: null,
-      currentCad,
-      baselineCad: null,
-      baselineDate: null,
-      periodStart: bounds.start,
-      periodEnd: bounds.end,
-      method: "unavailable",
-      accountsIncluded: accountKeys.length,
-      accountsWithBaseline: 0,
-      incomplete: true,
-      annualized: false,
-      note: payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE,
-    };
-  }
+  const sessionHealthNote =
+    payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE;
 
   if (periodId !== "all" && !bounds.start) {
     return {
@@ -1428,7 +1453,10 @@ function buildChainPeriodResult(
       accountsWithBaseline: calc.accountsWithBaseline,
       incomplete: true,
       annualized: false,
-      note: calc.note ?? SESSION_GAINS_UNAVAILABLE_NOTE,
+      note: joinNotes(
+        !payload.sessionDataHealth.ok ? sessionHealthNote : null,
+        calc.note ?? SESSION_GAINS_UNAVAILABLE_NOTE,
+      ),
     };
   }
 
@@ -1446,9 +1474,12 @@ function buildChainPeriodResult(
     method: "session-chain",
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: calc.accountsWithBaseline,
-    incomplete: calc.incomplete,
+    incomplete: calc.incomplete || !payload.sessionDataHealth.ok,
     annualized: calc.annualized,
-    note: calc.note,
+    note: joinNotes(
+      !payload.sessionDataHealth.ok ? sessionHealthNote : null,
+      calc.note,
+    ),
   };
 }
 
@@ -1531,39 +1562,12 @@ export function computeAllPeriodResults(
   return ids.map((id) => computePeriodResult(payload, filters, id));
 }
 
-const SNAPSHOT_PERIOD_IDS: PerformancePeriodId[] = [
-  "day",
-  "yesterday",
-  "month",
-  "month3",
-  "year",
-  "year3",
-  "ytd",
-  "all",
-];
-
-function snapshotRowsForFilters(
-  payload: PerformanceIndicatorPayload,
-  filters: Pick<
-    PerformanceFilterState,
-    "preset" | "owner" | "includedAccountKeys" | "excludedAccountKeys"
-  >,
-): PerformancePeriodResult[] | null {
-  const key = performanceScopeKey(filters);
-  return payload.performanceSnapshots?.byScopeKey[key] ?? null;
-}
-
-/** Lit les snapshots persistés ; recalcule le jour en live si séance ouverte. */
+/** Recalcule en live ; les snapshots DB servent uniquement au rebuild / audit. */
 export function computePeriodResultWithSnapshots(
   payload: PerformanceIndicatorPayload,
   filters: PerformanceFilterState,
   periodId: PerformancePeriodId,
 ): PerformancePeriodResult {
-  if (periodId !== "day") {
-    const rows = snapshotRowsForFilters(payload, filters);
-    const hit = rows?.find((r) => r.periodId === periodId);
-    if (hit) return hit;
-  }
   return computePeriodResult(payload, filters, periodId);
 }
 
@@ -1579,17 +1583,7 @@ export function computeAllPeriodResultsWithSnapshots(
     | "activePeriod"
   >,
 ): PerformancePeriodResult[] {
-  const rows = snapshotRowsForFilters(payload, filters);
-  if (!rows?.length) {
-    return computeAllPeriodResults(payload, filters);
-  }
-  const byId = new Map(rows.map((r) => [r.periodId, r]));
-  return SNAPSHOT_PERIOD_IDS.map((id) => {
-    if (id === "day") {
-      return computePeriodResult(payload, filters, "day");
-    }
-    return byId.get(id) ?? computePeriodResult(payload, filters, id);
-  });
+  return computeAllPeriodResults(payload, filters);
 }
 
 export function defaultPerformanceFilters(

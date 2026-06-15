@@ -1,10 +1,5 @@
 import type { PerformanceSessionDataHealth } from "./performance-indicator-types";
-import {
-  isBeforeTodaySessionOpen,
-  isEquityMarketSessionOpen,
-  priorSessionDateIso,
-  referenceTradingSessionDayIso,
-} from "@/lib/market/equity-session";
+import { priorSessionDateIso } from "@/lib/market/equity-session";
 import { listTradingDaysInRange } from "@/lib/fx/usd-cad-rate-map";
 
 const RECENT_GAP_CHECK_DAYS = 21;
@@ -12,12 +7,10 @@ const RECENT_GAP_CHECK_DAYS = 21;
 /**
  * Dernière séance dont on exige des gains persistés.
  * En séance ouverte, la séance courante est en live (cours Yahoo) — pas encore en base.
+ * Après clôture, on tolère l'absence du rebuild du jour (prior close) pour ne pas bloquer l'UI.
  */
 export function expectedLastPersistedSessionDate(now = new Date()): string {
-  if (isBeforeTodaySessionOpen(now) || isEquityMarketSessionOpen(now)) {
-    return priorSessionDateIso(now);
-  }
-  return referenceTradingSessionDayIso(now);
+  return priorSessionDateIso(now);
 }
 
 /** Évalue la couverture des gains de séance persistés (sans fallback implicite). */
