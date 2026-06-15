@@ -6,7 +6,7 @@ import {
 } from "@/features/portfolio/session-ticker-report-queries";
 import {
   isoDateInToronto,
-  priorSessionDateIso,
+  priorReferenceSessionDateIso,
   referenceTradingSessionDay,
   resolveDayPeriodLabels,
 } from "@/lib/market/equity-session";
@@ -30,7 +30,7 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
   const yesterdayPeriod = computePeriodResult(payload, filters, "yesterday");
 
   const sessionDate = isoDateInToronto(referenceTradingSessionDay(now));
-  const previousSessionDate = priorSessionDateIso(now);
+  const previousSessionDate = priorReferenceSessionDateIso(now);
   const { label: sessionLabel } = resolveDayPeriodLabels(now);
 
   const [currentSession, previousSession] = await Promise.all([

@@ -4,7 +4,7 @@
  * Utilisé comme cible de régression (tolérance large tant que la méthode converge).
  */
 export const DISNAT_RETURNS_BENCHMARK = {
-  capturedAround: "2026-06-12",
+  capturedAround: "2026-06-15T14:07",
   yann: {
     accountNumber: "5KFZE",
     ownerMatch: "yann",

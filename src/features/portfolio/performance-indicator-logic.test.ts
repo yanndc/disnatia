@@ -146,6 +146,18 @@ describe("resolvePeriodBounds", () => {
     assert.equal(bounds.end, "2026-05-29");
     assert.equal(bounds.start, "2025-05-29");
   });
+
+  test("séance précédente : veille de la séance de référence (pas la même date)", () => {
+    const tueBeforeOpen = new Date("2026-06-02T08:10:00");
+    const bounds = resolvePeriodBounds("yesterday", tueBeforeOpen, 2026, null);
+    assert.equal(bounds.start, "2026-05-29");
+    assert.equal(bounds.end, "2026-05-29");
+
+    const sat = new Date("2026-06-13T12:00:00");
+    const satBounds = resolvePeriodBounds("yesterday", sat, 2026, null);
+    assert.equal(satBounds.start, "2026-06-11");
+    assert.equal(satBounds.end, "2026-06-11");
+  });
 });
 
 describe("aggregateSessionGainsForAccounts", () => {
@@ -193,24 +205,30 @@ describe("resolveSessionChainGainPct", () => {
 });
 
 describe("computePeriodResult", () => {
-  test("avant 9h30 : séance « — », précédente = gains persistés (pas positions live)", () => {
+  test("avant 9h30 : séance « — », précédente = séance d'avant la référence (pas la référence)", () => {
     const payload = mockPayload({
       sessionGainsByAccount: {
-        "ACC|CAD": [{ date: "2026-06-01", gainCad: 800, priorCad: 90_000 }],
-        "ACC2|CAD": [{ date: "2026-06-01", gainCad: 700, priorCad: 40_000 }],
+        "ACC|CAD": [
+          { date: "2026-05-29", gainCad: 400, priorCad: 89_000 },
+          { date: "2026-06-01", gainCad: 800, priorCad: 90_000 },
+        ],
+        "ACC2|CAD": [
+          { date: "2026-05-29", gainCad: 300, priorCad: 39_000 },
+          { date: "2026-06-01", gainCad: 700, priorCad: 40_000 },
+        ],
       },
       sessionDataHealth: {
         ok: true,
         message: null,
-        persistedDays: 1,
-        firstDate: "2026-06-01",
+        persistedDays: 2,
+        firstDate: "2026-05-29",
         lastDate: "2026-06-01",
       },
       historyPoints: [
         {
           accountKey: "ACC|CAD",
           asOf: "2026-05-29",
-          totalValueNative: 90_000,
+          totalValueNative: 89_400,
           currency: "CAD",
         },
         {
@@ -222,7 +240,7 @@ describe("computePeriodResult", () => {
         {
           accountKey: "ACC2|CAD",
           asOf: "2026-05-29",
-          totalValueNative: 40_000,
+          totalValueNative: 39_300,
           currency: "CAD",
         },
         {
@@ -277,22 +295,26 @@ describe("computePeriodResult", () => {
     assert.equal(day.gainCad, null);
     assert.equal(day.method, "unavailable");
     assert.ok((prec.gainCad ?? 0) > 0);
-    assert.ok((prec.gainCad ?? 0) < 5_000, "ne doit pas utiliser les positions live du matin");
-    assert.equal(prec.gainCad, 1_500);
+    assert.ok((prec.gainCad ?? 0) < 1_500, "vendredi, pas le lundi (référence)");
+    assert.equal(prec.gainCad, 700);
+    assert.notEqual(prec.gainCad, 1_500);
   });
 
   test("Préc. : complet malgré compte vide et historique figé 2024", () => {
     const payload = mockPayload({
       sessionGainsByAccount: {
-        "ACC|CAD": [{ date: "2026-06-02", gainCad: 1_000, priorCad: 90_000 }],
+        "ACC|CAD": [
+          { date: "2026-06-01", gainCad: 1_000, priorCad: 90_000 },
+          { date: "2026-06-02", gainCad: 500, priorCad: 91_000 },
+        ],
         "STALE|CAD": [],
         "EMPTY|CAD": [],
       },
       sessionDataHealth: {
         ok: true,
         message: null,
-        persistedDays: 1,
-        firstDate: "2026-06-02",
+        persistedDays: 2,
+        firstDate: "2026-06-01",
         lastDate: "2026-06-02",
       },
       accounts: [
@@ -324,8 +346,14 @@ describe("computePeriodResult", () => {
       historyPoints: [
         {
           accountKey: "ACC|CAD",
+          asOf: "2026-05-29",
+          totalValueNative: 89_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
           asOf: "2026-06-01",
-          totalValueNative: 90_000,
+          totalValueNative: 91_000,
           currency: "CAD",
         },
         {

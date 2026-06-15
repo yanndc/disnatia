@@ -7,7 +7,7 @@ import {
 } from "@/features/portfolio/session-ticker-report-queries";
 import {
   previousTradingDayIso,
-  priorSessionDateIso,
+  priorReferenceSessionDateIso,
   referenceTradingSessionDayIso,
 } from "@/lib/market/equity-session";
 
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       maxSessionDate,
       minSessionDate,
       sessionDataHealth: payload.sessionDataHealth,
-      previousSessionDate: priorSessionDateIso(now),
+      previousSessionDate: priorReferenceSessionDateIso(now),
     });
   } catch (cause) {
     return NextResponse.json(

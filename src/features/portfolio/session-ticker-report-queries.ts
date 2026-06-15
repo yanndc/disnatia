@@ -7,7 +7,7 @@ import {
   isoDateInToronto,
   isEquityMarketSessionOpen,
   isTradingDayDate,
-  priorSessionDateIso,
+  priorReferenceSessionDateIso,
   previousTradingDayIso,
   referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
@@ -517,6 +517,6 @@ export async function buildSessionTickerMiniReportFromPayload(
     maxSessionDate,
     minSessionDate,
     sessionDataHealth: payload.sessionDataHealth,
-    previousSessionDate: priorSessionDateIso(now),
+    previousSessionDate: priorReferenceSessionDateIso(now),
   };
 }

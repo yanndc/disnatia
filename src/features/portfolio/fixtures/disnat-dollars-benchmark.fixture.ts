@@ -1,26 +1,32 @@
 /**
  * Captures Disnat ($ tableau portefeuille) — titulaires 5KFZE / 5L3AP.
- * Référence : juin 2026.
+ * Colonnes 3m / 1an / 3ans = encaisse, valeur titres, valeur totale (pas des gains).
+ * Seule la colonne « Année à date » = gain $ (devise du compte ; total titulaire en CAD).
+ * Référence : export + capture écran 2026-06-15 14:07 (Toronto).
  */
 export const DISNAT_DOLLARS_BENCHMARK = {
-  capturedAround: "2026-06-12",
+  capturedAround: "2026-06-15T14:07",
   yann: {
-    total: { month3: 814.91, year: 169_067.19, year3: 169_882.1, ytd: 298.47 },
+    total: { ytd: 2_760.25 },
     byAccountKey: {
-      "5KFZEZ2|CAD": { ytd: -165.19 },
-      "5L3APY0|CAD": { ytd: 315.52 },
+      "5KFZEZ2|CAD": { ytd: 137.01 },
+      "5KFZET5|USD": { ytd: 45.1 },
+      "5KFZEY4|CAD": { ytd: -1.28 },
+      "5KFZEU3|USD": { ytd: 1_240.8 },
+      "5KFZE19|CAD": { ytd: 0 },
+      "5KFZES7|USD": { ytd: 592.78 },
     } as Record<string, Partial<Record<"ytd", number>>>,
   },
   valerie: {
-    total: { month3: 129.2, year: 68_877.68, year3: 69_006.88, ytd: 397.95 },
+    total: { ytd: 1_275.82 },
     byAccountKey: {
-      "5L3APY0|CAD": { month3: 48.02, ytd: 315.52 },
-    } as Record<string, Partial<Record<"month3" | "ytd", number>>>,
+      "5L3APY0|CAD": { ytd: 1_038.5 },
+    } as Record<string, Partial<Record<"ytd", number>>>,
   },
 } as const;
 
 /** Tolérance $ par compte (court terme). */
 export const DISNAT_DOLLARS_TOLERANCE_ACCOUNT = 500;
 
-/** Tolérance $ consolidé titulaire (plus large : périmètre Disnat variable). */
-export const DISNAT_DOLLARS_TOLERANCE_OWNER = 3_000;
+/** Tolérance $ consolidé titulaire. */
+export const DISNAT_DOLLARS_TOLERANCE_OWNER = 500;

@@ -175,8 +175,16 @@ export function referenceTradingSessionDay(now = new Date()): Date {
 }
 
 /** Séance complétée immédiatement avant la séance de référence du jour. */
+/**
+ * Séance complétée immédiatement avant la séance de référence.
+ * Diffère de `priorSessionDateIso` (clôture veille calendaire pour cotations live).
+ */
+export function priorReferenceSessionDateIso(now = new Date()): string {
+  return previousTradingDayIso(referenceTradingSessionDayIso(now), 1);
+}
+
 export function yesterdayTradingSessionDay(now = new Date()): Date {
-  return parseIsoCalendarDate(priorSessionDateIso(now));
+  return parseIsoCalendarDate(priorReferenceSessionDateIso(now));
 }
 
 export function resolveDayPeriodLabels(now = new Date()): {
