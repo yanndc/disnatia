@@ -1,14 +1,16 @@
 ---
-description: Messages de commit et PR en français
+description: Messages de commit et PR en français — OBLIGATOIRE, jamais en anglais
 alwaysApply: true
 ---
 
-# Git — langue française
+# Git — langue française (obligatoire)
+
+**Toujours en français** pour tout texte lié à Git : messages de commit, corps de commit, descriptions de PR, notes de push. **Ne pas rédiger en anglais**, même pour `chore:`, `refactor:` ou commits automatiques.
 
 Lors de la génération de messages de commit, de descriptions de pull request ou de tout texte lié à un `git push` :
 
 - Rédiger **en français** (titre et corps).
-- Conserver les préfixes conventionnels (`fix:`, `feat:`, `refactor:`, `chore:`, etc.) suivis d’un résumé en français.
+- Conserver les préfixes conventionnels (`fix:`, `feat:`, `refactor:`, `chore:`, etc.) suivis d'un résumé **en français**.
 - Le corps du message explique le **pourquoi**, en français, en 1–2 phrases si nécessaire.
 
 Exemples :
@@ -21,4 +23,11 @@ accountName vit sur PortfolioAccount, pas sur PortfolioPosition — le build Typ
 
 ```
 feat: ajouter le rapport de séance par titre
+```
+
+Contre-exemples à **éviter** :
+
+```
+chore: increment performance calculation version to 3
+feat: enhance performance cash flow handling
 ```

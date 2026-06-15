@@ -442,6 +442,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     disnatAccountKeys,
     sessionGainFrom,
     sessionGainTo,
+    usdToCad,
   );
 
   const sessionGainsByDate = disnatAccountKeys

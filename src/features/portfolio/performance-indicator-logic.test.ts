@@ -797,6 +797,84 @@ describe("gain $ — cotisations soustraites (Δ titres − flux)", () => {
     assert.match(ytd.note ?? "", /entrées de capitaux/i);
   });
 
+  test("YTD multi-comptes : somme par compte avec BMV = prior 1re séance", () => {
+    const sessionGainsByAccount = {
+      "ACC|CAD": [{ date: "2026-01-02", gainCad: 100, priorCad: 10_000 }],
+      "ACC2|USD": [{ date: "2026-01-02", gainCad: 200, priorCad: 11_200 }],
+    };
+    const payload = mockPayload({
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "CELI",
+          owner: "Alice",
+          accountType: "CELI",
+          currency: "CAD",
+          isExternal: false,
+        },
+        {
+          accountKey: "ACC2|USD",
+          label: "REER",
+          owner: "Alice",
+          accountType: "REER",
+          currency: "USD",
+          isExternal: false,
+        },
+      ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 11_000,
+          positionsCad: 11_000,
+          cashCad: 0,
+          dayGainCad: 0,
+          dayPriorCad: 10_000,
+        },
+        "ACC2|USD": {
+          totalCad: 14_000,
+          positionsCad: 14_000,
+          cashCad: 0,
+          dayGainCad: 0,
+          dayPriorCad: 11_200,
+        },
+      },
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 9_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|USD",
+          asOf: "2025-12-31",
+          totalValueNative: 8_000,
+          currency: "USD",
+        },
+      ],
+      sessionGainsByAccount,
+      sessionGainsByDate: [
+        { date: "2026-01-02", gainCad: 300, priorCad: 21_200 },
+      ],
+      cashFlows: [],
+      usdToCad: 1.4,
+      asOfNow: "2026-06-12T15:00:00",
+    });
+
+    const ytd = computePeriodResult(
+      payload,
+      {
+        preset: "all",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "ytd",
+    );
+
+    assert.equal(ytd.gainCad, 3_800);
+  });
+
   test("buildPerformanceCashFlows : settlementDate alimente le calcul", () => {
     const flows = buildPerformanceCashFlowsFromTxRows(
       [

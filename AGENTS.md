@@ -13,7 +13,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Git (commits et push)
 
-- **Messages de commit** : toujours en **français** (titre + corps si présent).
+- **Messages de commit** : toujours en **français** (titre + corps). **Jamais en anglais** — y compris `chore:` / `refactor:` (ex. `chore: incrémenter la version de calcul`, pas `increment version`).
 - Préfixe conventionnel conservé : `fix:`, `feat:`, `refactor:`, etc., suivi d’un résumé en français.
 - **Descriptions de PR** : en français (résumé, plan de test).
 - Exemple : `fix: corriger le select Prisma dans diagnose-qty-vs-import`

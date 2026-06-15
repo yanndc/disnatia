@@ -29,8 +29,7 @@ import {
   formatFlowAdjustmentNote,
   netExternalFlowsCad,
 } from "./performance-cash-flows";
-import { cashCadAtOrBefore } from "./performance-cash-ledger";
-import { resolvePeriodReturnPercent } from "./performance-return-methods";
+import { resolvePeriodReturnPercent, weightedExternalFlowsForDietz } from "./performance-return-methods";
 import { performanceScopeKey } from "./performance-snapshot-scope";
 
 const SESSION_GAINS_UNAVAILABLE_NOTE =
@@ -478,6 +477,20 @@ export function titresCadAtOrBefore(
     }
   }
 
+  for (const pt of payload.snapshots ?? []) {
+    if (!keys.has(pt.accountKey)) continue;
+    if (pt.asOf > targetDate || pt.asOf < minAsOf) continue;
+    const valueCad = historyPointCad(
+      pt.totalValueNative,
+      pt.currency,
+      payload.usdToCad,
+    );
+    const cur = byAccount.get(pt.accountKey);
+    if (!cur || pt.asOf > cur.asOf) {
+      byAccount.set(pt.accountKey, { asOf: pt.asOf, valueCad });
+    }
+  }
+
   if (byAccount.size === 0) return null;
 
   let total = 0;
@@ -581,8 +594,110 @@ function resolveEndTitresCad(
 }
 
 /**
+ * BMV titres au début de période : prior de la 1re séance (Disnat), sinon historique projeté.
+ */
+function accountBmvTitresCad(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  periodStart: string,
+  baselineLookup: string,
+): { valueCad: number; asOf: string } | null {
+  const firstSession = (payload.sessionGainsByAccount?.[accountKey] ?? []).find(
+    (s) => s.date >= periodStart,
+  );
+  const latestAllowed = latestAllowedFirstSessionDate(periodStart);
+  const historyHit = titresCadAtOrBefore([accountKey], payload, baselineLookup);
+
+  if (
+    firstSession &&
+    firstSession.priorCad > 0 &&
+    firstSession.date <= latestAllowed
+  ) {
+    return { valueCad: firstSession.priorCad, asOf: firstSession.date };
+  }
+  if (historyHit) {
+    return { valueCad: historyHit.valueCad, asOf: historyHit.asOf };
+  }
+  if (firstSession && firstSession.priorCad > 0) {
+    return { valueCad: firstSession.priorCad, asOf: firstSession.date };
+  }
+  return null;
+}
+
+/** BMV agrégée (somme des comptes) pour Dietz / affichage. */
+function aggregateBmvTitresCad(
+  accountKeys: string[],
+  payload: PerformanceIndicatorPayload,
+  periodStart: string,
+  baselineLookup: string,
+): { valueCad: number; asOf: string } | null {
+  if (accountKeys.length === 0) return null;
+  let total = 0;
+  let asOf = baselineLookup;
+  for (const key of accountKeys) {
+    const hit = accountBmvTitresCad(key, payload, periodStart, baselineLookup);
+    if (!hit) return null;
+    total += hit.valueCad;
+    if (hit.asOf < asOf) asOf = hit.asOf;
+  }
+  return { valueCad: total, asOf };
+}
+
+/** Gain titres d'un compte = EMV − BMV − flux (aligné Dietz / Disnat $). */
+function computeAccountTitresPeriodGain(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  bounds: { start: string; end: string; baselineLookup: string | null },
+): {
+  usable: boolean;
+  gainCad: number | null;
+  baselineCad: number | null;
+  baselineDate: string | null;
+  incomplete: boolean;
+} {
+  const lookup =
+    bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
+  const bmv = accountBmvTitresCad(accountKey, payload, bounds.start, lookup);
+  const endHit = titresCadAtPeriodEnd([accountKey], payload, bounds.end);
+  let emvCad = endHit?.valueCad ?? null;
+  if (emvCad == null) {
+    const livePositions = payload.currentByAccount[accountKey]?.positionsCad ?? 0;
+    if (livePositions > 0) emvCad = livePositions;
+  }
+
+  if (!bmv || emvCad == null) {
+    return {
+      usable: false,
+      gainCad: null,
+      baselineCad: null,
+      baselineDate: null,
+      incomplete: true,
+    };
+  }
+
+  const netFlows = netExternalFlowsCad(
+    payload.cashFlows,
+    [accountKey],
+    bounds.start,
+    bounds.end,
+  );
+  const gainCad = emvCad - bmv.valueCad - netFlows;
+  const baselineCad = bmv.valueCad + netFlows;
+  const incomplete =
+    bmv.asOf > latestAllowedFirstSessionDate(bounds.start) || endHit == null;
+
+  return {
+    usable: true,
+    gainCad,
+    baselineCad: baselineCad > 0 ? baselineCad : null,
+    baselineDate: lookup,
+    incomplete,
+  };
+}
+
+/**
  * Gain titres = Δ valeur de marché − flux nets (cotisations / retraits).
- * Exclut les apports de capitaux du gain affiché en $.
+ * Agrégé par somme compte par compte (comme le tableau Disnat).
  */
 export function computeTitresPeriodGain(
   accountKeys: string[],
@@ -630,45 +745,29 @@ export function computeTitresPeriodGain(
     };
   }
 
-  const startHit = titresCadFullCoverageAtOrBefore(materialKeys, payload, lookup);
-  if (!startHit) {
-    return {
-      usable: false,
-      gainCad: null,
-      gainPct: null,
-      baselineCad: null,
-      baselineDate: null,
-      accountsWithBaseline: 0,
-      incomplete: true,
-    };
-  }
+  let gainCad = 0;
+  let baselineCad = 0;
+  let accountsWithBaseline = 0;
+  let incomplete = false;
+  const periodBounds = {
+    start: bounds.start,
+    end: bounds.end,
+    baselineLookup: bounds.baselineLookup,
+  };
 
-  const endHit = titresCadFullCoverageAtOrBefore(materialKeys, payload, bounds.end);
-  const ledgers = payload.accountCashLedgers ?? {};
-  const cashStartCad = cashCadAtOrBefore(materialKeys, ledgers, lookup);
-  /** Cash non investi au début : significatif seulement au-delà de ce seuil (évite bruit ledger). */
-  const startCad =
-    startHit.valueCad + (cashStartCad >= 3000 ? cashStartCad : 0);
-
-  const now = sessionClockForBounds(payload.asOfNow);
-  const refDay = referenceTradingSessionDayIso(now);
-  const endIsLive =
-    !isBeforeTodaySessionOpen(now) && bounds.end === refDay;
-  let endCad: number | null;
-  if (endIsLive) {
-    endCad = currentCadTotal(accountKeys, payload);
-  } else {
-    const endTitres =
-      endHit?.valueCad ?? resolveEndTitresCad(materialKeys, payload, bounds.end);
-    if (endTitres === null) {
-      endCad = null;
-    } else {
-      const cashEndCad = cashCadAtOrBefore(materialKeys, ledgers, bounds.end);
-      endCad = endTitres + cashEndCad;
+  for (const key of materialKeys) {
+    const hit = computeAccountTitresPeriodGain(key, payload, periodBounds);
+    if (!hit.usable || hit.gainCad === null) {
+      incomplete = true;
+      continue;
     }
+    gainCad += hit.gainCad;
+    if (hit.baselineCad != null) baselineCad += hit.baselineCad;
+    accountsWithBaseline++;
+    if (hit.incomplete) incomplete = true;
   }
 
-  if (endCad === null) {
+  if (accountsWithBaseline === 0) {
     return {
       usable: false,
       gainCad: null,
@@ -680,23 +779,10 @@ export function computeTitresPeriodGain(
     };
   }
 
-  const netFlowsCad = netExternalFlowsCad(
-    payload.cashFlows,
-    accountKeys,
-    bounds.start,
-    bounds.end,
-  );
-  const baselineCad = startCad + netFlowsCad;
-  const gainCad = endCad - startCad - netFlowsCad;
   const gainPct =
     baselineCad > 0 && Number.isFinite(gainCad)
       ? (gainCad / baselineCad) * 100
       : null;
-
-  const incomplete =
-    bounds.start != null &&
-    (startHit.asOf > latestAllowedFirstSessionDate(bounds.start) ||
-      endHit == null);
 
   return {
     usable: true,
@@ -704,7 +790,7 @@ export function computeTitresPeriodGain(
     gainPct,
     baselineCad: baselineCad > 0 ? baselineCad : null,
     baselineDate: lookup,
-    accountsWithBaseline: startHit ? materialKeys.length : 0,
+    accountsWithBaseline,
     incomplete,
   };
 }
@@ -901,11 +987,13 @@ function computeSessionChainPeriod(
     lookup,
     bounds.end,
   );
-  const baselineHit = titresCadFullCoverageAtOrBefore(
-    materialKeys,
-    payload,
-    lookup,
-  );
+  const baselineHit =
+    aggregateBmvTitresCad(
+      materialKeys,
+      payload,
+      bounds.start!,
+      lookup,
+    ) ?? titresCadFullCoverageAtOrBefore(materialKeys, payload, lookup);
   const endHit = titresCadAtPeriodEnd(materialKeys, payload, bounds.end);
   const boundaryCoverageComplete = baselineHit != null && endHit != null;
 
@@ -917,7 +1005,7 @@ function computeSessionChainPeriod(
     emv: endHit?.valueCad ?? null,
     boundaryCoverageComplete,
     flows: payload.cashFlows,
-    accountKeys,
+    accountKeys: materialKeys,
   });
 
   const sessionsIncomplete =
@@ -926,7 +1014,26 @@ function computeSessionChainPeriod(
     sessions[0]!.date > latestAllowedFirstSessionDate(bounds.start);
   const boundaryIncomplete = !boundaryCoverageComplete;
   const useTitresGain = titresCalc.usable && titresCalc.gainCad !== null;
-  const gainCad = useTitresGain ? titresCalc.gainCad : sessionGainCad;
+
+  let gainCad: number;
+  if (useTitresGain) {
+    gainCad = titresCalc.gainCad!;
+  } else if (
+    boundaryCoverageComplete &&
+    baselineHit != null &&
+    endHit != null
+  ) {
+    const { sumFlows } = weightedExternalFlowsForDietz(
+      payload.cashFlows,
+      materialKeys,
+      bounds.start!,
+      bounds.end,
+    );
+    gainCad = endHit.valueCad - baselineHit.valueCad - sumFlows;
+  } else {
+    gainCad = sessionGainCad;
+  }
+
   const incomplete = useTitresGain
     ? titresCalc.incomplete
     : periodId === "all"
@@ -935,7 +1042,7 @@ function computeSessionChainPeriod(
 
   const netFlowsCad = netExternalFlowsCad(
     payload.cashFlows,
-    accountKeys,
+    materialKeys,
     bounds.start!,
     bounds.end,
   );

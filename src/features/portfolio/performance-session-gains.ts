@@ -88,9 +88,14 @@ function priorCloseDateForSeries(
   return null;
 }
 
-/** Valeurs persistées en CAD (gainNative / priorNative). */
-function persistedCadValue(value: number, currency: string): number {
+/** Convertit gainNative / priorNative (devise du compte) en CAD pour l’agrégation. */
+export function nativeToPerformanceCad(
+  value: number,
+  currency: string,
+  usdToCad: number | null,
+): number {
   if (normalizeCurrency(currency) === "CAD") return value;
+  if (usdToCad != null && usdToCad > 0) return value * usdToCad;
   return value;
 }
 
@@ -275,6 +280,7 @@ export async function loadPersistedSessionGains(
   accountKeys: string[],
   fromDate: string,
   toDate: string,
+  usdToCad: number | null,
 ): Promise<PerformanceSessionGain[]> {
   if (accountKeys.length === 0) return [];
 
@@ -299,8 +305,16 @@ export async function loadPersistedSessionGains(
   for (const row of rows) {
     const date = isoDateFromDbDate(row.sessionDate);
     const bucket = byDate.get(date) ?? { gainCad: 0, priorCad: 0 };
-    bucket.gainCad += persistedCadValue(row.gainNative, row.currency);
-    bucket.priorCad += persistedCadValue(row.priorNative, row.currency);
+    bucket.gainCad += nativeToPerformanceCad(
+      row.gainNative,
+      row.currency,
+      usdToCad,
+    );
+    bucket.priorCad += nativeToPerformanceCad(
+      row.priorNative,
+      row.currency,
+      usdToCad,
+    );
     byDate.set(date, bucket);
   }
 
@@ -318,6 +332,7 @@ export async function loadPersistedSessionGainsByAccount(
   accountKeys: string[],
   fromDate: string,
   toDate: string,
+  usdToCad: number | null,
 ): Promise<Record<string, PerformanceSessionGain[]>> {
   if (accountKeys.length === 0) return {};
 
@@ -345,8 +360,16 @@ export async function loadPersistedSessionGainsByAccount(
     const date = isoDateFromDbDate(row.sessionDate);
     const accountMap = out[row.accountKey] ?? new Map();
     const bucket = accountMap.get(date) ?? { gainCad: 0, priorCad: 0 };
-    bucket.gainCad += persistedCadValue(row.gainNative, row.currency);
-    bucket.priorCad += persistedCadValue(row.priorNative, row.currency);
+    bucket.gainCad += nativeToPerformanceCad(
+      row.gainNative,
+      row.currency,
+      usdToCad,
+    );
+    bucket.priorCad += nativeToPerformanceCad(
+      row.priorNative,
+      row.currency,
+      usdToCad,
+    );
     accountMap.set(date, bucket);
     out[row.accountKey] = accountMap;
   }
