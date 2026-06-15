@@ -12,7 +12,6 @@ export const MARKET_INDICES: MarketIndexDefinition[] = [
   { id: "tsx", label: "S&P/TSX", symbol: "^GSPTSE", kind: "index" },
   { id: "sp500", label: "S&P 500", symbol: "^GSPC", kind: "index" },
   { id: "nasdaq", label: "Nasdaq", symbol: "^IXIC", kind: "index" },
-  { id: "dow", label: "Dow Jones", symbol: "^DJI", kind: "index" },
   { id: "usdcad", label: "USD/CAD", symbol: "USDCAD=X", kind: "forex" },
 ];
 
