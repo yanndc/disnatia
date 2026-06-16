@@ -30,5 +30,12 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "public/sw.js", "scripts/diagnose-*.ts", "scripts/compare-*.ts"]
+  "exclude": [
+    "node_modules",
+    "public/sw.js",
+    "scripts/diagnose-*.ts",
+    "scripts/compare-*.ts",
+    "scripts/probe-*.ts",
+    "scripts/verify-*.ts"
+  ]
 }
