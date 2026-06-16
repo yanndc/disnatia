@@ -133,11 +133,11 @@ describe("sumSessionGainsInRange", () => {
 });
 
 describe("resolvePeriodBounds", () => {
-  test("1 mois : glissant sur ~1 mois calendaire", () => {
+  test("1 mois : ~21 séances ouvrées glissantes", () => {
     const ref = new Date(2026, 4, 29, 12, 0, 0);
     const bounds = resolvePeriodBounds("month", ref, 2026, null);
     assert.equal(bounds.end, "2026-05-29");
-    assert.equal(bounds.start, "2026-04-29");
+    assert.equal(bounds.start, "2026-05-01");
   });
 
   test("1 an : glissant sur 12 mois", () => {

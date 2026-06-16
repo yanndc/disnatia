@@ -154,16 +154,11 @@ export function buildPerformanceCashFlowsFromTxRows(
       .filter(([, c]) => c > DENSE_ACCOUNT_FLOW_COUNT)
       .map(([k]) => k),
   );
-  if (denseKeys.size === 0) {
-    return dedupeNearDuplicateFlows(out, minCadByAccount);
-  }
-
   const denseOut = out.filter((f) => denseKeys.has(f.accountKey));
   const sparseOut = out.filter((f) => !denseKeys.has(f.accountKey));
-  return [
-    ...denseOut,
-    ...dedupeNearDuplicateFlows(sparseOut, minCadByAccount),
-  ];
+  const dedupedDense = dedupeNearDuplicateFlows(denseOut, minCadByAccount);
+  const dedupedSparse = dedupeNearDuplicateFlows(sparseOut, minCadByAccount);
+  return [...dedupedDense, ...dedupedSparse];
 }
 
 /** Flux nets externes sur la période (positif = entrée de capitaux). */

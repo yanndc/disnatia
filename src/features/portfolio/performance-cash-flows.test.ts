@@ -175,21 +175,21 @@ describe("dedupeNearDuplicateFlows", () => {
     assert.equal(flows.length, 2);
   });
 
-  test("conserve deux grosses cotisations du même montant à >8 jours d'écart", () => {
+  test("fusionne les doublons trade/règlement à J+1 (compte dense)", () => {
     const flows = dedupeNearDuplicateFlows([
       {
         accountKey: "ACC|CAD",
-        tradeDate: "2026-04-06",
+        tradeDate: "2026-04-28",
         txCategory: "CONTRIBUTION",
-        amountCad: 400,
+        amountCad: 4716,
       },
       {
         accountKey: "ACC|CAD",
-        tradeDate: "2026-05-28",
+        tradeDate: "2026-04-29",
         txCategory: "CONTRIBUTION",
-        amountCad: 400,
+        amountCad: 4716,
       },
     ]);
-    assert.equal(flows.length, 2);
+    assert.equal(flows.length, 1);
   });
 });

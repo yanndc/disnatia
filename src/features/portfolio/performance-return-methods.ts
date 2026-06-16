@@ -1,6 +1,7 @@
 import type {
   PerformanceCashFlow,
   PerformanceSessionGain,
+  PerformancePeriodId,
 } from "./performance-indicator-types";
 import { daysBetweenIso } from "./performance-money-weighted";
 
@@ -156,8 +157,7 @@ export function computeModifiedDietzReturn(
 
 /**
  * Résout le % de période : Dietz (Disnat) si BMV/EMV couvrent tous les comptes,
- * sinon TWR sur la chaîne de séances (évite les % aberrants sur BMV partielle).
- * Le gain $ affiché est la somme compte par compte (Dietz ou TWR), cohérente avec le %.
+ * sinon TWR sur la chaîne de séances. « 1 mois » = TWR (comme Disnat).
  */
 export function resolvePeriodReturnPercent(params: {
   sessions: PerformanceSessionGain[];
@@ -169,7 +169,17 @@ export function resolvePeriodReturnPercent(params: {
   boundaryCoverageComplete?: boolean;
   flows: PerformanceCashFlow[];
   accountKeys: string[];
+  periodId?: PerformancePeriodId;
 }): PeriodReturnPercent {
+  if (params.periodId === "month") {
+    const twr = computeTwrFromSessions(
+      params.sessions,
+      params.periodEnd,
+      params.periodStart,
+    );
+    if (twr.gainPct != null) return twr;
+  }
+
   if (params.sessions.length === 1) {
     const single = computeTwrFromSessions(
       params.sessions,

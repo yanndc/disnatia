@@ -155,7 +155,7 @@ export function resolvePeriodBounds(
       return { start: sessionEnd, end: sessionEnd, baselineLookup: baseline };
     }
     case "month": {
-      const start = isoDate(subMonths(refDay, 1));
+      const start = previousTradingDayIso(isoDate(refDay), 20);
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "month3": {
@@ -729,22 +729,44 @@ function resolveAccountEmvTitresCad(
   return live > 0 ? live : null;
 }
 
+/** Valeur titres native (devise du compte) au plus tard à `endDate`. */
+function latestImportTitresNativeAtOrBefore(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): number | null {
+  let best: { asOf: string; native: number } | null = null;
+  for (const pt of payload.snapshots ?? []) {
+    if (pt.accountKey !== accountKey || pt.asOf > endDate) continue;
+    const native = pt.marketValueNative ?? pt.totalValueNative;
+    if (!best || pt.asOf > best.asOf) {
+      best = { asOf: pt.asOf, native };
+    }
+  }
+  return best?.native ?? null;
+}
+
+function nativeToDisplayCad(
+  native: number,
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+): number {
+  const acc = payload.accounts.find((a) => a.accountKey === accountKey);
+  if (acc?.currency.toUpperCase().includes("USD") && payload.usdToCad) {
+    return native * payload.usdToCad;
+  }
+  return native;
+}
+
 /** Dernier import Disnat (valeur titres) au plus tard à `endDate`. */
 function latestImportTitresCadAtOrBefore(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
   endDate: string,
 ): number | null {
-  let best: { asOf: string; valueCad: number } | null = null;
-  for (const pt of payload.snapshots ?? []) {
-    if (pt.accountKey !== accountKey || pt.asOf > endDate) continue;
-    const native = pt.marketValueNative ?? pt.totalValueNative;
-    const valueCad = historyPointCad(native, pt.currency, payload.usdToCad);
-    if (!best || pt.asOf > best.asOf) {
-      best = { asOf: pt.asOf, valueCad };
-    }
-  }
-  return best?.valueCad ?? null;
+  const native = latestImportTitresNativeAtOrBefore(accountKey, payload, endDate);
+  if (native == null) return null;
+  return nativeToDisplayCad(native, accountKey, payload);
 }
 
 /**
@@ -770,35 +792,41 @@ function resolveAccountReferenceTitresCad(
   );
 }
 
-/** Seuil : historique du jour trop proche du live → ancrage veille ouvrée (AAJ Disnat). */
+/** Seuil : historique du jour quasi-live → ancrage import clôture veille (AAJ $). */
 const DISNAT_YTD_SAME_DAY_HIST_MAX_GAP_RATIO = 0.002;
 
 /**
- * Date d'ancrage « historique projeté » pour le gain $ AAJ Disnat (par compte).
- * En séance, si l'historique du jour est quasi-live, on prend la veille ouvrée.
+ * Historique « projeté » pour le gain $ AAJ : en séance, si l'historique du jour
+ * est quasi-live, ancrage sur le dernier import (clôture précédente).
  */
-function disnatYtdHistoricalLookupDate(
+function resolveDisnatYtdHistCad(
   accountKey: string,
-  endDate: string,
   payload: PerformanceIndicatorPayload,
-): string {
+  endDate: string,
+): number | null {
   const now = sessionClockForBounds(payload.asOfNow);
   const refDay = referenceTradingSessionDayIso(now);
   const inLiveSession =
     isEquityMarketSessionOpen(now) || isBeforeTodaySessionOpen(now);
-  if (!inLiveSession || endDate < refDay) return endDate;
-
-  const live = payload.currentByAccount[accountKey]?.positionsCad;
   const sameDayHist = resolveAccountEmvTitresCad(accountKey, payload, endDate);
+  const live = payload.currentByAccount[accountKey]?.positionsCad;
+
   if (
+    inLiveSession &&
+    endDate >= refDay &&
     live != null &&
     live > 0 &&
     sameDayHist != null &&
     Math.abs(live - sameDayHist) / live <= DISNAT_YTD_SAME_DAY_HIST_MAX_GAP_RATIO
   ) {
-    return previousTradingDayIso(endDate, 1);
+    return resolveAccountEmvTitresCad(
+      accountKey,
+      payload,
+      previousTradingDayIso(endDate, 1),
+    );
   }
-  return endDate;
+
+  return sameDayHist;
 }
 
 /**
@@ -811,8 +839,7 @@ function accountDisnatYtdGainCad(
   endDate: string,
 ): number | null {
   const refCad = resolveAccountReferenceTitresCad(accountKey, payload, endDate);
-  const histLookup = disnatYtdHistoricalLookupDate(accountKey, endDate, payload);
-  const histCad = resolveAccountEmvTitresCad(accountKey, payload, histLookup);
+  const histCad = resolveDisnatYtdHistCad(accountKey, payload, endDate);
   if (refCad == null || histCad == null) return null;
   return refCad - histCad;
 }
@@ -1170,18 +1197,18 @@ function pickPeriodGainCad(params: {
 
   if (ret.annualized && gainCadFromPct != null) return gainCadFromPct;
 
-  if (periodId === "ytd" || periodId === "all" || periodId === "year3") {
+  if (periodId === "month" || periodId === "month3" || periodId === "year") {
     return (
       displayGainCad ??
-      gainCadFromPct ??
       portfolioDietzNumerator ??
+      gainCadFromPct ??
       sessionGainCad
     );
   }
 
   return (
-    gainCadFromPct ??
     displayGainCad ??
+    gainCadFromPct ??
     portfolioDietzNumerator ??
     sessionGainCad
   );
@@ -1297,16 +1324,23 @@ function computeSessionChainPeriod(
     ) ?? titresCadFullCoverageAtOrBefore(materialKeys, payload, lookup);
   const endHit = titresCadAtPeriodEnd(materialKeys, payload, bounds.end);
   const boundaryCoverageComplete = baselineHit != null && endHit != null;
+  const dietzBmv =
+    periodId === "month3"
+      ? (titresCadFullCoverageAtOrBefore(materialKeys, payload, lookup)?.valueCad ??
+        baselineHit?.valueCad ??
+        null)
+      : (baselineHit?.valueCad ?? null);
 
   const ret = resolvePeriodReturnPercent({
     sessions,
     periodStart: bounds.start!,
     periodEnd: bounds.end,
-    bmv: baselineHit?.valueCad ?? null,
+    bmv: dietzBmv,
     emv: endHit?.valueCad ?? null,
     boundaryCoverageComplete,
     flows: payload.cashFlows,
     accountKeys: materialKeys,
+    periodId,
   });
 
   const sessionsIncomplete =
