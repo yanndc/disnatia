@@ -17,6 +17,18 @@ const ACCOUNT_DATE_KEY_SEP = "\u001F";
 const POSITION_DATE_KEY_SEP = "\u001F";
 const SESSION_GAIN_SOURCE = "holdings_closes_v2";
 
+/**
+ * DÉFINITION OFFICIELLE : Session P&L = qty détenue à J-1 (opening) × Δ closing
+ * 
+ * Performance Pure : Mesure le gain/perte du portefeuille détenu, sans mixte avec les variations broker.
+ * Mathématiquement : qtyHeld[J-1] × (close[J] - close[J-1]) en devise du compte, converti en CAD.
+ * 
+ * C'est la seule définition utilisée dans l'app.
+ * Ne pas mélanger avec "Broker Variation" (qty_current × changePerShare).
+ * 
+ * Validé sur Disnat live et multi-périodes (Dietz/TWR).
+ */
+
 function positionDateKey(
   accountKey: string,
   ticker: string,

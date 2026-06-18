@@ -28,6 +28,7 @@ import {
   buildAiAuditPrompt,
   buildAiAuditPromptCompact,
 } from "./performance-reconciliation-ai-prompt";
+import { parseIsoDateLocal } from "./daily-close-key";
 import { uniquePortfolioOwners } from "@/lib/portfolio/sanitize-portfolio-owner";
 import type {
   PerformanceFilterState,
@@ -221,7 +222,9 @@ export function PerformanceIndicatorCard({
         filters.activePeriod,
       );
 
-      const bounds = resolvePeriodBounds(filters.activePeriod, asOfNow);
+      const now = parseIsoDateLocal(asOfNow);
+      const earliest = [...new Set(payload.snapshots?.map((s) => s.asOf) ?? [])].sort()[0] ?? null;
+      const bounds = resolvePeriodBounds(filters.activePeriod, now, filters.selectedYear, earliest);
       const disnatKeys = resolveActiveAccountKeys(
         payload.accounts,
         filters.preset,
@@ -350,7 +353,7 @@ export function PerformanceIndicatorCard({
         .filter(
           (f) =>
             disnatKeySet.has(f.accountKey) &&
-            f.tradeDate >= bounds.start &&
+            f.tradeDate >= bounds.start! &&
             f.tradeDate <= bounds.end,
         )
         .reduce((sum, f) => sum + f.amountCad, 0);

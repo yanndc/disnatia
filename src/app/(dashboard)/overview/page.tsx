@@ -124,7 +124,7 @@ export default async function OverviewPage() {
     <div className="space-y-8">
       <MarketIndicesTicker />
 
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-950 shadow-sm">
+      <section className="overflow-hidden rounded-4xl border border-slate-200 bg-white text-slate-950 shadow-sm">
         <div className="relative isolate p-6 sm:p-8">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(5,150,105,0.06),transparent_30%)]" />
           <div>

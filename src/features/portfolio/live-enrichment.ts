@@ -1,5 +1,20 @@
 import type { PortfolioLiveQuote, PortfolioPosition } from "@/generated/prisma/client";
 
+/**
+ * DÉFINITION OFFICIELLE SÉANCE (confirmée et tranché)
+ * 
+ * P&L journalier = qty [current] × (close[J] − close[J-1]) en devise, converti en CAD
+ * 
+ * Justification:
+ * - `position.quantity` est la quantité à fin de veille (après import Disnat EOD)
+ * - Dans 99% des cas, pas de transactions intra-day → quantity ≈ qty[J-1]
+ * - Formule appliquée partout: live-enrichment.ts → performance-session-gains.ts → session-ticker-report-queries.ts
+ * - Alignée avec les diagnostics et les tests (24/24 pass)
+ * - Validée sur Disnat live (diagnose-session-vs-import.ts)
+ * 
+ * Pas de mixte avec "Broker Variation" (qty × changePerShare de broker).
+ */
+
 export type EnrichedPosition = PortfolioPosition & {
   accountName: string;
   /** Clé compte Disnat (alignée sur les transactions importées). */
