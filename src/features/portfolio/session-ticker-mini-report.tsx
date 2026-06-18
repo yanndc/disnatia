@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,27 @@ import {
 } from "@/lib/market/equity-session";
 import { signedGainBg, signedGainClass } from "./performance-indicator-logic";
 import type {
+  SessionTickerDiagnostics,
   SessionTickerMiniReport,
   SessionTickerRow,
   SessionTickerView,
 } from "./session-ticker-report-queries";
+
+type InlineToast = {
+  id: number;
+  variant: "info" | "success" | "error";
+  message: string;
+};
+
+function toastClasses(variant: InlineToast["variant"]): string {
+  if (variant === "success") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  }
+  if (variant === "error") {
+    return "border-rose-200 bg-rose-50 text-rose-900";
+  }
+  return "border-slate-200 bg-white text-slate-800";
+}
 
 function formatSessionDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -51,7 +68,7 @@ function TickerTable({
         <p className="mt-2 text-xs text-slate-400">{emptyHint}</p>
       ) : (
         <div className="mt-2 overflow-x-auto">
-          <table className="w-full min-w-[280px] text-left text-xs">
+          <table className="w-full min-w-70 text-left text-xs">
             <thead>
               <tr className="border-b border-slate-100 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                 <th className="py-1.5 pr-2">Symbole</th>
@@ -70,7 +87,7 @@ function TickerTable({
                     {row.ticker}
                   </td>
                   <td
-                    className="hidden max-w-[8rem] truncate py-1.5 pr-2 text-slate-500 sm:table-cell"
+                    className="hidden max-w-32 truncate py-1.5 pr-2 text-slate-500 sm:table-cell"
                     title={row.securityName}
                   >
                     {row.securityName}
@@ -154,18 +171,45 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
     report.previousSessionDate,
   );
   const [loading, setLoading] = useState(false);
+  const [toasts, setToasts] = useState<InlineToast[]>([]);
+  const toastSeq = useRef(1);
+  const lastDiagnosticsSessionDate = useRef<string | null>(null);
+
+  const pushToast = useCallback(
+    (variant: InlineToast["variant"], message: string, durationMs = 4000) => {
+      const id = toastSeq.current++;
+      setToasts((prev) => [...prev, { id, variant, message }]);
+      window.setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, durationMs);
+    },
+    [],
+  );
+
+  const publishDiagnostics = useCallback(
+    (diagnostics: SessionTickerDiagnostics | undefined) => {
+      if (!diagnostics) return;
+      for (const line of diagnostics.processing) {
+        pushToast("info", line, 5500);
+      }
+      if (diagnostics.attemptedHoldingsRepair) {
+        pushToast("success", "Holdings reconstruits et persistés pour la séance.", 5000);
+      }
+    },
+    [pushToast],
+  );
 
   const canGoBack = view.sessionDate > minSessionDate;
   const canGoForward = view.sessionDate < maxSessionDate;
 
   const loadSession = useCallback(async (sessionDate: string) => {
     setLoading(true);
+    pushToast("info", "Chargement de la séance en cours...", 2200);
     try {
       const res = await fetch(
         `/api/portfolio/session-ticker-report?sessionDate=${encodeURIComponent(sessionDate)}`,
         { cache: "no-store" },
       );
-      if (!res.ok) return;
       const data = (await res.json()) as {
         ok: boolean;
         view: SessionTickerView;
@@ -173,7 +217,24 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
         minSessionDate: string;
         sessionDataHealth?: SessionTickerMiniReport["sessionDataHealth"];
         previousSessionDate?: string;
+        diagnostics?: SessionTickerDiagnostics;
+        code?: string;
+        message?: string;
       };
+      if (!res.ok || !data.ok || !data.view) {
+        if (data.diagnostics?.processing?.length) {
+          for (const line of data.diagnostics.processing) {
+            pushToast("error", line, 6500);
+          }
+        }
+        pushToast(
+          "error",
+          data.message ?? "Impossible de charger la séance demandée.",
+          6500,
+        );
+        return;
+      }
+
       if (data.ok && data.view) {
         setView({
           ...data.view,
@@ -186,13 +247,15 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
         setMinSessionDate(data.minSessionDate);
         if (data.sessionDataHealth) setSessionDataHealth(data.sessionDataHealth);
         if (data.previousSessionDate) setPreviousSessionDate(data.previousSessionDate);
+        publishDiagnostics(data.view.diagnostics ?? data.diagnostics);
       }
     } catch {
+      pushToast("error", "Erreur réseau pendant le chargement de la séance.", 6500);
       /* conserve la vue actuelle */
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [publishDiagnostics, pushToast]);
 
   useEffect(() => {
     if (view.sessionDate === report.maxSessionDate) {
@@ -203,6 +266,21 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
       setPreviousSessionDate(report.previousSessionDate);
     }
   }, [report, view.sessionDate]);
+
+  useEffect(() => {
+    if (lastDiagnosticsSessionDate.current === report.view.sessionDate) return;
+    lastDiagnosticsSessionDate.current = report.view.sessionDate;
+    publishDiagnostics(report.view.diagnostics);
+  }, [publishDiagnostics, report.view.diagnostics, report.view.sessionDate]);
+
+  useEffect(() => {
+    const lines = report.view.diagnostics?.processing ?? [];
+    const hasMissingHoldingsDiagnostic = lines.some((line) =>
+      line.toLowerCase().includes("holdings absents"),
+    );
+    if (!hasMissingHoldingsDiagnostic) return;
+    void loadSession(report.view.sessionDate);
+  }, [loadSession, report.view.diagnostics, report.view.sessionDate]);
 
   function goBack() {
     if (!canGoBack || loading) return;
@@ -220,7 +298,8 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
   const comparesToPerformancePrev = view.sessionDate === previousSessionDate;
 
   return (
-    <Card className="border-slate-200 shadow-sm">
+    <>
+      <Card className="border-slate-200 shadow-sm">
       <CardHeader className="pb-3">
         {!sessionDataHealth.ok ? (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900">
@@ -330,6 +409,20 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
           </p>
         ) : null}
       </CardContent>
-    </Card>
+      </Card>
+
+      {toasts.length > 0 ? (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(92vw,28rem)] flex-col gap-2">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`rounded-lg border px-3 py-2 text-xs shadow-sm ${toastClasses(toast.variant)}`}
+            >
+              {toast.message}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </>
   );
 }

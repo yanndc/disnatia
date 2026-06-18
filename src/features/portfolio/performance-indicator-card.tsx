@@ -18,10 +18,16 @@ import {
   computeAllPeriodResultsWithSnapshots,
   computePeriodResultWithSnapshots,
   defaultPerformanceFilters,
+  resolveActiveAccountKeys,
+  resolvePeriodBounds,
   resolvePeriodMeta,
   signedGainBg,
   signedGainClass,
 } from "./performance-indicator-logic";
+import {
+  buildAiAuditPrompt,
+  buildAiAuditPromptCompact,
+} from "./performance-reconciliation-ai-prompt";
 import { uniquePortfolioOwners } from "@/lib/portfolio/sanitize-portfolio-owner";
 import type {
   PerformanceFilterState,
@@ -106,6 +112,31 @@ function formatGainPct(value: number | null, annualized = false): string {
   return `${prefix}${formatPercent(value)}${annualized ? "/an" : ""}`;
 }
 
+type ReconciliationRow = {
+  reportDate: string;
+  appGainCad: number | null;
+  appGainPct: number | null;
+  refGainCad: number | null;
+  refGainPct: number | null;
+  deltaCad: number | null;
+  deltaPct: number | null;
+  accountsUsed: number;
+  accountsExpected: number;
+  incomplete: boolean;
+  reasons: string[];
+  periodStart: string | null;
+  periodEnd: string | null;
+  baselineLookup: string | null;
+  flowsCad: number | null;
+  appMethod: string;
+  appNote: string | null;
+  missingAccountLabels: string[];
+};
+
+function asOfAtTorontoMidday(isoDate: string): string {
+  return `${isoDate}T15:00:00-04:00`;
+}
+
 export function PerformanceIndicatorCard({
   payload,
 }: {
@@ -126,6 +157,12 @@ export function PerformanceIndicatorCard({
   });
   const [scopeOpen, setScopeOpen] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [recoReportDate, setRecoReportDate] = useState<string>("");
+  const [copyAuditState, setCopyAuditState] = useState<
+    "idle" | "ok" | "ok-compact" | "error"
+  >(
+    "idle",
+  );
 
   useEffect(() => {
     saveStoredFilters(filters);
@@ -149,6 +186,203 @@ export function PerformanceIndicatorCard({
   const active = useMemo(
     () => computePeriodResultWithSnapshots(payload, filters, filters.activePeriod),
     [payload, filters],
+  );
+
+  const reportDates = useMemo(() => {
+    const unique = new Set<string>();
+    for (const s of payload.snapshots ?? []) {
+      if (s.asOf) unique.add(s.asOf);
+    }
+    return [...unique].toSorted((a, b) => b.localeCompare(a));
+  }, [payload.snapshots]);
+
+  useEffect(() => {
+    if (reportDates.length === 0) {
+      setRecoReportDate("");
+      return;
+    }
+    setRecoReportDate((prev) => (prev && reportDates.includes(prev) ? prev : reportDates[0]!));
+  }, [reportDates]);
+
+  const reconciliationRows = useMemo(() => {
+    const rows: ReconciliationRow[] = [];
+    const dates = reportDates.slice(0, 12);
+    if (dates.length === 0) return rows;
+
+    for (const reportDate of dates) {
+      const asOfNow = asOfAtTorontoMidday(reportDate);
+      const payloadAtDate: PerformanceIndicatorPayload = {
+        ...payload,
+        asOfNow,
+      };
+      const app = computePeriodResultWithSnapshots(
+        payloadAtDate,
+        filters,
+        filters.activePeriod,
+      );
+
+      const bounds = resolvePeriodBounds(filters.activePeriod, asOfNow);
+      const disnatKeys = resolveActiveAccountKeys(
+        payload.accounts,
+        filters.preset,
+        filters.includedAccountKeys,
+        filters.excludedAccountKeys,
+        filters.owner,
+      ).filter((k) => !payload.accounts.find((a) => a.accountKey === k)?.isExternal);
+
+      if (!bounds.start || !bounds.baselineLookup || disnatKeys.length === 0) {
+        rows.push({
+          reportDate,
+          appGainCad: app.gainCad,
+          appGainPct: app.gainPct,
+          refGainCad: null,
+          refGainPct: null,
+          deltaCad: null,
+          deltaPct: null,
+          accountsUsed: 0,
+          accountsExpected: disnatKeys.length,
+          incomplete: true,
+          reasons: ["Bornes de période indisponibles ou aucun compte Disnat dans la portée."],
+          periodStart: bounds.start,
+          periodEnd: bounds.end,
+          baselineLookup: bounds.baselineLookup,
+          flowsCad: null,
+          appMethod: app.method,
+          appNote: app.note,
+          missingAccountLabels: [],
+        });
+        continue;
+      }
+
+      const usdToCad = payload.usdToCad;
+      const toCad = (native: number, accountKey: string) => {
+        const acc = payload.accounts.find((a) => a.accountKey === accountKey);
+        if (acc?.currency.toUpperCase().includes("USD") && usdToCad) {
+          return native * usdToCad;
+        }
+        return native;
+      };
+
+      let gainCad = 0;
+      let baselineCad = 0;
+      let used = 0;
+      const missingAccountKeys: string[] = [];
+
+      for (const accountKey of disnatKeys) {
+        let startNative: number | null = null;
+        let endNative: number | null = null;
+        let startAsOf: string | null = null;
+        let endAsOf: string | null = null;
+
+        for (const snap of payload.snapshots ?? []) {
+          if (snap.accountKey !== accountKey) continue;
+          const native = snap.marketValueNative ?? snap.totalValueNative;
+          if (
+            snap.asOf <= bounds.baselineLookup &&
+            (startAsOf == null || snap.asOf > startAsOf)
+          ) {
+            startNative = native;
+            startAsOf = snap.asOf;
+          }
+          if (
+            snap.asOf <= bounds.end &&
+            (endAsOf == null || snap.asOf > endAsOf)
+          ) {
+            endNative = native;
+            endAsOf = snap.asOf;
+          }
+        }
+
+        if (startNative == null || endNative == null) {
+          missingAccountKeys.push(accountKey);
+          continue;
+        }
+
+        const startCad = toCad(startNative, accountKey);
+        const endCad = toCad(endNative, accountKey);
+        const flowsCad = (payload.cashFlows ?? [])
+          .filter(
+            (f) =>
+              f.accountKey === accountKey &&
+              f.tradeDate >= bounds.start! &&
+              f.tradeDate <= bounds.end,
+          )
+          .reduce((sum, f) => sum + f.amountCad, 0);
+
+        gainCad += endCad - startCad - flowsCad;
+        baselineCad += startCad + flowsCad;
+        used += 1;
+      }
+
+      const refGainCad = used > 0 ? gainCad : null;
+      const refGainPct = baselineCad > 0 && used > 0 ? (gainCad / baselineCad) * 100 : null;
+      const deltaCad =
+        app.gainCad != null && refGainCad != null ? app.gainCad - refGainCad : null;
+      const deltaPct =
+        app.gainPct != null && refGainPct != null ? app.gainPct - refGainPct : null;
+
+      const reasons: string[] = [];
+      if (used < disnatKeys.length) {
+        reasons.push("Couverture comptes incomplète");
+      }
+      if (app.incomplete) {
+        reasons.push("Indicateur app partiel");
+      }
+      if (refGainCad == null) {
+        reasons.push("Référence snapshots indisponible");
+      }
+      if (app.gainCad == null) {
+        reasons.push("Résultat app indisponible");
+      }
+      if (deltaCad != null && Math.abs(deltaCad) >= 1) {
+        reasons.push("Écart monétaire significatif");
+      }
+      if (reasons.length === 0) {
+        reasons.push("Alignement app/référence");
+      }
+
+      const missingAccountLabels = missingAccountKeys
+        .map((key) => payload.accounts.find((a) => a.accountKey === key)?.label ?? key)
+        .slice(0, 5);
+
+      const disnatKeySet = new Set(disnatKeys);
+      const flowsCad = (payload.cashFlows ?? [])
+        .filter(
+          (f) =>
+            disnatKeySet.has(f.accountKey) &&
+            f.tradeDate >= bounds.start &&
+            f.tradeDate <= bounds.end,
+        )
+        .reduce((sum, f) => sum + f.amountCad, 0);
+
+      rows.push({
+        reportDate,
+        appGainCad: app.gainCad,
+        appGainPct: app.gainPct,
+        refGainCad,
+        refGainPct,
+        deltaCad,
+        deltaPct,
+        accountsUsed: used,
+        accountsExpected: disnatKeys.length,
+        incomplete: used < disnatKeys.length,
+        reasons,
+        periodStart: bounds.start,
+        periodEnd: bounds.end,
+        baselineLookup: bounds.baselineLookup,
+        flowsCad,
+        appMethod: app.method,
+        appNote: app.note,
+        missingAccountLabels,
+      });
+    }
+
+    return rows;
+  }, [filters, payload, reportDates]);
+
+  const selectedReconciliation = useMemo(
+    () => reconciliationRows.find((r) => r.reportDate === recoReportDate) ?? reconciliationRows[0] ?? null,
+    [recoReportDate, reconciliationRows],
   );
 
   const yahooQuoteAge = useMemo(
@@ -194,6 +428,42 @@ export function PerformanceIndicatorCard({
     return parts.join(" · ");
   }, [filters]);
 
+  const ownerScoped = Boolean(filters.owner);
+  const activePeriodLabel = resolvePeriodMeta(filters.activePeriod, payload.asOfNow).label;
+
+  const copyAuditPromptForAi = useCallback(async (mode: "full" | "compact") => {
+    if (!selectedReconciliation) return;
+    const prompt =
+      mode === "compact"
+        ? buildAiAuditPromptCompact({
+            row: selectedReconciliation,
+            scopeSummary,
+            periodLabel: activePeriodLabel,
+            sessionHealthOk: payload.sessionDataHealth.ok,
+          })
+        : buildAiAuditPrompt({
+            row: selectedReconciliation,
+            scopeSummary,
+            periodLabel: activePeriodLabel,
+            usdToCad: payload.usdToCad,
+            sessionHealthOk: payload.sessionDataHealth.ok,
+          });
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopyAuditState(mode === "compact" ? "ok-compact" : "ok");
+    } catch {
+      setCopyAuditState("error");
+    } finally {
+      window.setTimeout(() => setCopyAuditState("idle"), 2500);
+    }
+  }, [
+    activePeriodLabel,
+    payload.sessionDataHealth.ok,
+    payload.usdToCad,
+    scopeSummary,
+    selectedReconciliation,
+  ]);
+
   if (payload.accounts.length === 0) return null;
 
   return (
@@ -217,6 +487,11 @@ export function PerformanceIndicatorCard({
                     <Sparkles className="size-3" />
                     Live
                   </span>
+                  {ownerScoped ? (
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-200">
+                      Portefeuille partiel
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
                   Gains et pertes en $ et % · filtres par période, portée et comptes
@@ -274,7 +549,11 @@ export function PerformanceIndicatorCard({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+                className={`h-9 gap-2 rounded-xl border bg-white hover:bg-slate-50 hover:text-slate-950 ${
+                  ownerScoped
+                    ? "border-emerald-200 text-emerald-800"
+                    : "border-slate-200 text-slate-700"
+                }`}
                 onClick={() => setScopeOpen((v) => !v)}
               >
                 <Filter className="size-4" />
@@ -442,6 +721,160 @@ export function PerformanceIndicatorCard({
                 >
                   {active.note}
                 </p>
+              ) : null}
+
+              {selectedReconciliation ? (
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Conciliation (mêmes dates de rapport)
+                    </p>
+                    <select
+                      value={recoReportDate}
+                      onChange={(e) => setRecoReportDate(e.target.value)}
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                    >
+                      {reportDates.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full min-w-215 text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                          <th className="py-1.5 pr-2">Date rapport</th>
+                          <th className="py-1.5 pr-2 text-right">App $</th>
+                          <th className="py-1.5 pr-2 text-right">Réf. $</th>
+                          <th className="py-1.5 pr-2 text-right">Écart $</th>
+                          <th className="py-1.5 pr-2 text-right">App %</th>
+                          <th className="py-1.5 pr-2 text-right">Réf. %</th>
+                          <th className="py-1.5 pr-2 text-right">Écart %</th>
+                          <th className="py-1.5 text-right">Couverture</th>
+                          <th className="py-1.5 pl-2">Diagnostic</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reconciliationRows.map((r) => {
+                          const isSelected = r.reportDate === selectedReconciliation.reportDate;
+                          return (
+                            <tr
+                              key={r.reportDate}
+                              className={`cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50 ${
+                                isSelected ? "bg-white" : ""
+                              }`}
+                              onClick={() => setRecoReportDate(r.reportDate)}
+                            >
+                              <td className="py-1.5 pr-2 font-medium text-slate-700">{r.reportDate}</td>
+                              <td className={`py-1.5 pr-2 text-right tabular-nums ${signedGainClass(r.appGainCad)}`}>
+                                {formatGain(r.appGainCad)}
+                              </td>
+                              <td className={`py-1.5 pr-2 text-right tabular-nums ${signedGainClass(r.refGainCad)}`}>
+                                {formatGain(r.refGainCad)}
+                              </td>
+                              <td className={`py-1.5 pr-2 text-right tabular-nums ${signedGainClass(r.deltaCad)}`}>
+                                {formatGain(r.deltaCad)}
+                              </td>
+                              <td className={`py-1.5 pr-2 text-right tabular-nums ${signedGainClass(r.appGainPct)}`}>
+                                {formatGainPct(r.appGainPct)}
+                              </td>
+                              <td className={`py-1.5 pr-2 text-right tabular-nums ${signedGainClass(r.refGainPct)}`}>
+                                {formatGainPct(r.refGainPct)}
+                              </td>
+                              <td className={`py-1.5 pr-2 text-right tabular-nums ${signedGainClass(r.deltaPct)}`}>
+                                {formatGainPct(r.deltaPct)}
+                              </td>
+                              <td className={`py-1.5 text-right tabular-nums ${r.incomplete ? "text-amber-700" : "text-slate-600"}`}>
+                                {r.accountsUsed}/{r.accountsExpected}
+                              </td>
+                              <td className="py-1.5 pl-2 text-slate-600">
+                                {r.reasons.join(" · ")}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {selectedReconciliation ? (
+                    <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                      <div className="mb-2 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void copyAuditPromptForAi("full");
+                          }}
+                          className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                        >
+                          Copier audit IA
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void copyAuditPromptForAi("compact");
+                          }}
+                          className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                        >
+                          Copier audit IA (compact)
+                        </button>
+                        {copyAuditState === "ok" ? (
+                          <span className="text-[11px] font-medium text-emerald-700">
+                            Copié
+                          </span>
+                        ) : null}
+                        {copyAuditState === "ok-compact" ? (
+                          <span className="text-[11px] font-medium text-emerald-700">
+                            Copié (compact)
+                          </span>
+                        ) : null}
+                        {copyAuditState === "error" ? (
+                          <span className="text-[11px] font-medium text-rose-700">
+                            Copie impossible
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span>
+                          <span className="font-semibold">Date:</span>{" "}
+                          {selectedReconciliation.reportDate}
+                        </span>
+                        <span>
+                          <span className="font-semibold">Méthode app:</span>{" "}
+                          {selectedReconciliation.appMethod}
+                        </span>
+                        <span>
+                          <span className="font-semibold">Période:</span>{" "}
+                          {selectedReconciliation.periodStart ?? "—"} →{" "}
+                          {selectedReconciliation.periodEnd ?? "—"}
+                        </span>
+                        <span>
+                          <span className="font-semibold">Baseline:</span>{" "}
+                          {selectedReconciliation.baselineLookup ?? "—"}
+                        </span>
+                        <span>
+                          <span className="font-semibold">Flux nets:</span>{" "}
+                          {selectedReconciliation.flowsCad != null
+                            ? formatCurrency(selectedReconciliation.flowsCad, "CAD")
+                            : "—"}
+                        </span>
+                      </div>
+                      {selectedReconciliation.appNote ? (
+                        <p className="mt-2 text-amber-700">
+                          Note app: {selectedReconciliation.appNote}
+                        </p>
+                      ) : null}
+                      {selectedReconciliation.missingAccountLabels.length > 0 ? (
+                        <p className="mt-2 text-amber-700">
+                          Comptes sans snapshot complet: {selectedReconciliation.missingAccountLabels.join(", ")}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
 

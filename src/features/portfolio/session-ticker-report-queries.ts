@@ -24,6 +24,8 @@ import {
   closeOnOrBefore,
   priorCloseDateForSeries,
 } from "./performance-history-loader";
+import { ensureDailyHoldingsUpToDate } from "./backfill-market-history";
+import { checkSessionDataIntegrity } from "./session-data-integrity";
 import type {
   PerformanceEnrichedHoldingRow,
   PerformanceIndicatorPayload,
@@ -51,7 +53,30 @@ export type SessionTickerView = {
   lists: SessionTickerLists;
   /** Total P&L titres — même source que « Séance préc. » (session_gains persistés). */
   totalGainCad: number | null;
+  diagnostics?: SessionTickerDiagnostics;
 };
+
+export type SessionTickerDiagnostics = {
+  processing: string[];
+  attemptedHoldingsRepair: boolean;
+};
+
+type BuildSessionTickerOptions = {
+  repairHoldingsIfMissing?: boolean;
+  nowForRepair?: Date;
+};
+
+export class SessionTickerDataError extends Error {
+  readonly code: "HOLDINGS_MISSING";
+  readonly diagnostics: SessionTickerDiagnostics;
+
+  constructor(message: string, diagnostics: SessionTickerDiagnostics) {
+    super(message);
+    this.name = "SessionTickerDataError";
+    this.code = "HOLDINGS_MISSING";
+    this.diagnostics = diagnostics;
+  }
+}
 
 /** Nombre max de séances ouvrées navigables en arrière. */
 export const SESSION_TICKER_MAX_LOOKBACK_DAYS = 252;
@@ -282,31 +307,85 @@ async function loadHoldingsForSessionDate(
   });
   if (exact.length > 0) return exact;
 
-  const latest = await prisma.portfolioDailyHolding.findFirst({
-    where: {
-      accountKey: { in: accountKeys },
-      holdingDate: { lte: sessionDay },
-      quantity: { gt: 0 },
-    },
-    orderBy: { holdingDate: "desc" },
-    select: { holdingDate: true },
-  });
-  if (!latest) return [];
+  return [];
+}
 
-  return prisma.portfolioDailyHolding.findMany({
-    where: {
-      holdingDate: latest.holdingDate,
-      accountKey: { in: accountKeys },
-      quantity: { gt: 0 },
+async function loadHoldingsForSessionWindow(
+  sessionDate: string,
+  accountKeys: string[],
+): Promise<{
+  holdings: Awaited<ReturnType<typeof loadHoldingsForSessionDate>>;
+  priorHoldings: Awaited<ReturnType<typeof loadHoldingsForSessionDate>>;
+  priorSessionDate: string;
+}> {
+  const priorSessionDate = previousTradingDayIso(sessionDate, 1);
+  const [holdings, priorHoldings] = await Promise.all([
+    loadHoldingsForSessionDate(sessionDate, accountKeys),
+    loadHoldingsForSessionDate(priorSessionDate, accountKeys),
+  ]);
+  return { holdings, priorHoldings, priorSessionDate };
+}
+
+async function ensureHoldingsForSessionWindow(
+  sessionDate: string,
+  accountKeys: string[],
+  options?: BuildSessionTickerOptions,
+): Promise<{
+  holdings: Awaited<ReturnType<typeof loadHoldingsForSessionDate>>;
+  priorHoldings: Awaited<ReturnType<typeof loadHoldingsForSessionDate>>;
+  diagnostics: SessionTickerDiagnostics;
+}> {
+  const processing: string[] = [];
+  const initial = await loadHoldingsForSessionWindow(sessionDate, accountKeys);
+  if (initial.holdings.length > 0 && initial.priorHoldings.length > 0) {
+    return {
+      holdings: initial.holdings,
+      priorHoldings: initial.priorHoldings,
+      diagnostics: { processing, attemptedHoldingsRepair: false },
+    };
+  }
+
+  if (!options?.repairHoldingsIfMissing) {
+    return {
+      holdings: [],
+      priorHoldings: [],
+      diagnostics: {
+        processing: [
+          `Holdings absents pour ${sessionDate} et/ou ${initial.priorSessionDate}.`,
+          "Aucun fallback vers une date antérieure n'est autorisé.",
+        ],
+        attemptedHoldingsRepair: false,
+      },
+    };
+  }
+
+  processing.push(
+    `Holdings absents pour ${sessionDate} ou ${initial.priorSessionDate}: tentative de mise à jour persistante.`,
+  );
+  await ensureDailyHoldingsUpToDate(options.nowForRepair ?? new Date());
+
+  const afterRepair = await loadHoldingsForSessionWindow(sessionDate, accountKeys);
+  if (afterRepair.holdings.length > 0 && afterRepair.priorHoldings.length > 0) {
+    processing.push("Mise à jour holdings complétée et validée pour la séance demandée.");
+    return {
+      holdings: afterRepair.holdings,
+      priorHoldings: afterRepair.priorHoldings,
+      diagnostics: { processing, attemptedHoldingsRepair: true },
+    };
+  }
+
+  const integrity = await checkSessionDataIntegrity(sessionDate);
+  processing.push("Mise à jour holdings incomplète après tentative de réparation.");
+  throw new SessionTickerDataError(
+    `Holdings incomplets après réparation pour ${sessionDate}.`,
+    {
+      processing: [
+        ...processing,
+        ...integrity.issues.map((issue) => `Intégrité: ${issue}`),
+      ],
+      attemptedHoldingsRepair: true,
     },
-    select: {
-      accountKey: true,
-      ticker: true,
-      securityName: true,
-      currency: true,
-      quantity: true,
-    },
-  });
+  );
 }
 
 async function aggregateFromDailyHoldings(
@@ -314,15 +393,20 @@ async function aggregateFromDailyHoldings(
   accountKeys: string[],
   dailyCloses: Record<string, number>,
   usdToCad: number | null,
-): Promise<SessionTickerRow[]> {
-  if (!isTradingDayDate(sessionDate) || accountKeys.length === 0) return [];
+  options?: BuildSessionTickerOptions,
+): Promise<{ rows: SessionTickerRow[]; diagnostics: SessionTickerDiagnostics }> {
+  if (!isTradingDayDate(sessionDate) || accountKeys.length === 0) {
+    return {
+      rows: [],
+      diagnostics: { processing: [], attemptedHoldingsRepair: false },
+    };
+  }
 
-  const priorSessionDate = previousTradingDayIso(sessionDate, 1);
-  const [holdings, priorHoldings] = await Promise.all([
-    loadHoldingsForSessionDate(sessionDate, accountKeys),
-    loadHoldingsForSessionDate(priorSessionDate, accountKeys),
-  ]);
-  if (holdings.length === 0 && priorHoldings.length === 0) return [];
+  const { holdings, priorHoldings, diagnostics } = await ensureHoldingsForSessionWindow(
+    sessionDate,
+    accountKeys,
+    options,
+  );
 
   const fxFrom = previousTradingDayIso(sessionDate, 14);
   const rateMap = await loadUsdCadRateMap(fxFrom, sessionDate);
@@ -372,7 +456,7 @@ async function aggregateFromDailyHoldings(
     }
   }
 
-  return finalizeBuckets(buckets, sessionFx);
+  return { rows: finalizeBuckets(buckets, sessionFx), diagnostics };
 }
 
 export function parsePayloadClock(asOfNow: string): Date {
@@ -455,6 +539,7 @@ export async function buildSessionTickerViewForDate(
   payload: PerformanceIndicatorPayload,
   sessionDate: string,
   now = parsePayloadClock(payload.asOfNow),
+  options?: BuildSessionTickerOptions,
 ): Promise<SessionTickerView> {
   const refSessionDate = referenceTradingSessionDayIso(now);
   const disnatAccountKeys = disnatAccountKeysFromPayload(payload);
@@ -465,11 +550,12 @@ export async function buildSessionTickerViewForDate(
     ? payload.dailyCloses
     : await resolveDailyClosesForSessionDate(payload, sessionDate);
 
-  const dailyRows = await aggregateFromDailyHoldings(
+  const { rows: dailyRows, diagnostics } = await aggregateFromDailyHoldings(
     sessionDate,
     disnatAccountKeys,
     dailyCloses,
     payload.usdToCad,
+    options,
   );
 
   const rows = useLive
@@ -498,6 +584,7 @@ export async function buildSessionTickerViewForDate(
     sessionLabel: resolveSessionLabel(sessionDate, now, useLive),
     lists: splitGainersLosers(rows),
     totalGainCad,
+    diagnostics,
   };
 }
 
@@ -510,7 +597,9 @@ export async function buildSessionTickerMiniReportFromPayload(
     maxSessionDate,
     SESSION_TICKER_MAX_LOOKBACK_DAYS,
   );
-  const view = await buildSessionTickerViewForDate(payload, maxSessionDate, now);
+  const view = await buildSessionTickerViewForDate(payload, maxSessionDate, now, {
+    repairHoldingsIfMissing: false,
+  });
 
   return {
     view,

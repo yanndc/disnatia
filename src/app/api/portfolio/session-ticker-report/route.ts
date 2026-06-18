@@ -3,6 +3,7 @@ import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance
 import {
   buildSessionTickerViewForDate,
   parsePayloadClock,
+  SessionTickerDataError,
   SESSION_TICKER_MAX_LOOKBACK_DAYS,
 } from "@/features/portfolio/session-ticker-report-queries";
 import {
@@ -40,7 +41,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const view = await buildSessionTickerViewForDate(payload, sessionDate, now);
+    const view = await buildSessionTickerViewForDate(payload, sessionDate, now, {
+      repairHoldingsIfMissing: true,
+      nowForRepair: new Date(),
+    });
 
     return NextResponse.json({
       ok: true,
@@ -51,6 +55,18 @@ export async function GET(request: Request) {
       previousSessionDate: priorReferenceSessionDateIso(now),
     });
   } catch (cause) {
+    if (cause instanceof SessionTickerDataError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: cause.code,
+          message: cause.message,
+          diagnostics: cause.diagnostics,
+        },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       {
         ok: false,
