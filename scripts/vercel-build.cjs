@@ -55,3 +55,4 @@ function run(cmd, args, envOverrides = {}) {
 
 run("pnpm", ["exec", "prisma", "migrate", "deploy"]);
 run("pnpm", ["exec", "next", "build"], { NODE_ENV: "production" });
+run("pnpm", ["exec", "serwist", "build", "serwist.config.mjs"], { NODE_ENV: "production" });
