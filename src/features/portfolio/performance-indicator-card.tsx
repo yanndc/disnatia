@@ -701,9 +701,9 @@ export function PerformanceIndicatorCard({
                 {active.baselineDate ? (
                   <span>Réf. {active.baselineDate}</span>
                 ) : null}
-                {yahooQuoteAge ? (
+                {yahooQuoteAge && payload.quotesAsOf ? (
                   <span className="tabular-nums">
-                    Yahoo {new Date(payload.quotesAsOf!).toLocaleString("fr-CA", {
+                    Yahoo {new Date(payload.quotesAsOf).toLocaleString("fr-CA", {
                       dateStyle: "short",
                       timeStyle: "short",
                     })}
