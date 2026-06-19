@@ -245,7 +245,7 @@ export async function getPortfolioSummary() {
     ...accountStates.map((a) => a.asOf),
     ...holdingAsOfSource,
     ...externalAsOf,
-  ];
+  ].filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()));
   const referenceAsOf =
     allAsOf.length > 0 ? new Date(Math.max(...allAsOf.map((d) => d.getTime()))) : null;
   const snapshotDataFrom =
@@ -384,9 +384,12 @@ export async function getPortfolioSummary() {
       ? Math.max(0, ...aggregatedRows.map((r) => r.weightPct))
       : 0;
 
+  const validAccountAsOf = accountStates
+    .map((a) => a.asOf)
+    .filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()));
   const disnatReconciliationAsOf =
-    accountStates.length > 0
-      ? new Date(Math.max(...accountStates.map((a) => a.asOf.getTime())))
+    validAccountAsOf.length > 0
+      ? new Date(Math.max(...validAccountAsOf.map((d) => d.getTime())))
       : null;
 
   // Import le plus récent (pour l'affichage info seulement)
