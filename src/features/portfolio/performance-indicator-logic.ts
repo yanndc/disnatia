@@ -68,12 +68,29 @@ function isoDate(d: Date): string {
 }
 
 function parseIsoDate(s: string): Date {
-  if (s.includes("T")) {
-    const parsed = new Date(s);
+  const raw = s.trim();
+  if (raw.includes("T")) {
+    const parsed = new Date(raw);
     if (!Number.isNaN(parsed.getTime())) return parsed;
   }
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y!, m! - 1, d!);
+
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const d = Number(match[3]);
+    const parsed = new Date(y, m - 1, d);
+    if (
+      !Number.isNaN(parsed.getTime()) &&
+      parsed.getFullYear() === y &&
+      parsed.getMonth() === m - 1 &&
+      parsed.getDate() === d
+    ) {
+      return parsed;
+    }
+  }
+
+  return new Date();
 }
 
 function baselineBeforePeriodStart(startIso: string): string {

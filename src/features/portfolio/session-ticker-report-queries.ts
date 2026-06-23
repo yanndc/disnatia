@@ -460,14 +460,30 @@ async function aggregateFromDailyHoldings(
 }
 
 export function parsePayloadClock(asOfNow: string): Date {
-  if (asOfNow.includes("T")) {
-    const d = new Date(asOfNow);
+  const raw = asOfNow.trim();
+  if (raw.includes("T")) {
+    const d = new Date(raw);
     if (!Number.isNaN(d.getTime())) return d;
   }
-  const [y, m, d] = asOfNow.split("-").map(Number);
-  const local = new Date(y!, m! - 1, d!);
-  local.setHours(15, 0, 0, 0);
-  return local;
+
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const d = Number(match[3]);
+    const local = new Date(y, m - 1, d);
+    if (
+      !Number.isNaN(local.getTime()) &&
+      local.getFullYear() === y &&
+      local.getMonth() === m - 1 &&
+      local.getDate() === d
+    ) {
+      local.setHours(15, 0, 0, 0);
+      return local;
+    }
+  }
+
+  return new Date();
 }
 
 function resolveSessionLabel(
