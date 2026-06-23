@@ -1,23 +1,53 @@
 import { subDays } from "date-fns";
 
 const TORONTO_TZ = "America/Toronto";
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Heures régulières TSX / NYSE en heure de Toronto (9 h 30 – 16 h). */
 const SESSION_OPEN_MINUTES = 9 * 60 + 30;
 const SESSION_CLOSE_MINUTES = 16 * 60;
 
+function isValidDate(d: Date): boolean {
+  return !Number.isNaN(d.getTime());
+}
+
+function safeNowDate(input: Date): Date {
+  return isValidDate(input) ? input : new Date();
+}
+
+function fallbackCalendarAnchorUtc(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
+}
+
 export function isoDateInToronto(now: Date): string {
+  const safe = safeNowDate(now);
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TORONTO_TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now);
+  }).format(safe);
 }
 
 /** Date calendrier ISO ancrée à midi UTC (évite les décalages fuseau sur @db.Date et itérations). */
 export function parseIsoCalendarDate(iso: string): Date {
-  return new Date(`${iso}T12:00:00.000Z`);
+  const match = iso.trim().match(ISO_DATE_RE);
+  if (!match) return fallbackCalendarAnchorUtc();
+
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  const parsed = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
+  if (
+    !isValidDate(parsed) ||
+    parsed.getUTCFullYear() !== y ||
+    parsed.getUTCMonth() !== m - 1 ||
+    parsed.getUTCDate() !== d
+  ) {
+    return fallbackCalendarAnchorUtc();
+  }
+  return parsed;
 }
 
 function isoDateFromUtcParts(d: Date): string {
@@ -66,13 +96,14 @@ export function latestAllowedFirstSessionDate(periodStartIso: string): string {
 }
 
 function torontoClock(now: Date): { day: number; minutes: number } {
+  const safe = safeNowDate(now);
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: TORONTO_TZ,
     weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).formatToParts(now);
+  }).formatToParts(safe);
 
   const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
   const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
