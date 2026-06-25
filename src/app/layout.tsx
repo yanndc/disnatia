@@ -3,6 +3,7 @@ import { after, connection } from "next/server";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppSerwistProvider } from "@/components/pwa/serwist-provider";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
+import { logRecoverableServerIssue } from "@/lib/logging/recoverable-server-log";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -44,7 +45,7 @@ export default async function RootLayout({
   await connection();
   after(() => {
     void refreshUsdCadRatesIfStale().catch((err) => {
-      console.error("[usd-cad-rates]", err);
+      logRecoverableServerIssue("[usd-cad-rates]", err);
     });
   });
 

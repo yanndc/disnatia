@@ -6,6 +6,7 @@ import {
 } from "@/features/portfolio/backfill-market-history";
 import { refreshLiveQuotesForLatestImport } from "@/features/portfolio/refresh-live-quotes";
 import { sendHtmlEmail, getEodReportTo } from "@/lib/email/resend-client";
+import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
   isoDateInToronto,
   referenceTradingSessionDay,
@@ -41,7 +42,14 @@ export async function runEodReportJob(now = new Date()): Promise<RunEodReportRes
 
   const data = await buildEodReportData(now);
   const html = await render(EodReportEmail({ data }));
-  const subject = `DisnatIA — Rapport ${data.sessionDate}`;
+  const { gainCad, gainPct } = data.dayPeriod;
+  const gainStr =
+    gainCad === null
+      ? "—"
+      : gainPct === null
+        ? `${gainCad >= 0 ? "+" : ""}${formatCurrency(gainCad)}`
+        : `${gainCad >= 0 ? "+" : ""}${formatCurrency(gainCad)} (${gainPct >= 0 ? "+" : ""}${formatPercent(gainPct)})`;
+  const subject = `Rapport fin de journée — ${data.sessionDate} — ${gainStr}`;
 
   const recipient = getEodReportTo();
   const { id } = await sendHtmlEmail({ subject, html });

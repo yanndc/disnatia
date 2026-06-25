@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
+import { logRecoverableServerIssue } from "@/lib/logging/recoverable-server-log";
 import { parseIsoDateLocal } from "./daily-close-key";
 import { PERFORMANCE_CALC_VERSION } from "./performance-calc-version";
 import {
@@ -166,7 +167,7 @@ export async function maybePersistPerformanceSnapshots(
     await persistPerformanceSnapshots(payload, sessionDate);
     return await loadPerformanceSnapshots(sessionDate);
   } catch (cause) {
-    console.warn("[performance] maybePersistPerformanceSnapshots", cause);
+    logRecoverableServerIssue("[performance] maybePersistPerformanceSnapshots", cause);
     return null;
   }
 }

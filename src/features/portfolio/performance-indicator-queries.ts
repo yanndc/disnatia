@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
+import { logRecoverableServerIssue } from "@/lib/logging/recoverable-server-log";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { formatAccountNumber, normalizeCurrency } from "@/lib/utils";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
@@ -60,7 +61,7 @@ async function ensureFreshQuotesDuringSession(now = new Date()): Promise<void> {
     return;
   }
   await refreshLiveQuotesForLatestImport({ recomputeSessionGains: true }).catch((cause) => {
-    console.warn("[performance] refreshLiveQuotesForLatestImport", cause);
+    logRecoverableServerIssue("[performance] refreshLiveQuotesForLatestImport", cause);
   });
 }
 
@@ -86,7 +87,7 @@ async function ensureRecentSessionGainsPersisted(
   );
   const to = isoDateInToronto(now);
   await recomputeAndPersistSessionGains(accountKeys, from, to).catch((cause) => {
-    console.warn("[performance] recomputeAndPersistSessionGains", cause);
+    logRecoverableServerIssue("[performance] recomputeAndPersistSessionGains", cause);
   });
 }
 
