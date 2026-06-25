@@ -170,7 +170,7 @@ export default async function OverviewPage() {
             <ShieldCheck className="size-4 text-slate-400" />
             Validation Disnat
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
             <span>
               Référence fichier : {formatCurrency(summary.disnatReferenceTotalValue)}
               {disnatRecoLabel ? ` · état comptes au ${disnatRecoLabel}` : null}
@@ -189,6 +189,12 @@ export default async function OverviewPage() {
                 Taux USD→CAD indisponible : totaux mélangent les devises sans conversion.
               </span>
             )}
+            <Link
+              href="/reconciliation"
+              className="font-medium text-cyan-700 underline decoration-cyan-200 underline-offset-4 hover:text-cyan-800"
+            >
+              Voir le détail de réconciliation
+            </Link>
           </div>
         </div>
       </section>

@@ -1,5 +1,6 @@
 export type DashboardNavIconName =
   | "layout-dashboard"
+  | "shield-check"
   | "landmark"
   | "table2"
   | "arrow-left-right"
@@ -15,6 +16,7 @@ export type DashboardNavItem = {
 
 export const dashboardNavigation: DashboardNavItem[] = [
   { href: "/overview", label: "Vue d'ensemble", icon: "layout-dashboard" },
+  { href: "/reconciliation", label: "Réconciliation", icon: "shield-check" },
   { href: "/comptes", label: "Comptes", icon: "landmark" },
   { href: "/positions", label: "Positions", icon: "table2" },
   { href: "/transactions", label: "Transactions", icon: "arrow-left-right" },

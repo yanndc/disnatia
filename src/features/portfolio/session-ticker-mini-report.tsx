@@ -16,6 +16,7 @@ import type {
   SessionTickerRow,
   SessionTickerView,
 } from "./session-ticker-report-queries";
+import { SessionTickerHistoryChart } from "./session-ticker-history-chart";
 
 type InlineToast = {
   id: number;
@@ -258,16 +259,6 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
   }, [publishDiagnostics, pushToast]);
 
   useEffect(() => {
-    if (view.sessionDate === report.maxSessionDate) {
-      setView(report.view);
-      setMaxSessionDate(report.maxSessionDate);
-      setMinSessionDate(report.minSessionDate);
-      setSessionDataHealth(report.sessionDataHealth);
-      setPreviousSessionDate(report.previousSessionDate);
-    }
-  }, [report, view.sessionDate]);
-
-  useEffect(() => {
     if (lastDiagnosticsSessionDate.current === report.view.sessionDate) return;
     lastDiagnosticsSessionDate.current = report.view.sessionDate;
     publishDiagnostics(report.view.diagnostics);
@@ -279,7 +270,10 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
       line.toLowerCase().includes("holdings absents"),
     );
     if (!hasMissingHoldingsDiagnostic) return;
-    void loadSession(report.view.sessionDate);
+    const id = window.setTimeout(() => {
+      void loadSession(report.view.sessionDate);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [loadSession, report.view.diagnostics, report.view.sessionDate]);
 
   function goBack() {
@@ -400,6 +394,14 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
         </div>
       </CardHeader>
       <CardContent className={loading ? "pointer-events-none opacity-60" : undefined}>
+        {report.history.length > 1 ? (
+          <div className="mb-4">
+            <SessionTickerHistoryChart
+              history={report.history}
+              activeSessionDate={view.sessionDate}
+            />
+          </div>
+        ) : null}
         <SessionBlock view={view} />
         {!loading &&
         view.lists.gainers.length + view.lists.losers.length === 0 ? (

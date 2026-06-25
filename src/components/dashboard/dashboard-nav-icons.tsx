@@ -3,6 +3,7 @@ import {
   FileUp,
   Landmark,
   LayoutDashboard,
+  ShieldCheck,
   Sparkles,
   Table2,
   TrendingUp,
@@ -12,6 +13,7 @@ import type { DashboardNavIconName } from "./dashboard-navigation";
 
 export const dashboardNavIcons: Record<DashboardNavIconName, LucideIcon> = {
   "layout-dashboard": LayoutDashboard,
+  "shield-check": ShieldCheck,
   landmark: Landmark,
   table2: Table2,
   "arrow-left-right": ArrowLeftRight,

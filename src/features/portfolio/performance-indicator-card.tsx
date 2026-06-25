@@ -140,8 +140,10 @@ function asOfAtTorontoMidday(isoDate: string): string {
 
 export function PerformanceIndicatorCard({
   payload,
+  showReconciliationDetails = false,
 }: {
   payload: PerformanceIndicatorPayload;
+  showReconciliationDetails?: boolean;
 }) {
   const [filters, setFilters] = useState<PerformanceFilterState>(() => {
     const base = defaultPerformanceFilters(payload);
@@ -197,13 +199,10 @@ export function PerformanceIndicatorCard({
     return [...unique].toSorted((a, b) => b.localeCompare(a));
   }, [payload.snapshots]);
 
-  useEffect(() => {
-    if (reportDates.length === 0) {
-      setRecoReportDate("");
-      return;
-    }
-    setRecoReportDate((prev) => (prev && reportDates.includes(prev) ? prev : reportDates[0]!));
-  }, [reportDates]);
+  const activeRecoReportDate =
+    recoReportDate && reportDates.includes(recoReportDate)
+      ? recoReportDate
+      : (reportDates[0] ?? "");
 
   const reconciliationRows = useMemo(() => {
     const rows: ReconciliationRow[] = [];
@@ -384,8 +383,11 @@ export function PerformanceIndicatorCard({
   }, [filters, payload, reportDates]);
 
   const selectedReconciliation = useMemo(
-    () => reconciliationRows.find((r) => r.reportDate === recoReportDate) ?? reconciliationRows[0] ?? null,
-    [recoReportDate, reconciliationRows],
+    () =>
+      reconciliationRows.find((r) => r.reportDate === activeRecoReportDate) ??
+      reconciliationRows[0] ??
+      null,
+    [activeRecoReportDate, reconciliationRows],
   );
 
   const yahooQuoteAge = useMemo(
@@ -726,14 +728,14 @@ export function PerformanceIndicatorCard({
                 </p>
               ) : null}
 
-              {selectedReconciliation ? (
+              {showReconciliationDetails && selectedReconciliation ? (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Conciliation (mêmes dates de rapport)
                     </p>
                     <select
-                      value={recoReportDate}
+                      value={activeRecoReportDate}
                       onChange={(e) => setRecoReportDate(e.target.value)}
                       className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
                     >

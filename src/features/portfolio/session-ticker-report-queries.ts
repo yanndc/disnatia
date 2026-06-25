@@ -56,6 +56,12 @@ export type SessionTickerView = {
   diagnostics?: SessionTickerDiagnostics;
 };
 
+export type SessionTickerHistoryPoint = {
+  sessionDate: string;
+  totalGainCad: number;
+  isLive: boolean;
+};
+
 export type SessionTickerDiagnostics = {
   processing: string[];
   attemptedHoldingsRepair: boolean;
@@ -85,6 +91,7 @@ export type SessionTickerMiniReport = {
   view: SessionTickerView;
   maxSessionDate: string;
   minSessionDate: string;
+  history: SessionTickerHistoryPoint[];
   /** Même diagnostic que la carte Performance dynamique. */
   sessionDataHealth: PerformanceSessionDataHealth;
   /** Date « Séance préc. » dans Performance (séance complétée avant la référence). */
@@ -516,6 +523,39 @@ function disnatAccountKeysFromPayload(payload: PerformanceIndicatorPayload): str
   return payload.accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
 }
 
+function buildSessionTickerHistory(
+  payload: PerformanceIndicatorPayload,
+  now: Date,
+  lookbackDays = 30,
+): SessionTickerHistoryPoint[] {
+  const maxSessionDate = referenceTradingSessionDayIso(now);
+  const minSessionDate = previousTradingDayIso(maxSessionDate, lookbackDays - 1);
+  const disnatAccountKeys = disnatAccountKeysFromPayload(payload);
+  const totalsByDate = new Map<string, number>();
+
+  for (const accountKey of disnatAccountKeys) {
+    for (const gain of payload.sessionGainsByAccount[accountKey] ?? []) {
+      if (gain.date < minSessionDate || gain.date > maxSessionDate) continue;
+      totalsByDate.set(gain.date, (totalsByDate.get(gain.date) ?? 0) + gain.gainCad);
+    }
+  }
+
+  const useLive = shouldUseLiveForCurrentSession(payload, now);
+  const liveTotal = useLive ? sumLiveDayGainCad(payload, disnatAccountKeys) : null;
+  if (liveTotal !== null) {
+    totalsByDate.set(maxSessionDate, liveTotal);
+  }
+
+  return [...totalsByDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-lookbackDays)
+    .map(([sessionDate, totalGainCad]) => ({
+      sessionDate,
+      totalGainCad,
+      isLive: useLive && sessionDate === maxSessionDate,
+    }));
+}
+
 function holdingPairsFromPayload(payload: PerformanceIndicatorPayload) {
   return [
     ...new Map(
@@ -621,6 +661,7 @@ export async function buildSessionTickerMiniReportFromPayload(
     view,
     maxSessionDate,
     minSessionDate,
+    history: buildSessionTickerHistory(payload, now),
     sessionDataHealth: payload.sessionDataHealth,
     previousSessionDate: priorReferenceSessionDateIso(now),
   };
