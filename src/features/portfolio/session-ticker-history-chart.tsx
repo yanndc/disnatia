@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -37,6 +38,32 @@ function formatLongDate(iso: string) {
   });
 }
 
+function buildTrendLine(history: SessionTickerHistoryPoint[]) {
+  if (history.length === 0) return [] as number[];
+  if (history.length === 1) return [history[0]!.totalGainCad];
+
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumXX = 0;
+
+  for (let index = 0; index < history.length; index += 1) {
+    const x = index;
+    const y = history[index]!.totalGainCad;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumXX += x * x;
+  }
+
+  const count = history.length;
+  const denominator = count * sumXX - sumX * sumX;
+  const slope = denominator === 0 ? 0 : (count * sumXY - sumX * sumY) / denominator;
+  const intercept = (sumY - slope * sumX) / count;
+
+  return history.map((_, index) => intercept + slope * index);
+}
+
 export function SessionTickerHistoryChart({
   history,
   activeSessionDate,
@@ -44,9 +71,16 @@ export function SessionTickerHistoryChart({
   history: SessionTickerHistoryPoint[];
   activeSessionDate: string;
 }) {
-  const chartData = history.map((point) => ({
+  type ChartPoint = SessionTickerHistoryPoint & {
+    shortDate: string;
+    trendCad: number;
+  };
+
+  const trendLine = buildTrendLine(history);
+  const chartData: ChartPoint[] = history.map((point, index) => ({
     ...point,
     shortDate: formatShortDate(point.sessionDate),
+    trendCad: trendLine[index],
   }));
 
   return (
@@ -58,6 +92,7 @@ export function SessionTickerHistoryChart({
           </p>
           <p className="text-xs text-slate-500">
             Même total final que dans le rapport par séance, sur les 30 dernières séances.
+            La ligne montre la tendance générale.
           </p>
         </div>
       </div>
@@ -85,7 +120,7 @@ export function SessionTickerHistoryChart({
               cursor={{ fill: "#f8fafc" }}
               content={({ active, payload }) => {
                 const row = payload?.[0]?.payload as
-                  | (SessionTickerHistoryPoint & { shortDate: string })
+                  | ChartPoint
                   | undefined;
                 if (!active || !row) return null;
                 return (
@@ -94,10 +129,21 @@ export function SessionTickerHistoryChart({
                     <p className={`mt-1 tabular-nums font-medium ${signedGainClass(row.totalGainCad)}`}>
                       {formatCurrency(row.totalGainCad, "CAD")}
                     </p>
+                    <p className="mt-1 text-slate-500">
+                      Tendance : {formatCurrency(row.trendCad, "CAD")}
+                    </p>
                     {row.isLive ? <p className="mt-1 text-slate-500">Séance courante</p> : null}
                   </div>
                 );
               }}
+            />
+            <Line
+              type="monotone"
+              dataKey="trendCad"
+              stroke="#334155"
+              strokeWidth={2}
+              dot={false}
+              activeDot={false}
             />
             <Bar dataKey="totalGainCad" radius={[6, 6, 0, 0]}>
               {chartData.map((point) => {

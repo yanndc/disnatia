@@ -335,7 +335,7 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
           <div className="flex items-center justify-center gap-2 sm:justify-start">
             <Button
               type="button"
@@ -369,7 +369,7 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
 
           <div
             className={cn(
-              "shrink-0 rounded-xl px-3 py-2 ring-1 ring-slate-200",
+              "shrink-0 rounded-xl border px-3 py-2",
               signedGainBg(sessionTotalCad),
               loading ? "opacity-60" : "",
             )}
