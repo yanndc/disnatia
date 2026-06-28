@@ -1,14 +1,21 @@
 import { ImportsClient } from "@/features/imports/imports-client";
 import type { ExternalAccountDto } from "@/features/imports/external-accounts-panel";
+import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
 import { listExternalAccountsWithLatest } from "@/features/portfolio/external-accounts-queries";
 import { getImportHistory } from "@/features/portfolio/queries";
 
 export const dynamic = "force-dynamic";
 
-export default async function ImportsPage() {
-  const [imports, externalRaw] = await Promise.all([
+export default async function ImportsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
+  const params = (await searchParams) ?? {};
+  const [imports, externalRaw, reconciliationPayload] = await Promise.all([
     getImportHistory().catch(() => []),
     listExternalAccountsWithLatest().catch(() => []),
+    getPerformanceIndicatorPayload().catch(() => null),
   ]);
 
   const initialExternalAccounts: ExternalAccountDto[] = externalRaw.map((a) => ({
@@ -31,6 +38,8 @@ export default async function ImportsPage() {
 
   return (
     <ImportsClient
+      initialTab={params.tab === "reconciliation" ? "reconciliation" : undefined}
+      initialReconciliationPayload={reconciliationPayload}
       initialExternalAccounts={initialExternalAccounts}
       initialImports={imports.map((item) => ({
         id: item.id,
