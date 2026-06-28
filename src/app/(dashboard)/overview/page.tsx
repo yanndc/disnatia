@@ -112,6 +112,13 @@ export default async function OverviewPage() {
     .join(" · ");
   const disnatGapValue = summary.disnatLiveTotalValue - summary.disnatReferenceTotalValue;
   const driftIsHigh = summary.driftVsDisnatPct !== null && Math.abs(summary.driftVsDisnatPct) > 5;
+  const hasFxRate = summary.usdToCadRate !== null && summary.usdToCadRateDate;
+  const dataHealthTone = driftIsHigh || !hasFxRate ? "warning" : "ok";
+  const dataHealthLabel = driftIsHigh
+    ? "Ecart eleve"
+    : hasFxRate
+      ? "Donnees stables"
+      : "Conversion manquante";
 
   const sessionTickerReport =
     performancePayload && performancePayload.accounts.length > 0
@@ -122,12 +129,10 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-8">
-      <MarketIndicesTicker />
-
       <section className="overflow-hidden rounded-4xl border border-slate-200 bg-white text-slate-950 shadow-sm">
         <div className="relative isolate p-6 sm:p-8">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(5,150,105,0.06),transparent_30%)]" />
-          <div>
+          <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-700">
               <HeaderPill label="Référence" value={referenceLabel} />
               <HeaderPill label="Dernier import" value={importLabel} />
@@ -136,68 +141,181 @@ export default async function OverviewPage() {
             <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
               Vue d&apos;ensemble du portefeuille
             </h2>
+            <p className="max-w-3xl text-sm text-slate-600 sm:text-base">
+              Lecture en 4 blocs: marche, performance, allocation et controle des donnees.
+            </p>
 
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <RefreshQuotesButton />
+              <StatusBadge tone={dataHealthTone} label={`Sante des donnees: ${dataHealthLabel}`} />
             </div>
           </div>
         </div>
       </section>
 
-      {performancePayload && performancePayload.accounts.length > 0 ? (
-        <PerformanceIndicatorCard payload={performancePayload} />
-      ) : null}
+      <OverviewSection
+        title="Marche"
+        description="Contexte de seance et mouvement des titres suivis"
+      >
+        <div className="space-y-4">
+          <MarketIndicesTicker />
+          {sessionTickerReport ? (
+            <SessionTickerMiniReport report={sessionTickerReport} />
+          ) : (
+            <Card className="border-dashed border-slate-300 bg-slate-50/60">
+              <CardContent className="py-6 text-sm text-slate-500">
+                Aucun mini-rapport de seance disponible pour le perimetre actuel.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </OverviewSection>
 
-      {sessionTickerReport ? (
-        <SessionTickerMiniReport report={sessionTickerReport} />
-      ) : null}
+      <OverviewSection
+        title="Performance"
+        description="Rendement et variation par periode"
+      >
+        {performancePayload && performancePayload.accounts.length > 0 ? (
+          <PerformanceIndicatorCard payload={performancePayload} />
+        ) : (
+          <Card className="border-dashed border-slate-300 bg-slate-50/60">
+            <CardContent className="py-6 text-sm text-slate-500">
+              Les indicateurs de performance ne sont pas encore disponibles.
+            </CardContent>
+          </Card>
+        )}
+      </OverviewSection>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <PortfolioCompositionKpiCard
-          totalValue={summary.totalValue}
-          positionsValue={summary.displayPositionsValue}
-          cashValue={summary.cashValue}
-          externalValueCad={summary.externalTotalCad}
-          detail={compositionDetail}
-        />
-        <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
-        <TopPositionsKpiCard topPositions={summary.topPositions} totalValue={summary.totalValue} />
-      </div>
+      <OverviewSection
+        title="Allocation"
+        description="Repartition du portefeuille et concentration des positions"
+      >
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <PortfolioCompositionKpiCard
+            totalValue={summary.totalValue}
+            positionsValue={summary.displayPositionsValue}
+            cashValue={summary.cashValue}
+            externalValueCad={summary.externalTotalCad}
+            detail={compositionDetail}
+          />
+          <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
+          <TopPositionsKpiCard topPositions={summary.topPositions} totalValue={summary.totalValue} />
+        </div>
+      </OverviewSection>
 
-      <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 font-medium text-slate-700">
-            <ShieldCheck className="size-4 text-slate-400" />
-            Validation Disnat
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-            <span>
-              Référence fichier : {formatCurrency(summary.disnatReferenceTotalValue)}
-              {disnatRecoLabel ? ` · état comptes au ${disnatRecoLabel}` : null}
-            </span>
-            <span>Écart : {formatCurrency(disnatGapValue)}</span>
-            <span className={driftIsHigh ? "font-medium text-amber-600" : "text-slate-500"}>
-              {summary.driftVsDisnatPct === null ? "Écart non disponible" : formatPercent(summary.driftVsDisnatPct)}
-            </span>
-            {summary.usdToCadRate !== null && summary.usdToCadRateDate ? (
-              <span className="text-slate-400">
-                USD→CAD {summary.usdToCadRate.toFixed(4)} (Banque du Canada FXUSDCAD,{" "}
-                {formatDateInDisplayTimeZone(summary.usdToCadRateDate)})
-              </span>
-            ) : (
-              <span className="text-amber-600">
-                Taux USD→CAD indisponible : totaux mélangent les devises sans conversion.
-              </span>
-            )}
+      <OverviewSection
+        title="Controle"
+        description="Qualite des donnees et ecarts de reconciliation"
+      >
+        <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 font-medium text-slate-700">
+              <ShieldCheck className="size-4 text-slate-400" />
+              Validation Disnat
+              <StatusBadge tone={driftIsHigh ? "warning" : "ok"} label={driftIsHigh ? "A verifier" : "Conforme"} />
+            </div>
             <Link
               href="/reconciliation"
-              className="font-medium text-cyan-700 underline decoration-cyan-200 underline-offset-4 hover:text-cyan-800"
+              className="text-xs font-medium text-cyan-700 underline decoration-cyan-200 underline-offset-4 hover:text-cyan-800"
             >
-              Voir le détail de réconciliation
+              Voir le detail de reconciliation
             </Link>
           </div>
-        </div>
-      </section>
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-4">
+            <MetricChip
+              label="Reference fichier"
+              value={formatCurrency(summary.disnatReferenceTotalValue)}
+              hint={disnatRecoLabel ? `etat comptes au ${disnatRecoLabel}` : undefined}
+            />
+            <MetricChip
+              label="Ecart"
+              value={formatCurrency(disnatGapValue)}
+              tone={Math.abs(disnatGapValue) > 0 ? "warning" : "neutral"}
+            />
+            <MetricChip
+              label="Ecart %"
+              value={
+                summary.driftVsDisnatPct === null
+                  ? "Non disponible"
+                  : formatPercent(summary.driftVsDisnatPct)
+              }
+              tone={driftIsHigh ? "warning" : "neutral"}
+            />
+            {hasFxRate ? (
+              <MetricChip
+                label="Taux USD/CAD"
+                value={summary.usdToCadRate!.toFixed(4)}
+                hint={`Banque du Canada (${formatDateInDisplayTimeZone(summary.usdToCadRateDate!)})`}
+              />
+            ) : (
+              <MetricChip
+                label="Taux USD/CAD"
+                value="Indisponible"
+                hint="Totaux melangent les devises sans conversion"
+                tone="warning"
+              />
+            )}
+          </div>
+        </section>
+      </OverviewSection>
+    </div>
+  );
+}
+
+function OverviewSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <h3 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h3>
+        <p className="text-xs text-slate-500 sm:text-sm">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function StatusBadge({ tone, label }: { tone: "ok" | "warning"; label: string }) {
+  const className =
+    tone === "warning"
+      ? "bg-amber-50 text-amber-700 ring-amber-200"
+      : "bg-emerald-50 text-emerald-700 ring-emerald-200";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-medium ring-1 ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+function MetricChip({
+  label,
+  value,
+  hint,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "neutral" | "warning";
+}) {
+  return (
+    <div
+      className={
+        tone === "warning"
+          ? "rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2"
+          : "rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2"
+      }
+    >
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-slate-900">{value}</p>
+      {hint ? <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p> : null}
     </div>
   );
 }
