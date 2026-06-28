@@ -1,11 +1,14 @@
 import type { MetadataRoute } from "next";
+import { getSiteAccessPassword } from "@/lib/site-access";
 
 export default function manifest(): MetadataRoute.Manifest {
+  const hasSiteLock = Boolean(getSiteAccessPassword());
+
   return {
     name: "DisnatIA",
     short_name: "DisnatIA",
     description: "Tableau de bord IA pour portefeuille Disnat",
-    start_url: "/",
+    start_url: hasSiteLock ? "/site-lock" : "/",
     display: "standalone",
     background_color: "#f8fafc",
     theme_color: "#0f172a",
