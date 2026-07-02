@@ -57,7 +57,7 @@ export default async function RevenusPage() {
       <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm text-slate-500">Tableau de bord</p>
-          <h2 className="text-2xl font-semibold text-slate-950">Revenus</h2>
+          <h2 className="text-2xl font-semibold text-slate-950">Revenus de placement</h2>
           <p className="mt-1 text-sm text-slate-500">
             Dividendes, intérêts et retenues d&apos;impôt extraits de l&apos;historique
           </p>

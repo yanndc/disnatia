@@ -25,7 +25,12 @@ export function CurrencyExposureKpiCard({
     <Card className="overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md">
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <CardTitle className="text-slate-500">Répartition CAD / USD</CardTitle>
+          <div>
+            <CardTitle className="text-slate-500">Répartition CAD / USD</CardTitle>
+            <p className="mt-1 text-xs text-slate-500">
+              Inclut les titres + l&apos;encaisse Disnat. Exclut les comptes externes et les actifs non-boursiers.
+            </p>
+          </div>
           <div className="flex size-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
             <TrendingUp className="size-5" />
           </div>

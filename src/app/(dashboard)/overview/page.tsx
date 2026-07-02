@@ -158,6 +158,24 @@ export default async function OverviewPage() {
       </section>
 
       <OverviewSection
+        title="Allocation"
+        description="Repartition du portefeuille et concentration des titres"
+      >
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <PortfolioCompositionKpiCard
+            totalValue={summary.totalValue}
+            positionsValue={summary.displayPositionsValue}
+            cashValue={summary.cashValue}
+            externalValueCad={summary.externalTotalCad}
+            nonFinancialAssetsCad={summary.nonFinancialTotalCad}
+            detail={compositionDetail}
+          />
+          <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
+          <TopPositionsKpiCard topPositions={summary.topPositions} totalValue={summary.totalValue} />
+        </div>
+      </OverviewSection>
+
+      <OverviewSection
         title="Marche"
         description="Contexte de seance et mouvement des titres suivis"
       >
@@ -188,24 +206,6 @@ export default async function OverviewPage() {
             </CardContent>
           </Card>
         )}
-      </OverviewSection>
-
-      <OverviewSection
-        title="Allocation"
-        description="Repartition du portefeuille et concentration des positions"
-      >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <PortfolioCompositionKpiCard
-            totalValue={summary.totalValue}
-            positionsValue={summary.displayPositionsValue}
-            cashValue={summary.cashValue}
-            externalValueCad={summary.externalTotalCad}
-            nonFinancialAssetsCad={summary.nonFinancialTotalCad}
-            detail={compositionDetail}
-          />
-          <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />
-          <TopPositionsKpiCard topPositions={summary.topPositions} totalValue={summary.totalValue} />
-        </div>
       </OverviewSection>
 
       <OverviewSection
