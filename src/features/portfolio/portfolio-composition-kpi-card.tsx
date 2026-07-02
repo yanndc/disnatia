@@ -124,7 +124,7 @@ export function PortfolioCompositionKpiCard({
                     style={{ backgroundColor: SLICES[index % SLICES.length] }}
                   />
                   <span className="min-w-0 flex-1 truncate font-semibold text-slate-950">{row.name}</span>
-                  <span className="shrink-0 whitespace-nowrap text-right tabular-nums text-slate-700">
+                  <span className="min-w-[10.5rem] shrink-0 whitespace-nowrap text-right tabular-nums text-slate-700 sm:min-w-[11.5rem]">
                     {formatCurrency(row.value, "CAD")}
                     <span className="text-slate-400"> · </span>
                     <span className="text-slate-500">{formatPercent(row.pct)}</span>

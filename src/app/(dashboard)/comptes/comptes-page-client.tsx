@@ -675,6 +675,45 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     )}
                   </td>
                 </tr>
+                <tr className="border-t border-slate-300 bg-white/70 font-semibold text-slate-950">
+                  <td className="py-2 pr-3">
+                    {hasExternalRecap || hasNonFinancialRecap ? "Total Disnat (CAD)" : "Total en CAD"}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums">
+                    {consEncaisse != null ? (
+                      formatCurrency(consEncaisse, "CAD")
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums">
+                    {consTitresBloc != null ? (
+                      formatCurrency(consTitresBloc, "CAD")
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
+                  {showRecon ? (
+                    <td className="px-2 py-2 text-right tabular-nums">
+                      {consTitresLocal != null ? (
+                        formatCurrency(consTitresLocal, "CAD")
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                  ) : null}
+                  <DayTitresPnLTd
+                    state={totalsBlocPortfolioTitresDayCad}
+                    currency="CAD"
+                    emphasize
+                    density="compact"
+                  />
+                  <td className="pl-2 py-2 text-right tabular-nums text-base">
+                    {consTotal != null ? formatCurrency(consTotal, "CAD") : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
+                </tr>
                 {extCadSnaps.length > 0 ? (
                   <tr className="bg-violet-50/40 text-slate-800">
                     <td className="py-2 pr-3 font-medium text-slate-700">
@@ -779,45 +818,6 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     </td>
                   </tr>
                 ) : null}
-                <tr className="border-t border-slate-300 bg-white/70 font-semibold text-slate-950">
-                  <td className="py-2 pr-3">
-                    {hasExternalRecap || hasNonFinancialRecap ? "Total Disnat (CAD)" : "Total en CAD"}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {consEncaisse != null ? (
-                      formatCurrency(consEncaisse, "CAD")
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">
-                    {consTitresBloc != null ? (
-                      formatCurrency(consTitresBloc, "CAD")
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                  {showRecon ? (
-                    <td className="px-2 py-2 text-right tabular-nums">
-                      {consTitresLocal != null ? (
-                        formatCurrency(consTitresLocal, "CAD")
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-                  ) : null}
-                  <DayTitresPnLTd
-                    state={totalsBlocPortfolioTitresDayCad}
-                    currency="CAD"
-                    emphasize
-                    density="compact"
-                  />
-                  <td className="pl-2 py-2 text-right tabular-nums text-base">
-                    {consTotal != null ? formatCurrency(consTotal, "CAD") : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-                </tr>
                 {grandTotalPortfolioCad != null ? (
                   <tr className="border-t-2 border-emerald-200/80 bg-emerald-50/50 font-semibold text-emerald-950">
                     <td className="py-2 pr-3">Total portefeuille (CAD)</td>

@@ -125,8 +125,17 @@ export function resolveActiveAccountKeys(
   includedAccountKeys: string[],
   excludedAccountKeys: string[],
   owner: string | null,
+  portfolioKey: string | null,
+  portfolioScopes: { portfolioKey: string; accountKeys: string[] }[],
 ): string[] {
   let keys = accounts.map((a) => a.accountKey);
+
+  if (portfolioKey) {
+    const scoped = portfolioScopes.find((p) => p.portfolioKey === portfolioKey);
+    if (!scoped) return [];
+    const set = new Set(scoped.accountKeys);
+    keys = keys.filter((k) => set.has(k));
+  }
 
   if (owner) {
     keys = keys.filter((k) => {
@@ -1525,6 +1534,7 @@ export function computePeriodResult(
     PerformanceFilterState,
     | "preset"
     | "owner"
+    | "portfolioKey"
     | "includedAccountKeys"
     | "excludedAccountKeys"
     | "selectedYear"
@@ -1538,6 +1548,8 @@ export function computePeriodResult(
     filters.includedAccountKeys,
     filters.excludedAccountKeys,
     filters.owner,
+    filters.portfolioKey ?? null,
+    payload.portfolioScopes ?? [],
   );
 
   if (accountKeys.length === 0) {
@@ -1580,6 +1592,7 @@ export function computeAllPeriodResults(
     PerformanceFilterState,
     | "preset"
     | "owner"
+    | "portfolioKey"
     | "includedAccountKeys"
     | "excludedAccountKeys"
     | "selectedYear"
@@ -1613,6 +1626,7 @@ export function computeAllPeriodResultsWithSnapshots(
     PerformanceFilterState,
     | "preset"
     | "owner"
+    | "portfolioKey"
     | "includedAccountKeys"
     | "excludedAccountKeys"
     | "selectedYear"
@@ -1629,6 +1643,7 @@ export function defaultPerformanceFilters(
   return {
     preset: "all",
     owner: null,
+    portfolioKey: null,
     includedAccountKeys: [],
     excludedAccountKeys: [],
     selectedYear: payload.availableYears.includes(currentYear)

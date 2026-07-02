@@ -25,6 +25,7 @@ import type {
   PerformanceEnrichedHoldingRow,
   PerformanceHoldingRow,
   PerformanceIndicatorPayload,
+  PerformancePortfolioScope,
   PerformanceSnapshotPoint,
 } from "./performance-indicator-types";
 import {
@@ -172,7 +173,19 @@ async function loadQuotesForHoldings(
 
 export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndicatorPayload> {
   await ensureFreshQuotesDuringSession();
-  const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots, txFlows, cashLedgerTxs, ownerResolver] =
+  const [
+    accountStates,
+    holdings,
+    externalAccounts,
+    portfolioImports,
+    extSnapshots,
+    txFlows,
+    cashLedgerTxs,
+    ownerResolver,
+    accountOwnerMappings,
+    externalOwnerMappings,
+    portfolioMemberships,
+  ] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
         orderBy: [{ owner: "asc" }, { accountType: "asc" }],
@@ -246,6 +259,37 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
         },
       }),
       buildOwnerDimensionResolver(),
+      prisma.portfolioAccountOwner.findMany({
+        select: {
+          accountKey: true,
+          owner: { select: { ownerKey: true } },
+        },
+      }),
+      prisma.externalPortfolioAccountOwner.findMany({
+        select: {
+          externalAccount: { select: { accountKey: true } },
+          owner: { select: { ownerKey: true } },
+        },
+      }),
+      prisma.portfolioOwnerMembership.findMany({
+        select: {
+          portfolio: {
+            select: {
+              id: true,
+              portfolioKey: true,
+              displayName: true,
+              kind: true,
+              isActive: true,
+            },
+          },
+          owner: {
+            select: {
+              ownerKey: true,
+              isActive: true,
+            },
+          },
+        },
+      }),
     ]);
 
   const quotes = await loadQuotesForHoldings(holdings);
@@ -363,6 +407,61 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       dayPriorCad: null,
     };
   }
+
+  const accountKeySet = new Set(accounts.map((a) => a.accountKey));
+  const accountOwnerKeyByAccount = new Map<string, string>();
+  for (const m of accountOwnerMappings) {
+    if (!accountKeySet.has(m.accountKey)) continue;
+    accountOwnerKeyByAccount.set(m.accountKey, m.owner.ownerKey);
+  }
+  for (const m of externalOwnerMappings) {
+    const accountKey = m.externalAccount.accountKey;
+    if (!accountKeySet.has(accountKey)) continue;
+    accountOwnerKeyByAccount.set(accountKey, m.owner.ownerKey);
+  }
+
+  const accountKeysByOwnerKey = new Map<string, string[]>();
+  for (const [accountKey, ownerKey] of accountOwnerKeyByAccount) {
+    const list = accountKeysByOwnerKey.get(ownerKey) ?? [];
+    list.push(accountKey);
+    accountKeysByOwnerKey.set(ownerKey, list);
+  }
+
+  const portfolioMetaByKey = new Map<
+    string,
+    { id: string; label: string; kind: "PERSONAL" | "HOUSEHOLD" | "CUSTOM" }
+  >();
+  const ownerKeysByPortfolioKey = new Map<string, Set<string>>();
+
+  for (const m of portfolioMemberships) {
+    if (!m.portfolio.isActive || !m.owner.isActive) continue;
+    portfolioMetaByKey.set(m.portfolio.portfolioKey, {
+      id: m.portfolio.id,
+      label: m.portfolio.displayName,
+      kind: m.portfolio.kind,
+    });
+    const ownerSet = ownerKeysByPortfolioKey.get(m.portfolio.portfolioKey) ?? new Set<string>();
+    ownerSet.add(m.owner.ownerKey);
+    ownerKeysByPortfolioKey.set(m.portfolio.portfolioKey, ownerSet);
+  }
+
+  const portfolioScopes: PerformancePortfolioScope[] = [...portfolioMetaByKey.entries()]
+    .map(([portfolioKey, meta]) => {
+      const ownerKeys = ownerKeysByPortfolioKey.get(portfolioKey) ?? new Set<string>();
+      const accountKeys = [...ownerKeys]
+        .flatMap((ownerKey) => accountKeysByOwnerKey.get(ownerKey) ?? [])
+        .filter((key, index, arr) => arr.indexOf(key) === index)
+        .sort((a, b) => a.localeCompare(b));
+      return {
+        id: meta.id,
+        portfolioKey,
+        label: meta.label,
+        kind: meta.kind,
+        accountKeys,
+      };
+    })
+    .filter((p) => p.accountKeys.length > 0)
+    .toSorted((a, b) => a.label.localeCompare(b.label, "fr-CA"));
 
   const snapshots: PerformanceSnapshotPoint[] = [];
 
@@ -526,6 +625,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
 
   const payload: PerformanceIndicatorPayload = {
     accounts,
+    portfolioScopes,
     currentByAccount,
     snapshots,
     historyPoints,

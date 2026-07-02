@@ -20,6 +20,14 @@ export type PerformanceAccountRef = {
   provider?: string;
 };
 
+export type PerformancePortfolioScope = {
+  id: string;
+  portfolioKey: string;
+  label: string;
+  kind: "PERSONAL" | "HOUSEHOLD" | "CUSTOM";
+  accountKeys: string[];
+};
+
 export type PerformanceSnapshotPoint = {
   accountKey: string;
   /** ISO date (YYYY-MM-DD) */
@@ -96,6 +104,7 @@ export type PerformanceSnapshotsBundle = {
 
 export type PerformanceIndicatorPayload = {
   accounts: PerformanceAccountRef[];
+  portfolioScopes?: PerformancePortfolioScope[];
   currentByAccount: Record<string, PerformanceAccountCurrent>;
   snapshots: PerformanceSnapshotPoint[];
   /** Valeurs titres projetées par compte et par jour (holdings × clôtures). */
@@ -153,6 +162,7 @@ export type PerformancePeriodResult = {
 export type PerformanceFilterState = {
   preset: PerformanceScopePreset;
   owner: string | null;
+  portfolioKey?: string | null;
   includedAccountKeys: string[];
   excludedAccountKeys: string[];
   selectedYear: number;

@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  Archive,
   ChevronDown,
   Filter,
+  FolderPlus,
+  Pencil,
   Sparkles,
   TrendingDown,
   TrendingUp,
@@ -44,6 +47,7 @@ type StoredFilters = Partial<
     PerformanceFilterState,
     | "preset"
     | "owner"
+    | "portfolioKey"
     | "includedAccountKeys"
     | "excludedAccountKeys"
     | "selectedYear"
@@ -69,6 +73,7 @@ function saveStoredFilters(filters: PerformanceFilterState) {
       JSON.stringify({
         preset: filters.preset,
         owner: filters.owner,
+        portfolioKey: filters.portfolioKey,
         includedAccountKeys: filters.includedAccountKeys,
         excludedAccountKeys: filters.excludedAccountKeys,
         selectedYear: filters.selectedYear,
@@ -172,7 +177,11 @@ export function PerformanceIndicatorCard({
     };
   });
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [portfolioScopes, setPortfolioScopes] = useState(() => payload.portfolioScopes ?? []);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [isSavingScope, setIsSavingScope] = useState(false);
+  const [isArchivingScope, setIsArchivingScope] = useState(false);
+  const [isRenamingScope, setIsRenamingScope] = useState(false);
   const [recoReportDate, setRecoReportDate] = useState<string>("");
   const [copyAuditState, setCopyAuditState] = useState<
     "idle" | "ok" | "ok-compact" | "error"
@@ -189,19 +198,28 @@ export function PerformanceIndicatorCard({
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    setPortfolioScopes(payload.portfolioScopes ?? []);
+  }, [payload.portfolioScopes]);
+
   const owners = useMemo(
     () => uniquePortfolioOwners(payload.accounts.map((a) => a.owner)),
     [payload.accounts],
   );
+  const portfolios = useMemo(() => portfolioScopes, [portfolioScopes]);
+  const payloadWithScopes = useMemo(
+    () => ({ ...payload, portfolioScopes }),
+    [payload, portfolioScopes],
+  );
 
   const periodResults = useMemo(
-    () => computeAllPeriodResultsWithSnapshots(payload, filters),
-    [payload, filters],
+    () => computeAllPeriodResultsWithSnapshots(payloadWithScopes, filters),
+    [payloadWithScopes, filters],
   );
 
   const active = useMemo(
-    () => computePeriodResultWithSnapshots(payload, filters, filters.activePeriod),
-    [payload, filters],
+    () => computePeriodResultWithSnapshots(payloadWithScopes, filters, filters.activePeriod),
+    [payloadWithScopes, filters],
   );
   const activeGainCadDisplay =
     active.gainCad === null ? null : normalizeMoneyDisplay(active.gainCad);
@@ -227,7 +245,7 @@ export function PerformanceIndicatorCard({
     for (const reportDate of dates) {
       const asOfNow = asOfAtTorontoMidday(reportDate);
       const payloadAtDate: PerformanceIndicatorPayload = {
-        ...payload,
+        ...payloadWithScopes,
         asOfNow,
       };
       const app = computePeriodResultWithSnapshots(
@@ -245,6 +263,8 @@ export function PerformanceIndicatorCard({
         filters.includedAccountKeys,
         filters.excludedAccountKeys,
         filters.owner,
+        filters.portfolioKey ?? null,
+        portfolioScopes,
       ).filter((k) => !payload.accounts.find((a) => a.accountKey === k)?.isExternal);
 
       if (!bounds.start || !bounds.baselineLookup || disnatKeys.length === 0) {
@@ -395,7 +415,26 @@ export function PerformanceIndicatorCard({
     }
 
     return rows;
-  }, [filters, payload, reportDates]);
+  }, [filters, payload, payloadWithScopes, reportDates, portfolioScopes]);
+
+  const activeAccountKeysForScope = useMemo(
+    () =>
+      resolveActiveAccountKeys(
+        payload.accounts,
+        filters.preset,
+        filters.includedAccountKeys,
+        filters.excludedAccountKeys,
+        filters.owner,
+        filters.portfolioKey ?? null,
+        portfolioScopes,
+      ),
+    [filters, payload.accounts, portfolioScopes],
+  );
+
+  const selectedPortfolio = useMemo(
+    () => portfolios.find((p) => p.portfolioKey === (filters.portfolioKey ?? "")) ?? null,
+    [filters.portfolioKey, portfolios],
+  );
 
   const selectedReconciliation = useMemo(
     () =>
@@ -438,6 +477,10 @@ export function PerformanceIndicatorCard({
 
   const scopeSummary = useMemo(() => {
     const parts: string[] = [PRESET_LABELS[filters.preset]];
+    if (filters.portfolioKey) {
+      const p = portfolios.find((x) => x.portfolioKey === filters.portfolioKey);
+      if (p) parts.push(p.label);
+    }
     if (filters.owner) parts.push(filters.owner.split(" ")[0] ?? filters.owner);
     if (filters.excludedAccountKeys.length > 0) {
       parts.push(`${filters.excludedAccountKeys.length} exclu(s)`);
@@ -446,10 +489,99 @@ export function PerformanceIndicatorCard({
       parts.push(`${filters.includedAccountKeys.length} compte(s)`);
     }
     return parts.join(" · ");
-  }, [filters]);
+  }, [filters, portfolios]);
 
-  const ownerScoped = Boolean(filters.owner);
+  const ownerScoped = Boolean(filters.owner || filters.portfolioKey);
   const activePeriodLabel = resolvePeriodMeta(filters.activePeriod, payload.asOfNow).label;
+
+  const createPortfolioScope = useCallback(async () => {
+    const label = window.prompt("Nom du portefeuille personnalisé");
+    if (!label || !label.trim()) return;
+    if (activeAccountKeysForScope.length === 0) {
+      window.alert("Aucun compte dans la portée actuelle.");
+      return;
+    }
+    setIsSavingScope(true);
+    try {
+      const response = await fetch("/api/portfolio/scopes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: label.trim(),
+          accountKeys: activeAccountKeysForScope,
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        scope?: { id: string; portfolioKey: string; label: string; kind: "CUSTOM" };
+        error?: string;
+      };
+      if (!response.ok || !data.scope) {
+        window.alert(data.error ?? "Impossible de créer le portefeuille.");
+        return;
+      }
+      const nextScope = {
+        ...data.scope,
+        accountKeys: activeAccountKeysForScope,
+      };
+      setPortfolioScopes((prev) => {
+        const filtered = prev.filter((x) => x.portfolioKey !== nextScope.portfolioKey);
+        return [...filtered, nextScope].toSorted((a, b) => a.label.localeCompare(b.label, "fr-CA"));
+      });
+      updateFilters({ portfolioKey: nextScope.portfolioKey });
+    } finally {
+      setIsSavingScope(false);
+    }
+  }, [activeAccountKeysForScope, updateFilters]);
+
+  const archiveSelectedPortfolioScope = useCallback(async () => {
+    if (!selectedPortfolio || selectedPortfolio.kind !== "CUSTOM") return;
+    setIsArchivingScope(true);
+    try {
+      const response = await fetch(`/api/portfolio/scopes/${selectedPortfolio.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: false }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        window.alert(data.error ?? "Archivage impossible.");
+        return;
+      }
+      setPortfolioScopes((prev) => prev.filter((x) => x.id !== selectedPortfolio.id));
+      updateFilters({ portfolioKey: null });
+    } finally {
+      setIsArchivingScope(false);
+    }
+  }, [selectedPortfolio, updateFilters]);
+
+  const renameSelectedPortfolioScope = useCallback(async () => {
+    if (!selectedPortfolio || selectedPortfolio.kind !== "CUSTOM") return;
+    const nextLabel = window.prompt("Nouveau nom du portefeuille", selectedPortfolio.label);
+    if (!nextLabel || !nextLabel.trim()) return;
+    setIsRenamingScope(true);
+    try {
+      const response = await fetch(`/api/portfolio/scopes/${selectedPortfolio.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: nextLabel.trim() }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        scope?: { id: string; portfolioKey: string; label: string; kind: "CUSTOM" };
+        error?: string;
+      };
+      if (!response.ok || !data.scope) {
+        window.alert(data.error ?? "Renommage impossible.");
+        return;
+      }
+      setPortfolioScopes((prev) =>
+        prev
+          .map((x) => (x.id === data.scope!.id ? { ...x, label: data.scope!.label } : x))
+          .toSorted((a, b) => a.label.localeCompare(b.label, "fr-CA")),
+      );
+    } finally {
+      setIsRenamingScope(false);
+    }
+  }, [selectedPortfolio]);
 
   const copyAuditPromptForAi = useCallback(async (mode: "full" | "compact") => {
     if (!selectedReconciliation) return;
@@ -566,6 +698,60 @@ export function PerformanceIndicatorCard({
                 </select>
               ) : null}
 
+              {portfolios.length > 0 ? (
+                <select
+                  value={filters.portfolioKey ?? ""}
+                  onChange={(e) =>
+                    updateFilters({ portfolioKey: e.target.value || null })
+                  }
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:ring-cyan-400/50"
+                >
+                  <option value="">Tous portefeuilles</option>
+                  {portfolios.map((p) => (
+                    <option key={p.portfolioKey} value={p.portfolioKey}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+                onClick={createPortfolioScope}
+                disabled={isSavingScope}
+              >
+                <FolderPlus className="size-4" />
+                {isSavingScope ? "Création..." : "Sauver portée"}
+              </Button>
+
+              {selectedPortfolio?.kind === "CUSTOM" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+                  onClick={renameSelectedPortfolioScope}
+                  disabled={isRenamingScope}
+                >
+                  <Pencil className="size-4" />
+                  {isRenamingScope ? "Renommage..." : "Renommer"}
+                </Button>
+              ) : null}
+
+              {selectedPortfolio?.kind === "CUSTOM" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 gap-2 rounded-xl border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                  onClick={archiveSelectedPortfolioScope}
+                  disabled={isArchivingScope}
+                >
+                  <Archive className="size-4" />
+                  {isArchivingScope ? "Archivage..." : "Archiver"}
+                </Button>
+              ) : null}
+
               <Button
                 type="button"
                 variant="ghost"
@@ -610,6 +796,8 @@ export function PerformanceIndicatorCard({
                   onClick={() =>
                     updateFilters({
                       preset: "all",
+                      portfolioKey: null,
+                      owner: null,
                       includedAccountKeys: [],
                       excludedAccountKeys: [],
                     })

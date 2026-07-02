@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -71,6 +71,26 @@ const snapshotSchema = z.object({
 });
 
 type SnapshotForm = z.infer<typeof snapshotSchema>;
+
+const editAssetSchema = z.object({
+  assetType: z.enum(["REAL_ESTATE", "VEHICLE", "PRIVATE_BUSINESS", "OTHER"]),
+  displayLabel: z.string().min(1, "Nom requis").max(240),
+  owner: z.string().max(200).optional(),
+  currency: z.enum(["CAD", "USD"]),
+  isActive: z.boolean(),
+});
+
+type EditAssetForm = z.infer<typeof editAssetSchema>;
+
+function editAssetDefaults(asset: NonFinancialAssetDto): EditAssetForm {
+  return {
+    assetType: asset.assetType,
+    displayLabel: asset.displayLabel,
+    owner: asset.owner ?? "",
+    currency: asset.currency === "USD" ? "USD" : "CAD",
+    isActive: asset.isActive,
+  };
+}
 
 function defaults(): CreateForm {
   return {
@@ -266,6 +286,46 @@ function AssetCard({
   onDelete: (id: string) => void;
   onSaved: () => void | Promise<void>;
 }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editMsg, setEditMsg] = useState<string | null>(null);
+  const editForm = useForm<EditAssetForm>({
+    resolver: zodResolver(editAssetSchema) as Resolver<EditAssetForm>,
+    defaultValues: editAssetDefaults(asset),
+  });
+
+  useEffect(() => {
+    editForm.reset(editAssetDefaults(asset));
+  }, [asset, editForm]);
+
+  async function saveEdit(values: EditAssetForm) {
+    setEditBusy(true);
+    setEditMsg(null);
+    try {
+      const res = await fetch(`/api/non-financial-assets/${asset.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetType: values.assetType,
+          displayLabel: values.displayLabel.trim(),
+          owner: values.owner?.trim() || null,
+          currency: values.currency,
+          isActive: values.isActive,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEditMsg(typeof payload.error === "string" ? payload.error : "Mise à jour impossible.");
+        return;
+      }
+      setEditMsg("Actif mis à jour.");
+      setEditOpen(false);
+      await onSaved();
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -305,6 +365,72 @@ function AssetCard({
           <AssetSnapshotInlineForm assetId={asset.id} currency={asset.currency} onSaved={onSaved} />
         </div>
       </div>
+
+      <button
+        type="button"
+        className="mt-3 text-xs font-medium text-amber-800 underline-offset-2 hover:underline"
+        onClick={() => {
+          setEditOpen((o) => !o);
+          setEditMsg(null);
+          editForm.reset(editAssetDefaults(asset));
+        }}
+      >
+        {editOpen ? "Fermer l’édition" : "Modifier l’actif"}
+      </button>
+
+      {editOpen ? (
+        <form
+          className="mt-3 grid gap-2 rounded-lg border border-amber-200 bg-amber-50/40 p-3 sm:grid-cols-2"
+          onSubmit={editForm.handleSubmit((v) => void saveEdit(v))}
+        >
+          <label>
+            <span className="mb-0.5 block text-xs font-medium text-slate-600">Type</span>
+            <select
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              {...editForm.register("assetType")}
+            >
+              <option value="REAL_ESTATE">Immobilier</option>
+              <option value="VEHICLE">Véhicule</option>
+              <option value="PRIVATE_BUSINESS">Entreprise privée</option>
+              <option value="OTHER">Autre</option>
+            </select>
+          </label>
+          <label>
+            <span className="mb-0.5 block text-xs font-medium text-slate-600">Libellé</span>
+            <input
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              {...editForm.register("displayLabel")}
+            />
+          </label>
+          <label>
+            <span className="mb-0.5 block text-xs font-medium text-slate-600">Copropriétaire 1</span>
+            <input
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              {...editForm.register("owner")}
+            />
+          </label>
+          <label>
+            <span className="mb-0.5 block text-xs font-medium text-slate-600">Devise</span>
+            <select
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              {...editForm.register("currency")}
+            >
+              <option value="CAD">CAD</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
+          <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" className="h-4 w-4 rounded border-slate-300" {...editForm.register("isActive")} />
+            Actif visible dans le patrimoine
+          </label>
+          {editMsg ? <p className="sm:col-span-2 text-xs text-slate-700">{editMsg}</p> : null}
+          <div className="sm:col-span-2">
+            <Button type="submit" className="h-8 px-3 text-xs" variant="secondary" disabled={editBusy}>
+              {editBusy ? "Enregistrement..." : "Enregistrer les modifications"}
+            </Button>
+          </div>
+        </form>
+      ) : null}
 
       <Button
         type="button"
