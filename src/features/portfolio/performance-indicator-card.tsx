@@ -510,6 +510,16 @@ export function PerformanceIndicatorCard({
   }, [filters, portfolios]);
 
   const ownerScoped = Boolean(filters.owner || filters.portfolioKey);
+  const hasNonDefaultScopeFilter = useMemo(() => {
+    const defaults = defaultPerformanceFilters(payload);
+    return (
+      filters.preset !== defaults.preset ||
+      (filters.owner ?? null) !== defaults.owner ||
+      (filters.portfolioKey ?? null) !== (defaults.portfolioKey ?? null) ||
+      filters.includedAccountKeys.length > 0 ||
+      filters.excludedAccountKeys.length > 0
+    );
+  }, [filters, payload]);
   const activePeriodLabel = resolvePeriodMeta(filters.activePeriod, payload.asOfNow).label;
 
   const createPortfolioScope = useCallback(async () => {
@@ -734,10 +744,10 @@ export function PerformanceIndicatorCard({
                   variant="ghost"
                   className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                   onClick={createPortfolioScope}
-                  disabled={isSavingScope}
+                  disabled={isSavingScope || !hasNonDefaultScopeFilter}
                 >
                   <FolderPlus className="size-4" />
-                  {isSavingScope ? "Création..." : "Sauver portée"}
+                  {isSavingScope ? "Création..." : "Sauvegarder le filtre"}
                 </Button>
 
                 {selectedPortfolio?.kind === "CUSTOM" ? (

@@ -12,13 +12,12 @@ import {
   Text,
 } from "@react-email/components";
 import type { EodReportData } from "@/features/reports/eod-report-types";
-import type { PerformancePeriodResult } from "@/features/portfolio/performance-indicator-types";
 import type {
   SessionTickerRow,
   SessionTickerView,
 } from "@/features/portfolio/session-ticker-report-queries";
 import { formatTorontoCalendarDate } from "@/lib/market/equity-session";
-import { formatCurrency, formatCurrencyDetailed, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatCurrencyDetailed } from "@/lib/utils";
 
 const palette = {
   pageBg: "#f0f4f8",
@@ -28,10 +27,8 @@ const palette = {
   muted: "#64748b",
   gain: "#059669",
   gainBg: "#ecfdf5",
-  gainBorder: "#a7f3d0",
   loss: "#e11d48",
   lossBg: "#fff1f2",
-  lossBorder: "#fecdd3",
   neutral: "#475569",
   neutralBg: "#f8fafc",
   accent: "#2563eb",
@@ -56,25 +53,6 @@ const styles = {
   },
   h1: { color: palette.text, fontSize: "24px", fontWeight: 700, margin: "0 0 6px" },
   muted: { color: palette.muted, fontSize: "13px", lineHeight: "20px", margin: 0 },
-  kpiGrid: { width: "100%", borderCollapse: "collapse" as const, margin: "20px 0 0" },
-  kpiCell: {
-    backgroundColor: palette.neutralBg,
-    border: `1px solid ${palette.border}`,
-    borderRadius: "10px",
-    padding: "14px 16px",
-    verticalAlign: "top" as const,
-    width: "33%",
-  },
-  kpiLabel: {
-    color: palette.muted,
-    fontSize: "11px",
-    fontWeight: 600,
-    letterSpacing: "0.04em",
-    margin: "0 0 6px",
-    textTransform: "uppercase" as const,
-  },
-  kpiValue: { color: palette.text, fontSize: "20px", fontWeight: 700, margin: 0 },
-  kpiSub: { color: palette.muted, fontSize: "12px", margin: "4px 0 0" },
   sectionTitle: {
     color: palette.text,
     fontSize: "15px",
@@ -146,46 +124,8 @@ function gainCellStyle(value: number | null): CSSProperties {
   };
 }
 
-function formatGain(value: number | null, pct: number | null): string {
-  if (value === null) return "—";
-  const sign = value >= 0 ? "+" : "";
-  const main = `${sign}${formatCurrency(value, "CAD")}`;
-  if (pct === null) return main;
-  const pctSign = pct >= 0 ? "+" : "";
-  return `${main} (${pctSign}${formatPercent(pct)})`;
-}
-
 function formatSessionDate(iso: string): string {
   return formatTorontoCalendarDate(iso);
-}
-
-function periodKpiCell(period: PerformancePeriodResult) {
-  const color = gainTextColor(period.gainCad);
-  const bg =
-    period.gainCad !== null && period.gainCad > 0
-      ? palette.gainBg
-      : period.gainCad !== null && period.gainCad < 0
-        ? palette.lossBg
-        : palette.neutralBg;
-  const border =
-    period.gainCad !== null && period.gainCad > 0
-      ? palette.gainBorder
-      : period.gainCad !== null && period.gainCad < 0
-        ? palette.lossBorder
-        : palette.border;
-
-  return (
-    <td style={{ ...styles.kpiCell, backgroundColor: bg, borderColor: border }}>
-      <Text style={styles.kpiLabel}>{period.label}</Text>
-      <Text style={{ ...styles.kpiValue, color }}>
-        {formatGain(period.gainCad, period.gainPct)}
-      </Text>
-      {period.note ? <Text style={styles.kpiSub}>{period.note}</Text> : null}
-      {period.incomplete ? (
-        <Text style={styles.kpiSub}>Données incomplètes ({period.method})</Text>
-      ) : null}
-    </td>
-  );
 }
 
 function TickerTable({
@@ -256,10 +196,7 @@ function TickerTable({
                 }}
               >
                 {rows.length} titre{rows.length > 1 ? "s" : ""} ·{" "}
-                {formatCurrency(
-                  rows.reduce((sum, row) => sum + row.dayGainCad, 0),
-                  "CAD",
-                )}
+                {formatCurrency(rows.reduce((sum, row) => sum + row.dayGainCad, 0), "CAD")}
               </td>
             </tr>
           </tfoot>
@@ -270,8 +207,7 @@ function TickerTable({
 }
 
 function SessionTickerBlock({ view }: { view: SessionTickerView }) {
-  const titleCount =
-    view.lists.gainers.length + view.lists.losers.length;
+  const titleCount = view.lists.gainers.length + view.lists.losers.length;
 
   return (
     <Section>
@@ -280,21 +216,12 @@ function SessionTickerBlock({ view }: { view: SessionTickerView }) {
           <tr>
             <td style={styles.sessionHeader}>
               <Text style={styles.sessionHeaderTitle}>{view.sessionLabel}</Text>
-              <Text style={styles.sessionHeaderDate}>
-                {formatSessionDate(view.sessionDate)}
-              </Text>
+              <Text style={styles.sessionHeaderDate}>{formatSessionDate(view.sessionDate)}</Text>
             </td>
             <td style={{ ...styles.sessionHeader, width: "160px" }}>
-              <Text style={styles.kpiLabel}>Total séance</Text>
-              <Text
-                style={{
-                  ...styles.sessionTotal,
-                  color: gainTextColor(view.totalGainCad),
-                }}
-              >
-                {view.totalGainCad !== null
-                  ? formatCurrency(view.totalGainCad, "CAD")
-                  : "—"}
+              <Text style={styles.sessionHeaderDate}>Total séance</Text>
+              <Text style={{ ...styles.sessionTotal, color: gainTextColor(view.totalGainCad) }}>
+                {view.totalGainCad !== null ? formatCurrency(view.totalGainCad, "CAD") : "—"}
               </Text>
               {titleCount > 0 ? (
                 <Text style={{ ...styles.sessionHeaderDate, textAlign: "right" }}>
@@ -335,7 +262,7 @@ function SessionTickerBlock({ view }: { view: SessionTickerView }) {
 }
 
 export function EodReportEmail({ data }: { data: EodReportData }) {
-  const preview = `DisnatIA — ${data.sessionDate} — ${formatCurrency(data.disnatTotalValueCad, "CAD")}`;
+  const preview = `DisnatIA — ${data.sessionDate} — titres seulement`;
 
   return (
     <Html lang="fr">
@@ -343,32 +270,14 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
       <Preview>{preview}</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.h1}>
-            Rapport fin de journée — {data.sessionDate}
-          </Heading>
+          <Heading style={styles.h1}>Rapport fin de journée — {data.sessionDate}</Heading>
           <Text style={styles.muted}>
             {data.sessionLabel} · généré le{" "}
             {new Date(data.generatedAt).toLocaleString("fr-CA", {
               timeZone: "America/Toronto",
-            })}{" "}
+            })} {" "}
             (Toronto)
           </Text>
-
-          <table style={styles.kpiGrid}>
-            <tbody>
-              <tr>
-                <td style={styles.kpiCell}>
-                  <Text style={styles.kpiLabel}>Portefeuilles Disnat</Text>
-                  <Text style={styles.kpiValue}>
-                    {formatCurrency(data.disnatTotalValueCad, "CAD")}
-                  </Text>
-                  <Text style={styles.kpiSub}>Titres + cash (CAD)</Text>
-                </td>
-                {periodKpiCell(data.dayPeriod)}
-                {periodKpiCell(data.yesterdayPeriod)}
-              </tr>
-            </tbody>
-          </table>
 
           <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
 
@@ -384,15 +293,14 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
 
           <Text style={styles.sectionTitle}>Qualité des données</Text>
           <Text style={styles.muted}>
-            Cotations : {data.quoteCoverage.matched} / {data.quoteCoverage.total}{" "}
-            positions avec cours live
+            Cotations : {data.quoteCoverage.matched} / {data.quoteCoverage.total} positions avec cours live
             {data.quotesAsOf
               ? ` · MAJ ${new Date(data.quotesAsOf).toLocaleString("fr-CA", { timeZone: "America/Toronto" })}`
               : ""}
           </Text>
           {data.driftVsDisnatPct !== null ? (
             <Text style={styles.muted}>
-              Écart vs export Disnat : {formatPercent(data.driftVsDisnatPct)}
+              Écart vs export Disnat : {(data.driftVsDisnatPct).toFixed(2)}%
             </Text>
           ) : null}
           {data.usdToCad !== null ? (
