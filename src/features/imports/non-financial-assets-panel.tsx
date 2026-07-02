@@ -36,6 +36,11 @@ const createSchema = z.object({
   assetType: z.enum(["REAL_ESTATE", "VEHICLE", "PRIVATE_BUSINESS", "OTHER"]),
   displayLabel: z.string().min(1, "Nom requis").max(240),
   owner: z.string().max(200).optional(),
+  coOwner: z.string().max(200).optional(),
+  coOwnerSharePct: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? 0 : Number(v)),
+    z.number().finite().min(0).max(100),
+  ),
   currency: z.enum(["CAD", "USD"]),
   asOfDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   marketValue: numNonNeg,
@@ -44,6 +49,13 @@ const createSchema = z.object({
 }).refine((v) => v.mortgageBalance <= v.marketValue, {
   message: "L'hypothèque ne peut pas dépasser la valeur.",
   path: ["mortgageBalance"],
+}).refine((v) => {
+  const hasCoOwner = Boolean(v.coOwner?.trim());
+  if (!hasCoOwner) return true;
+  return Boolean(v.owner?.trim()) && v.coOwnerSharePct > 0 && v.coOwnerSharePct < 100;
+}, {
+  message: "Avec un 2e copropriétaire, renseigne aussi le copropriétaire 1 et une part entre 0 et 100.",
+  path: ["coOwnerSharePct"],
 });
 
 type CreateForm = z.infer<typeof createSchema>;
@@ -65,6 +77,8 @@ function defaults(): CreateForm {
     assetType: "REAL_ESTATE",
     displayLabel: "Maison",
     owner: "",
+    coOwner: "",
+    coOwnerSharePct: 50,
     currency: "CAD",
     asOfDate: new Date().toISOString().slice(0, 10),
     marketValue: 0,
@@ -113,6 +127,10 @@ export function NonFinancialAssetsPanel({
         assetType: values.assetType,
         displayLabel: values.displayLabel.trim(),
         owner: values.owner?.trim() || null,
+        coOwners:
+          values.coOwner?.trim()
+            ? [{ owner: values.coOwner.trim(), sharePct: values.coOwnerSharePct }]
+            : [],
         currency: values.currency,
         initialSnapshot: {
           asOfDate: values.asOfDate,
@@ -190,8 +208,12 @@ export function NonFinancialAssetsPanel({
               <input className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" {...createForm.register("displayLabel")} />
             </label>
             <label>
-              <span className="mb-1 block text-xs font-medium text-slate-600">Propriétaire</span>
-              <input className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" {...createForm.register("owner")} />
+              <span className="mb-1 block text-xs font-medium text-slate-600">Copropriétaire 1</span>
+              <input className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Ex. Yann de Champlain" {...createForm.register("owner")} />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-medium text-slate-600">Copropriétaire 2 (optionnel)</span>
+              <input className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Ex. Valérie Degrandpré" {...createForm.register("coOwner")} />
             </label>
             <label>
               <span className="mb-1 block text-xs font-medium text-slate-600">Devise</span>
@@ -199,6 +221,10 @@ export function NonFinancialAssetsPanel({
                 <option value="CAD">CAD</option>
                 <option value="USD">USD</option>
               </select>
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-medium text-slate-600">Part du copropriétaire 2 (%)</span>
+              <input type="number" step="0.01" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" {...createForm.register("coOwnerSharePct")} />
             </label>
             <label>
               <span className="mb-1 block text-xs font-medium text-slate-600">Date du relevé</span>

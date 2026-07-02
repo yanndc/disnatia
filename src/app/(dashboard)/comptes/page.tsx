@@ -7,6 +7,7 @@ import { getAccountsWithStats, getAllPositions } from "@/features/portfolio/quer
 import { getLatestUsdCadRate } from "@/lib/fx/latest-usd-cad-rate";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
 import { EXTERNAL_ACCOUNT_PROVIDERS } from "@/lib/portfolio/external-account-providers";
+import { resolveNonFinancialAssetOwnerShares } from "@/lib/portfolio/non-financial-asset-owner-shares";
 import { sanitizePortfolioOwner, portfolioOwnerKey } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { formatCurrency, normalizeCurrency } from "@/lib/utils";
 import {
@@ -171,9 +172,13 @@ export default async function ComptesPage() {
                   <tr key={asset.id} className="hover:bg-slate-50">
                     <td className="px-4 py-2 font-medium text-slate-800">{asset.displayLabel}</td>
                     <td className="px-4 py-2 text-slate-700">
-                      {asset.owner?.trim()
-                        ? (sanitizePortfolioOwner(asset.owner) ?? asset.owner.trim())
-                        : "—"}
+                      {(() => {
+                        const shares = resolveNonFinancialAssetOwnerShares(asset.owner, asset.metadata);
+                        if (shares.length === 0) return "—";
+                        return shares
+                          .map((s) => `${s.owner} (${s.sharePct.toFixed(0)}%)`)
+                          .join(" · ");
+                      })()}
                     </td>
                     <td className="px-4 py-2">
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">

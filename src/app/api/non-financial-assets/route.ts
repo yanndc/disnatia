@@ -15,6 +15,15 @@ const createBodySchema = z.object({
   displayLabel: z.string().min(1).max(240),
   currency: z.enum(["CAD", "USD"]).optional(),
   owner: z.string().max(200).optional().nullable(),
+  coOwners: z
+    .array(
+      z.object({
+        owner: z.string().max(200),
+        sharePct: z.number().finite().gt(0).lte(100),
+      }),
+    )
+    .max(4)
+    .optional(),
   initialSnapshot: z.object({
     asOfDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     marketValue: numNonNeg,
@@ -66,6 +75,27 @@ export async function POST(request: Request) {
 
   const { displayLabel, currency, assetType, owner: ownerRaw, initialSnapshot } = parsed.data;
   const owner = sanitizePortfolioOwner(ownerRaw);
+  const coOwners = (parsed.data.coOwners ?? [])
+    .map((x) => ({
+      owner: sanitizePortfolioOwner(x.owner),
+      sharePct: x.sharePct,
+    }))
+    .filter((x): x is { owner: string; sharePct: number } => Boolean(x.owner));
+
+  if (coOwners.length > 0 && !owner) {
+    return NextResponse.json(
+      { error: "Le copropriétaire 1 est requis si un copropriétaire 2 est fourni." },
+      { status: 422 },
+    );
+  }
+
+  const coOwnersTotal = coOwners.reduce((s, x) => s + x.sharePct, 0);
+  if (coOwnersTotal >= 100) {
+    return NextResponse.json(
+      { error: "La somme des parts de copropriétaires doit rester inférieure à 100%." },
+      { status: 422 },
+    );
+  }
   const asOfDate = new Date(`${initialSnapshot.asOfDate}T12:00:00.000Z`);
   if (Number.isNaN(asOfDate.getTime())) {
     return NextResponse.json({ error: "Date snapshot invalide." }, { status: 422 });
@@ -80,6 +110,13 @@ export async function POST(request: Request) {
 
   const id = randomUUID();
   const assetKey = `asset:${id}`;
+  const ownerShares =
+    owner && coOwners.length > 0
+      ? [
+          { owner, sharePct: Number((100 - coOwnersTotal).toFixed(6)) },
+          ...coOwners,
+        ]
+      : null;
 
   try {
     const asset = await prisma.nonFinancialAsset.create({
@@ -90,6 +127,7 @@ export async function POST(request: Request) {
         displayLabel: displayLabel.trim(),
         owner,
         currency: currency ?? "CAD",
+        metadata: ownerShares ? { ownerShares } : undefined,
         snapshots: {
           create: {
             asOfDate,

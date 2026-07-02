@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner, portfolioOwnerKey, portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { resolveNonFinancialAssetOwnerShares } from "@/lib/portfolio/non-financial-asset-owner-shares";
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { listNonFinancialAssetsWithLatest } from "./non-financial-assets-queries";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
@@ -382,23 +383,30 @@ export async function getPortfolioSummary() {
   }
 
   for (const a of nonFinancialWithValue) {
-    const ownerDisplay = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
-    const ownerKey = portfolioOwnerKey(a.owner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
-    const row =
-      ownerBreakdownMap.get(ownerKey) ??
-      {
-        owner: ownerDisplay,
-        totalValue: 0,
-        cashValue: 0,
-        marketValue: 0,
-        accountCount: 0,
-      };
+    const allocations = resolveNonFinancialAssetOwnerShares(a.owner, a.metadata);
     const v = a.latestSnapshot!.netEquity;
-    const add = usdToCad !== null ? toCadEquivalent(v, a.currency, usdToCad) : v;
-    row.totalValue += add;
-    row.marketValue += add;
-    row.accountCount++;
-    ownerBreakdownMap.set(ownerKey, row);
+    for (const alloc of allocations) {
+      const ownerDisplay = alloc.owner;
+      const ownerKey = portfolioOwnerKey(alloc.owner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
+      const row =
+        ownerBreakdownMap.get(ownerKey) ??
+        {
+          owner: ownerDisplay,
+          totalValue: 0,
+          cashValue: 0,
+          marketValue: 0,
+          accountCount: 0,
+        };
+      const allocValueNative = (v * alloc.sharePct) / 100;
+      const add =
+        usdToCad !== null
+          ? toCadEquivalent(allocValueNative, a.currency, usdToCad)
+          : allocValueNative;
+      row.totalValue += add;
+      row.marketValue += add;
+      row.accountCount++;
+      ownerBreakdownMap.set(ownerKey, row);
+    }
   }
 
   const ownerBreakdown = [...ownerBreakdownMap.values()].map((data) => ({
