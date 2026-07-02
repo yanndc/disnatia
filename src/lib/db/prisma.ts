@@ -49,10 +49,8 @@ function relaxedSslForPool(
   try {
     const u = new URL(connectionString);
     if (!isSupabasePoolHost(u.hostname)) return undefined;
-    if (
-      process.env.NODE_ENV === "development" ||
-      process.env.VERCEL === "1"
-    ) {
+    // En scripts locaux (tsx), NODE_ENV est souvent vide : traiter tout non-prod comme local.
+    if (process.env.NODE_ENV !== "production" || process.env.VERCEL === "1") {
       return { rejectUnauthorized: false } as const;
     }
   } catch {
