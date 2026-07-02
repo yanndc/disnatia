@@ -1,5 +1,4 @@
-import { BertaRulesPanel } from "@/features/chat/berta-rules-panel";
-import { ChatPanel } from "@/features/chat/chat-panel";
+import { BertaWorkspace } from "@/features/chat/berta-workspace";
 import {
   loadPortfolioInsightsMessages,
   PORTFOLIO_INSIGHTS_CHAT_SESSION_ID,
@@ -15,18 +14,13 @@ export default async function InsightsPage() {
         <h2 className="text-2xl font-semibold text-slate-950">Discuter avec Berta</h2>
         <p className="mt-1 text-sm text-slate-500">
           Berta s&apos;appuie sur les fonctions métier du portefeuille ; tu peux fixer des règles
-          permanentes dans le panneau de droite.
+          permanentes (onglet « Règles » en mobile, panneau de droite sur grand écran).
         </p>
       </section>
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <ChatPanel
-          sessionId={PORTFOLIO_INSIGHTS_CHAT_SESSION_ID}
-          initialMessages={initialMessages}
-        />
-        <div className="space-y-6 xl:sticky xl:top-4 xl:self-start">
-          <BertaRulesPanel />
-        </div>
-      </div>
+      <BertaWorkspace
+        sessionId={PORTFOLIO_INSIGHTS_CHAT_SESSION_ID}
+        initialMessages={initialMessages}
+      />
     </div>
   );
 }
