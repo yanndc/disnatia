@@ -168,6 +168,7 @@ export function OverviewFilteredSections({
     const useGlobalNonFinancial =
       scopeMatchesAllAccounts &&
       !filters.owner &&
+      !filters.portfolioKey &&
       filters.includedAccountKeys.length === 0 &&
       filters.excludedAccountKeys.length === 0;
     const nonFinancialCad = useGlobalNonFinancial ? baseNonFinancialAssetsCad : 0;
