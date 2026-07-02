@@ -118,13 +118,13 @@ export function PortfolioCompositionKpiCard({
             </div>
             <ul className="flex min-w-0 flex-1 flex-col justify-center gap-3 text-sm">
               {rows.map((row, index) => (
-                <li key={row.key} className="flex items-baseline gap-x-2">
+                <li key={row.key} className="flex min-w-0 items-baseline gap-x-2">
                   <span
                     className="mt-1.5 size-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: SLICES[index % SLICES.length] }}
                   />
-                  <span className="font-semibold text-slate-950 whitespace-nowrap">{row.name}</span>
-                  <span className="ml-auto text-right tabular-nums text-slate-700 whitespace-nowrap">
+                  <span className="min-w-0 flex-1 truncate font-semibold text-slate-950">{row.name}</span>
+                  <span className="shrink-0 whitespace-nowrap text-right tabular-nums text-slate-700">
                     {formatCurrency(row.value, "CAD")}
                     <span className="text-slate-400"> · </span>
                     <span className="text-slate-500">{formatPercent(row.pct)}</span>
