@@ -40,7 +40,8 @@ import type {
   PerformanceScopePreset,
 } from "./performance-indicator-types";
 
-const STORAGE_KEY = "disnatia.overview.performanceFilters";
+export const PERFORMANCE_FILTERS_STORAGE_KEY = "disnatia.overview.performanceFilters";
+export const PERFORMANCE_FILTERS_CHANGED_EVENT = "disnatia:performance-filters-changed";
 
 type StoredFilters = Partial<
   Pick<
@@ -58,7 +59,7 @@ type StoredFilters = Partial<
 function loadStoredFilters(): StoredFilters | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(PERFORMANCE_FILTERS_STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as StoredFilters;
   } catch {
@@ -69,7 +70,7 @@ function loadStoredFilters(): StoredFilters | null {
 function saveStoredFilters(filters: PerformanceFilterState) {
   try {
     localStorage.setItem(
-      STORAGE_KEY,
+      PERFORMANCE_FILTERS_STORAGE_KEY,
       JSON.stringify({
         preset: filters.preset,
         owner: filters.owner,
@@ -78,6 +79,19 @@ function saveStoredFilters(filters: PerformanceFilterState) {
         excludedAccountKeys: filters.excludedAccountKeys,
         selectedYear: filters.selectedYear,
         activePeriod: filters.activePeriod,
+      }),
+    );
+    window.dispatchEvent(
+      new CustomEvent(PERFORMANCE_FILTERS_CHANGED_EVENT, {
+        detail: {
+          preset: filters.preset,
+          owner: filters.owner,
+          portfolioKey: filters.portfolioKey ?? null,
+          includedAccountKeys: filters.includedAccountKeys,
+          excludedAccountKeys: filters.excludedAccountKeys,
+          selectedYear: filters.selectedYear,
+          activePeriod: filters.activePeriod,
+        },
       }),
     );
   } catch {

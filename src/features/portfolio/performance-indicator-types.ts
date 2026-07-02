@@ -42,6 +42,9 @@ export type PerformanceAccountCurrent = {
   totalCad: number;
   positionsCad: number;
   cashCad: number;
+  totalNative?: number;
+  positionsNative?: number;
+  cashNative?: number;
   dayGainCad: number | null;
   dayPriorCad: number | null;
 };
@@ -63,6 +66,8 @@ export type PerformanceHoldingRow = {
   ticker: string;
   currency: string;
   quantity: number;
+  marketValueNative: number;
+  securityName: string | null;
 };
 
 /** Ligne titres enrichie (cours live + clôture séance précédente), calculée une fois dans le payload. */

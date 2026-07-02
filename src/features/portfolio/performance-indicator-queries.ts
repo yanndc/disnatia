@@ -356,6 +356,8 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   for (const a of accountStates) {
     const rows = positionsByAccount.get(a.accountKey) ?? [];
     const cashNative = a.cashValue;
+    const positionsNative = rows.reduce((sum, row) => sum + row.displayMarketValue, 0);
+    const totalNative = positionsNative + cashNative;
     const positionsCad = sumPositionsCad(rows, usdToCad);
     const cashCad = toCad(cashNative, a.currency, usdToCad);
     const totalCad = positionsCad + cashCad;
@@ -382,6 +384,9 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       totalCad,
       positionsCad,
       cashCad,
+      totalNative,
+      positionsNative,
+      cashNative,
       dayGainCad,
       dayPriorCad,
     };
@@ -403,6 +408,9 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       totalCad: toCad(totalNative, ext.currency, usdToCad),
       positionsCad: toCad(totalNative, ext.currency, usdToCad),
       cashCad: 0,
+      totalNative,
+      positionsNative: totalNative,
+      cashNative: 0,
       dayGainCad: null,
       dayPriorCad: null,
     };
@@ -590,6 +598,8 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       ticker: h.ticker.toUpperCase(),
       currency: normalizeCurrency(h.currency),
       quantity: h.quantity,
+      marketValueNative: h.snapshotValue,
+      securityName: h.securityName ?? null,
     }));
 
   const { sessionEnd, sessionStart } = yesterdayCloseDates(new Date());
