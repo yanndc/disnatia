@@ -402,8 +402,14 @@ export const ModelName = {
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
   ExternalAccountSnapshot: 'ExternalAccountSnapshot',
+  Owner: 'Owner',
+  Portfolio: 'Portfolio',
+  PortfolioOwnerMembership: 'PortfolioOwnerMembership',
+  PortfolioAccountOwner: 'PortfolioAccountOwner',
+  ExternalPortfolioAccountOwner: 'ExternalPortfolioAccountOwner',
   NonFinancialAsset: 'NonFinancialAsset',
   NonFinancialAssetSnapshot: 'NonFinancialAssetSnapshot',
+  NonFinancialAssetOwnerShare: 'NonFinancialAssetOwnerShare',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -420,7 +426,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "eodReportDelivery"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1756,6 +1762,376 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Owner: {
+      payload: Prisma.$OwnerPayload<ExtArgs>
+      fields: Prisma.OwnerFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.OwnerFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.OwnerFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>
+        }
+        findFirst: {
+          args: Prisma.OwnerFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.OwnerFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>
+        }
+        findMany: {
+          args: Prisma.OwnerFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>[]
+        }
+        create: {
+          args: Prisma.OwnerCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>
+        }
+        createMany: {
+          args: Prisma.OwnerCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.OwnerCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>[]
+        }
+        delete: {
+          args: Prisma.OwnerDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>
+        }
+        update: {
+          args: Prisma.OwnerUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>
+        }
+        deleteMany: {
+          args: Prisma.OwnerDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.OwnerUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.OwnerUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>[]
+        }
+        upsert: {
+          args: Prisma.OwnerUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$OwnerPayload>
+        }
+        aggregate: {
+          args: Prisma.OwnerAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateOwner>
+        }
+        groupBy: {
+          args: Prisma.OwnerGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OwnerGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.OwnerCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.OwnerCountAggregateOutputType> | number
+        }
+      }
+    }
+    Portfolio: {
+      payload: Prisma.$PortfolioPayload<ExtArgs>
+      fields: Prisma.PortfolioFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>
+        }
+        update: {
+          args: Prisma.PortfolioUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolio>
+        }
+        groupBy: {
+          args: Prisma.PortfolioGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioOwnerMembership: {
+      payload: Prisma.$PortfolioOwnerMembershipPayload<ExtArgs>
+      fields: Prisma.PortfolioOwnerMembershipFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioOwnerMembershipFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioOwnerMembershipFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioOwnerMembershipFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioOwnerMembershipFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioOwnerMembershipFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioOwnerMembershipCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioOwnerMembershipCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioOwnerMembershipCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioOwnerMembershipDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>
+        }
+        update: {
+          args: Prisma.PortfolioOwnerMembershipUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioOwnerMembershipDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioOwnerMembershipUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioOwnerMembershipUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioOwnerMembershipUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioOwnerMembershipPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioOwnerMembershipAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioOwnerMembership>
+        }
+        groupBy: {
+          args: Prisma.PortfolioOwnerMembershipGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioOwnerMembershipGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioOwnerMembershipCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioOwnerMembershipCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioAccountOwner: {
+      payload: Prisma.$PortfolioAccountOwnerPayload<ExtArgs>
+      fields: Prisma.PortfolioAccountOwnerFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioAccountOwnerFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioAccountOwnerFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioAccountOwnerFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioAccountOwnerFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioAccountOwnerFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioAccountOwnerCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioAccountOwnerCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioAccountOwnerCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioAccountOwnerDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>
+        }
+        update: {
+          args: Prisma.PortfolioAccountOwnerUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioAccountOwnerDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioAccountOwnerUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioAccountOwnerUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioAccountOwnerUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountOwnerPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioAccountOwnerAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioAccountOwner>
+        }
+        groupBy: {
+          args: Prisma.PortfolioAccountOwnerGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioAccountOwnerGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioAccountOwnerCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioAccountOwnerCountAggregateOutputType> | number
+        }
+      }
+    }
+    ExternalPortfolioAccountOwner: {
+      payload: Prisma.$ExternalPortfolioAccountOwnerPayload<ExtArgs>
+      fields: Prisma.ExternalPortfolioAccountOwnerFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ExternalPortfolioAccountOwnerFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ExternalPortfolioAccountOwnerFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>
+        }
+        findFirst: {
+          args: Prisma.ExternalPortfolioAccountOwnerFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ExternalPortfolioAccountOwnerFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>
+        }
+        findMany: {
+          args: Prisma.ExternalPortfolioAccountOwnerFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>[]
+        }
+        create: {
+          args: Prisma.ExternalPortfolioAccountOwnerCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>
+        }
+        createMany: {
+          args: Prisma.ExternalPortfolioAccountOwnerCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ExternalPortfolioAccountOwnerCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>[]
+        }
+        delete: {
+          args: Prisma.ExternalPortfolioAccountOwnerDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>
+        }
+        update: {
+          args: Prisma.ExternalPortfolioAccountOwnerUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>
+        }
+        deleteMany: {
+          args: Prisma.ExternalPortfolioAccountOwnerDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ExternalPortfolioAccountOwnerUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ExternalPortfolioAccountOwnerUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>[]
+        }
+        upsert: {
+          args: Prisma.ExternalPortfolioAccountOwnerUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ExternalPortfolioAccountOwnerPayload>
+        }
+        aggregate: {
+          args: Prisma.ExternalPortfolioAccountOwnerAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateExternalPortfolioAccountOwner>
+        }
+        groupBy: {
+          args: Prisma.ExternalPortfolioAccountOwnerGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ExternalPortfolioAccountOwnerGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ExternalPortfolioAccountOwnerCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ExternalPortfolioAccountOwnerCountAggregateOutputType> | number
+        }
+      }
+    }
     NonFinancialAsset: {
       payload: Prisma.$NonFinancialAssetPayload<ExtArgs>
       fields: Prisma.NonFinancialAssetFieldRefs
@@ -1901,6 +2277,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.NonFinancialAssetSnapshotCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.NonFinancialAssetSnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
+    NonFinancialAssetOwnerShare: {
+      payload: Prisma.$NonFinancialAssetOwnerSharePayload<ExtArgs>
+      fields: Prisma.NonFinancialAssetOwnerShareFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NonFinancialAssetOwnerShareFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NonFinancialAssetOwnerShareFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>
+        }
+        findFirst: {
+          args: Prisma.NonFinancialAssetOwnerShareFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NonFinancialAssetOwnerShareFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>
+        }
+        findMany: {
+          args: Prisma.NonFinancialAssetOwnerShareFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>[]
+        }
+        create: {
+          args: Prisma.NonFinancialAssetOwnerShareCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>
+        }
+        createMany: {
+          args: Prisma.NonFinancialAssetOwnerShareCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NonFinancialAssetOwnerShareCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>[]
+        }
+        delete: {
+          args: Prisma.NonFinancialAssetOwnerShareDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>
+        }
+        update: {
+          args: Prisma.NonFinancialAssetOwnerShareUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>
+        }
+        deleteMany: {
+          args: Prisma.NonFinancialAssetOwnerShareDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NonFinancialAssetOwnerShareUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NonFinancialAssetOwnerShareUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>[]
+        }
+        upsert: {
+          args: Prisma.NonFinancialAssetOwnerShareUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetOwnerSharePayload>
+        }
+        aggregate: {
+          args: Prisma.NonFinancialAssetOwnerShareAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNonFinancialAssetOwnerShare>
+        }
+        groupBy: {
+          args: Prisma.NonFinancialAssetOwnerShareGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NonFinancialAssetOwnerShareGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NonFinancialAssetOwnerShareCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NonFinancialAssetOwnerShareCountAggregateOutputType> | number
         }
       }
     }
@@ -2318,6 +2768,66 @@ export const ExternalAccountSnapshotScalarFieldEnum = {
 export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
 
 
+export const OwnerScalarFieldEnum = {
+  id: 'id',
+  ownerKey: 'ownerKey',
+  displayName: 'displayName',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type OwnerScalarFieldEnum = (typeof OwnerScalarFieldEnum)[keyof typeof OwnerScalarFieldEnum]
+
+
+export const PortfolioScalarFieldEnum = {
+  id: 'id',
+  portfolioKey: 'portfolioKey',
+  displayName: 'displayName',
+  kind: 'kind',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioScalarFieldEnum = (typeof PortfolioScalarFieldEnum)[keyof typeof PortfolioScalarFieldEnum]
+
+
+export const PortfolioOwnerMembershipScalarFieldEnum = {
+  id: 'id',
+  portfolioId: 'portfolioId',
+  ownerId: 'ownerId',
+  weightPct: 'weightPct',
+  createdAt: 'createdAt'
+} as const
+
+export type PortfolioOwnerMembershipScalarFieldEnum = (typeof PortfolioOwnerMembershipScalarFieldEnum)[keyof typeof PortfolioOwnerMembershipScalarFieldEnum]
+
+
+export const PortfolioAccountOwnerScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  ownerId: 'ownerId',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioAccountOwnerScalarFieldEnum = (typeof PortfolioAccountOwnerScalarFieldEnum)[keyof typeof PortfolioAccountOwnerScalarFieldEnum]
+
+
+export const ExternalPortfolioAccountOwnerScalarFieldEnum = {
+  id: 'id',
+  externalAccountId: 'externalAccountId',
+  ownerId: 'ownerId',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ExternalPortfolioAccountOwnerScalarFieldEnum = (typeof ExternalPortfolioAccountOwnerScalarFieldEnum)[keyof typeof ExternalPortfolioAccountOwnerScalarFieldEnum]
+
+
 export const NonFinancialAssetScalarFieldEnum = {
   id: 'id',
   assetKey: 'assetKey',
@@ -2346,6 +2856,19 @@ export const NonFinancialAssetSnapshotScalarFieldEnum = {
 } as const
 
 export type NonFinancialAssetSnapshotScalarFieldEnum = (typeof NonFinancialAssetSnapshotScalarFieldEnum)[keyof typeof NonFinancialAssetSnapshotScalarFieldEnum]
+
+
+export const NonFinancialAssetOwnerShareScalarFieldEnum = {
+  id: 'id',
+  nonFinancialAssetId: 'nonFinancialAssetId',
+  ownerId: 'ownerId',
+  sharePct: 'sharePct',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NonFinancialAssetOwnerShareScalarFieldEnum = (typeof NonFinancialAssetOwnerShareScalarFieldEnum)[keyof typeof NonFinancialAssetOwnerShareScalarFieldEnum]
 
 
 export const EodReportDeliveryScalarFieldEnum = {
@@ -2559,6 +3082,34 @@ export type ListEnumMessageRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$
 
 
 /**
+ * Reference to a field of type 'PortfolioKind'
+ */
+export type EnumPortfolioKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PortfolioKind'>
+    
+
+
+/**
+ * Reference to a field of type 'PortfolioKind[]'
+ */
+export type ListEnumPortfolioKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PortfolioKind[]'>
+    
+
+
+/**
+ * Reference to a field of type 'OwnerMappingSource'
+ */
+export type EnumOwnerMappingSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OwnerMappingSource'>
+    
+
+
+/**
+ * Reference to a field of type 'OwnerMappingSource[]'
+ */
+export type ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OwnerMappingSource[]'>
+    
+
+
+/**
  * Reference to a field of type 'NonFinancialAssetType'
  */
 export type EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NonFinancialAssetType'>
@@ -2699,8 +3250,14 @@ export type GlobalOmitConfig = {
   usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
   externalPortfolioAccount?: Prisma.ExternalPortfolioAccountOmit
   externalAccountSnapshot?: Prisma.ExternalAccountSnapshotOmit
+  owner?: Prisma.OwnerOmit
+  portfolio?: Prisma.PortfolioOmit
+  portfolioOwnerMembership?: Prisma.PortfolioOwnerMembershipOmit
+  portfolioAccountOwner?: Prisma.PortfolioAccountOwnerOmit
+  externalPortfolioAccountOwner?: Prisma.ExternalPortfolioAccountOwnerOmit
   nonFinancialAsset?: Prisma.NonFinancialAssetOmit
   nonFinancialAssetSnapshot?: Prisma.NonFinancialAssetSnapshotOmit
+  nonFinancialAssetOwnerShare?: Prisma.NonFinancialAssetOwnerShareOmit
   eodReportDelivery?: Prisma.EodReportDeliveryOmit
 }
 

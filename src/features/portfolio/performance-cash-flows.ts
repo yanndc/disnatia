@@ -72,6 +72,8 @@ export function dedupeNearDuplicateFlows(
         daysBetweenIso(existing.tradeDate, flow.tradeDate),
       );
       if (daysApart > NEAR_DUPLICATE_FLOW_DAYS) return false;
+      // Doublon strict (même jour) : toujours éliminer, même pour les montants < minCad.
+      if (daysApart === 0) return true;
       return Math.abs(flow.amountCad) >= minCad;
     });
     if (isNearDup) continue;

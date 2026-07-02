@@ -102,11 +102,13 @@ function hasExpectedDelegates(client: PrismaClient): boolean {
     usdCadDailyRate?: { findFirst?: unknown };
     portfolioDailyHolding?: { deleteMany?: unknown };
     chatMessage?: { findMany?: unknown };
+    portfolioImport?: { findMany?: unknown };
   };
   return (
     typeof c.usdCadDailyRate?.findFirst === "function" &&
     typeof c.portfolioDailyHolding?.deleteMany === "function" &&
-    typeof c.chatMessage?.findMany === "function"
+    typeof c.chatMessage?.findMany === "function" &&
+    typeof c.portfolioImport?.findMany === "function"
   );
 }
 

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { listNonFinancialAssetsWithLatest } from "@/features/portfolio/non-financial-assets-queries";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { replaceNonFinancialAssetOwnerShares } from "@/lib/portfolio/owner-dimension-write";
 
 const numNonNeg = z.preprocess(
   (v) => (v === "" || v === undefined || v === null ? 0 : Number(v)),
@@ -117,6 +118,15 @@ export async function POST(request: Request) {
           ...coOwners,
         ]
       : null;
+  const ownerSharesForDimension =
+    owner && coOwners.length > 0
+      ? [
+          { owner, sharePct: Number((100 - coOwnersTotal).toFixed(6)) },
+          ...coOwners,
+        ]
+      : owner
+        ? [{ owner, sharePct: 100 }]
+        : [];
 
   try {
     const asset = await prisma.nonFinancialAsset.create({
@@ -142,6 +152,8 @@ export async function POST(request: Request) {
         snapshots: { orderBy: { asOfDate: "desc" }, take: 1 },
       },
     });
+
+    await replaceNonFinancialAssetOwnerShares(asset.id, ownerSharesForDimension, "IMPORT");
 
     return NextResponse.json({
       ok: true,

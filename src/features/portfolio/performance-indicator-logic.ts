@@ -447,6 +447,13 @@ function historyPointCad(
   return valueNative;
 }
 
+function canUseLiveValuesForAsOf(payload: PerformanceIndicatorPayload): boolean {
+  if (!payload.asOfNow) return true;
+  const asOfDay = isoDateInToronto(parseIsoDate(payload.asOfNow));
+  const todayDay = isoDateInToronto(new Date());
+  return asOfDay === todayDay;
+}
+
 /** Historique plus vieux que ce seuil (jours ouvrés) → ignoré pour V(t). */
 const TITRES_HISTORY_MAX_GAP_TRADING_DAYS = 5;
 
@@ -566,6 +573,7 @@ function titresCadAtPeriodEnd(
   const refDay = referenceTradingSessionDayIso(now);
 
   if (
+    canUseLiveValuesForAsOf(payload) &&
     !isBeforeTodaySessionOpen(now) &&
     endDate === refDay &&
     isEquityMarketSessionOpen(now)
@@ -601,7 +609,7 @@ function resolveEndTitresCad(
   const refDay = referenceTradingSessionDayIso(now);
 
   // Avant l'ouverture : pas de clôture « live » pour une séance passée (évite doublon Séance/Préc.)
-  if (!isBeforeTodaySessionOpen(now)) {
+  if (canUseLiveValuesForAsOf(payload) && !isBeforeTodaySessionOpen(now)) {
     const useLiveEnd =
       endDate === refDay &&
       (isEquityMarketSessionOpen(now) || endDate === today);
@@ -799,7 +807,7 @@ function resolveAccountReferenceTitresCad(
   const refDay = referenceTradingSessionDayIso(now);
   const live = payload.currentByAccount[accountKey]?.positionsCad;
 
-  if (endDate >= refDay && live != null && live > 0) {
+  if (canUseLiveValuesForAsOf(payload) && endDate >= refDay && live != null && live > 0) {
     return live;
   }
 
@@ -807,6 +815,34 @@ function resolveAccountReferenceTitresCad(
     latestImportTitresCadAtOrBefore(accountKey, payload, endDate) ??
     resolveAccountEmvTitresCad(accountKey, payload, endDate)
   );
+}
+
+/**
+ * Historique « projeté » pour le gain $ AAJ : en séance, si l'historique du jour
+ * est quasi-live, ancrage sur le dernier import (clôture précédente).
+ */
+function resolveDisnatYtdHistCad(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): number | null {
+  const sameDayHist = resolveAccountEmvTitresCad(accountKey, payload, endDate);
+  return sameDayHist;
+}
+
+/**
+ * Gain $ Disnat (tableau portefeuille, colonne AAJ) = valeur titres de référence
+ * − historique projeté à la fin de période. Le % reste TWR/Dietz sur les séances.
+ */
+function accountDisnatYtdGainCad(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  endDate: string,
+): number | null {
+  const refCad = resolveAccountReferenceTitresCad(accountKey, payload, endDate);
+  const histCad = resolveDisnatYtdHistCad(accountKey, payload, endDate);
+  if (refCad == null || histCad == null) return null;
+  return refCad - histCad;
 }
 
 /** Gain $ titres classique = EMV − BMV − flux (séance, mois, total, etc.). */
@@ -838,7 +874,7 @@ function accountLegacyTitresGainCad(
   return emvCad - bmvCadForGain - sumFlows;
 }
 
-/** Gain $ affiché = Σ par compte sur la période (EMV − BMV − flux). */
+/** Gain $ affiché = Σ par compte (EMV − BMV − flux) pour rester cohérent avec le %. */
 function sumPerAccountDisplayGainCad(
   materialKeys: string[],
   payload: PerformanceIndicatorPayload,

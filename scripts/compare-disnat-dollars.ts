@@ -93,9 +93,12 @@ async function main() {
       );
     }
 
-    const ownerAccounts = states.filter((s) =>
-      owner.toLowerCase().includes(ok === "yann" ? "yann" : "valerie"),
-    );
+    const ownerAccounts = states.filter((s) => {
+      const so = (s.owner ?? "").toLowerCase();
+      return ok === "yann"
+        ? so.includes("yann")
+        : so.includes("valerie") || so.includes("degrandpre");
+    });
 
     console.log("\n  Par type de compte ($):");
     const byType = new Map<string, string[]>();

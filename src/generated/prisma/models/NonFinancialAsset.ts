@@ -221,6 +221,7 @@ export type NonFinancialAssetWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"NonFinancialAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"NonFinancialAsset"> | Date | string
   snapshots?: Prisma.NonFinancialAssetSnapshotListRelationFilter
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareListRelationFilter
 }
 
 export type NonFinancialAssetOrderByWithRelationInput = {
@@ -235,6 +236,7 @@ export type NonFinancialAssetOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   snapshots?: Prisma.NonFinancialAssetSnapshotOrderByRelationAggregateInput
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareOrderByRelationAggregateInput
 }
 
 export type NonFinancialAssetWhereUniqueInput = Prisma.AtLeast<{
@@ -252,6 +254,7 @@ export type NonFinancialAssetWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"NonFinancialAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"NonFinancialAsset"> | Date | string
   snapshots?: Prisma.NonFinancialAssetSnapshotListRelationFilter
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareListRelationFilter
 }, "id" | "assetKey">
 
 export type NonFinancialAssetOrderByWithAggregationInput = {
@@ -298,6 +301,7 @@ export type NonFinancialAssetCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   snapshots?: Prisma.NonFinancialAssetSnapshotCreateNestedManyWithoutAssetInput
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareCreateNestedManyWithoutAssetInput
 }
 
 export type NonFinancialAssetUncheckedCreateInput = {
@@ -312,6 +316,7 @@ export type NonFinancialAssetUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   snapshots?: Prisma.NonFinancialAssetSnapshotUncheckedCreateNestedManyWithoutAssetInput
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareUncheckedCreateNestedManyWithoutAssetInput
 }
 
 export type NonFinancialAssetUpdateInput = {
@@ -326,6 +331,7 @@ export type NonFinancialAssetUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   snapshots?: Prisma.NonFinancialAssetSnapshotUpdateManyWithoutAssetNestedInput
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareUpdateManyWithoutAssetNestedInput
 }
 
 export type NonFinancialAssetUncheckedUpdateInput = {
@@ -340,6 +346,7 @@ export type NonFinancialAssetUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   snapshots?: Prisma.NonFinancialAssetSnapshotUncheckedUpdateManyWithoutAssetNestedInput
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareUncheckedUpdateManyWithoutAssetNestedInput
 }
 
 export type NonFinancialAssetCreateManyInput = {
@@ -441,6 +448,20 @@ export type NonFinancialAssetUpdateOneRequiredWithoutSnapshotsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.NonFinancialAssetUpdateToOneWithWhereWithoutSnapshotsInput, Prisma.NonFinancialAssetUpdateWithoutSnapshotsInput>, Prisma.NonFinancialAssetUncheckedUpdateWithoutSnapshotsInput>
 }
 
+export type NonFinancialAssetCreateNestedOneWithoutOwnerSharesInput = {
+  create?: Prisma.XOR<Prisma.NonFinancialAssetCreateWithoutOwnerSharesInput, Prisma.NonFinancialAssetUncheckedCreateWithoutOwnerSharesInput>
+  connectOrCreate?: Prisma.NonFinancialAssetCreateOrConnectWithoutOwnerSharesInput
+  connect?: Prisma.NonFinancialAssetWhereUniqueInput
+}
+
+export type NonFinancialAssetUpdateOneRequiredWithoutOwnerSharesNestedInput = {
+  create?: Prisma.XOR<Prisma.NonFinancialAssetCreateWithoutOwnerSharesInput, Prisma.NonFinancialAssetUncheckedCreateWithoutOwnerSharesInput>
+  connectOrCreate?: Prisma.NonFinancialAssetCreateOrConnectWithoutOwnerSharesInput
+  upsert?: Prisma.NonFinancialAssetUpsertWithoutOwnerSharesInput
+  connect?: Prisma.NonFinancialAssetWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.NonFinancialAssetUpdateToOneWithWhereWithoutOwnerSharesInput, Prisma.NonFinancialAssetUpdateWithoutOwnerSharesInput>, Prisma.NonFinancialAssetUncheckedUpdateWithoutOwnerSharesInput>
+}
+
 export type NonFinancialAssetCreateWithoutSnapshotsInput = {
   id?: string
   assetKey: string
@@ -452,6 +473,7 @@ export type NonFinancialAssetCreateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareCreateNestedManyWithoutAssetInput
 }
 
 export type NonFinancialAssetUncheckedCreateWithoutSnapshotsInput = {
@@ -465,6 +487,7 @@ export type NonFinancialAssetUncheckedCreateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareUncheckedCreateNestedManyWithoutAssetInput
 }
 
 export type NonFinancialAssetCreateOrConnectWithoutSnapshotsInput = {
@@ -494,6 +517,7 @@ export type NonFinancialAssetUpdateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareUpdateManyWithoutAssetNestedInput
 }
 
 export type NonFinancialAssetUncheckedUpdateWithoutSnapshotsInput = {
@@ -507,6 +531,79 @@ export type NonFinancialAssetUncheckedUpdateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerShares?: Prisma.NonFinancialAssetOwnerShareUncheckedUpdateManyWithoutAssetNestedInput
+}
+
+export type NonFinancialAssetCreateWithoutOwnerSharesInput = {
+  id?: string
+  assetKey: string
+  assetType?: $Enums.NonFinancialAssetType
+  displayLabel: string
+  owner?: string | null
+  currency?: string
+  isActive?: boolean
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  snapshots?: Prisma.NonFinancialAssetSnapshotCreateNestedManyWithoutAssetInput
+}
+
+export type NonFinancialAssetUncheckedCreateWithoutOwnerSharesInput = {
+  id?: string
+  assetKey: string
+  assetType?: $Enums.NonFinancialAssetType
+  displayLabel: string
+  owner?: string | null
+  currency?: string
+  isActive?: boolean
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  snapshots?: Prisma.NonFinancialAssetSnapshotUncheckedCreateNestedManyWithoutAssetInput
+}
+
+export type NonFinancialAssetCreateOrConnectWithoutOwnerSharesInput = {
+  where: Prisma.NonFinancialAssetWhereUniqueInput
+  create: Prisma.XOR<Prisma.NonFinancialAssetCreateWithoutOwnerSharesInput, Prisma.NonFinancialAssetUncheckedCreateWithoutOwnerSharesInput>
+}
+
+export type NonFinancialAssetUpsertWithoutOwnerSharesInput = {
+  update: Prisma.XOR<Prisma.NonFinancialAssetUpdateWithoutOwnerSharesInput, Prisma.NonFinancialAssetUncheckedUpdateWithoutOwnerSharesInput>
+  create: Prisma.XOR<Prisma.NonFinancialAssetCreateWithoutOwnerSharesInput, Prisma.NonFinancialAssetUncheckedCreateWithoutOwnerSharesInput>
+  where?: Prisma.NonFinancialAssetWhereInput
+}
+
+export type NonFinancialAssetUpdateToOneWithWhereWithoutOwnerSharesInput = {
+  where?: Prisma.NonFinancialAssetWhereInput
+  data: Prisma.XOR<Prisma.NonFinancialAssetUpdateWithoutOwnerSharesInput, Prisma.NonFinancialAssetUncheckedUpdateWithoutOwnerSharesInput>
+}
+
+export type NonFinancialAssetUpdateWithoutOwnerSharesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  assetKey?: Prisma.StringFieldUpdateOperationsInput | string
+  assetType?: Prisma.EnumNonFinancialAssetTypeFieldUpdateOperationsInput | $Enums.NonFinancialAssetType
+  displayLabel?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  snapshots?: Prisma.NonFinancialAssetSnapshotUpdateManyWithoutAssetNestedInput
+}
+
+export type NonFinancialAssetUncheckedUpdateWithoutOwnerSharesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  assetKey?: Prisma.StringFieldUpdateOperationsInput | string
+  assetType?: Prisma.EnumNonFinancialAssetTypeFieldUpdateOperationsInput | $Enums.NonFinancialAssetType
+  displayLabel?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  snapshots?: Prisma.NonFinancialAssetSnapshotUncheckedUpdateManyWithoutAssetNestedInput
 }
 
 
@@ -516,10 +613,12 @@ export type NonFinancialAssetUncheckedUpdateWithoutSnapshotsInput = {
 
 export type NonFinancialAssetCountOutputType = {
   snapshots: number
+  ownerShares: number
 }
 
 export type NonFinancialAssetCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   snapshots?: boolean | NonFinancialAssetCountOutputTypeCountSnapshotsArgs
+  ownerShares?: boolean | NonFinancialAssetCountOutputTypeCountOwnerSharesArgs
 }
 
 /**
@@ -539,6 +638,13 @@ export type NonFinancialAssetCountOutputTypeCountSnapshotsArgs<ExtArgs extends r
   where?: Prisma.NonFinancialAssetSnapshotWhereInput
 }
 
+/**
+ * NonFinancialAssetCountOutputType without action
+ */
+export type NonFinancialAssetCountOutputTypeCountOwnerSharesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.NonFinancialAssetOwnerShareWhereInput
+}
+
 
 export type NonFinancialAssetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -552,6 +658,7 @@ export type NonFinancialAssetSelect<ExtArgs extends runtime.Types.Extensions.Int
   createdAt?: boolean
   updatedAt?: boolean
   snapshots?: boolean | Prisma.NonFinancialAsset$snapshotsArgs<ExtArgs>
+  ownerShares?: boolean | Prisma.NonFinancialAsset$ownerSharesArgs<ExtArgs>
   _count?: boolean | Prisma.NonFinancialAssetCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["nonFinancialAsset"]>
 
@@ -597,6 +704,7 @@ export type NonFinancialAssetSelectScalar = {
 export type NonFinancialAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "assetKey" | "assetType" | "displayLabel" | "owner" | "currency" | "isActive" | "metadata" | "createdAt" | "updatedAt", ExtArgs["result"]["nonFinancialAsset"]>
 export type NonFinancialAssetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   snapshots?: boolean | Prisma.NonFinancialAsset$snapshotsArgs<ExtArgs>
+  ownerShares?: boolean | Prisma.NonFinancialAsset$ownerSharesArgs<ExtArgs>
   _count?: boolean | Prisma.NonFinancialAssetCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type NonFinancialAssetIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -606,6 +714,7 @@ export type $NonFinancialAssetPayload<ExtArgs extends runtime.Types.Extensions.I
   name: "NonFinancialAsset"
   objects: {
     snapshots: Prisma.$NonFinancialAssetSnapshotPayload<ExtArgs>[]
+    ownerShares: Prisma.$NonFinancialAssetOwnerSharePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1016,6 +1125,7 @@ readonly fields: NonFinancialAssetFieldRefs;
 export interface Prisma__NonFinancialAssetClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   snapshots<T extends Prisma.NonFinancialAsset$snapshotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.NonFinancialAsset$snapshotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NonFinancialAssetSnapshotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  ownerShares<T extends Prisma.NonFinancialAsset$ownerSharesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.NonFinancialAsset$ownerSharesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NonFinancialAssetOwnerSharePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1469,6 +1579,30 @@ export type NonFinancialAsset$snapshotsArgs<ExtArgs extends runtime.Types.Extens
   take?: number
   skip?: number
   distinct?: Prisma.NonFinancialAssetSnapshotScalarFieldEnum | Prisma.NonFinancialAssetSnapshotScalarFieldEnum[]
+}
+
+/**
+ * NonFinancialAsset.ownerShares
+ */
+export type NonFinancialAsset$ownerSharesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the NonFinancialAssetOwnerShare
+   */
+  select?: Prisma.NonFinancialAssetOwnerShareSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the NonFinancialAssetOwnerShare
+   */
+  omit?: Prisma.NonFinancialAssetOwnerShareOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.NonFinancialAssetOwnerShareInclude<ExtArgs> | null
+  where?: Prisma.NonFinancialAssetOwnerShareWhereInput
+  orderBy?: Prisma.NonFinancialAssetOwnerShareOrderByWithRelationInput | Prisma.NonFinancialAssetOwnerShareOrderByWithRelationInput[]
+  cursor?: Prisma.NonFinancialAssetOwnerShareWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.NonFinancialAssetOwnerShareScalarFieldEnum | Prisma.NonFinancialAssetOwnerShareScalarFieldEnum[]
 }
 
 /**

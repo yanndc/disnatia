@@ -69,3 +69,21 @@ export const NonFinancialAssetType = {
 } as const
 
 export type NonFinancialAssetType = (typeof NonFinancialAssetType)[keyof typeof NonFinancialAssetType]
+
+
+export const PortfolioKind = {
+  PERSONAL: 'PERSONAL',
+  HOUSEHOLD: 'HOUSEHOLD',
+  CUSTOM: 'CUSTOM'
+} as const
+
+export type PortfolioKind = (typeof PortfolioKind)[keyof typeof PortfolioKind]
+
+
+export const OwnerMappingSource = {
+  MANUAL: 'MANUAL',
+  BACKFILL: 'BACKFILL',
+  IMPORT: 'IMPORT'
+} as const
+
+export type OwnerMappingSource = (typeof OwnerMappingSource)[keyof typeof OwnerMappingSource]

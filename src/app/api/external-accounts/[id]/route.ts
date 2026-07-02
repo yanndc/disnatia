@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { mergeExternalAccountMetadata } from "@/lib/portfolio/external-account-metadata";
+import { syncExternalAccountOwnerMapping } from "@/lib/portfolio/owner-dimension-write";
 
 const patchSchema = z.object({
   displayLabel: z.string().min(1).max(240).optional(),
@@ -92,6 +93,16 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       where: { id },
       data,
     });
+
+    if (d.owner !== undefined) {
+      await syncExternalAccountOwnerMapping(
+        id,
+        d.owner === null || String(d.owner).trim() === ""
+          ? null
+          : sanitizePortfolioOwner(String(d.owner)),
+        "MANUAL",
+      );
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {

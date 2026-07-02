@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { buildOwnerDimensionResolver } from "@/lib/portfolio/owner-dimension-resolver";
 
 export type ExternalAccountWithLatest = {
   id: string;
@@ -18,24 +19,27 @@ export type ExternalAccountWithLatest = {
 };
 
 export async function listExternalAccountsWithLatest(): Promise<ExternalAccountWithLatest[]> {
-  const rows = await prisma.externalPortfolioAccount.findMany({
-    orderBy: { displayLabel: "asc" },
-    include: {
-      _count: { select: { snapshots: true } },
-      snapshots: {
-        orderBy: { asOfDate: "desc" },
-        take: 1,
-        select: { asOfDate: true, totalValue: true },
+  const [rows, ownerResolver] = await Promise.all([
+    prisma.externalPortfolioAccount.findMany({
+      orderBy: { displayLabel: "asc" },
+      include: {
+        _count: { select: { snapshots: true } },
+        snapshots: {
+          orderBy: { asOfDate: "desc" },
+          take: 1,
+          select: { asOfDate: true, totalValue: true },
+        },
       },
-    },
-  });
+    }),
+    buildOwnerDimensionResolver(),
+  ]);
 
   return rows.map((r) => ({
     id: r.id,
     accountKey: r.accountKey,
     provider: r.provider,
     displayLabel: r.displayLabel,
-    owner: r.owner,
+    owner: ownerResolver.resolveExternalOwner(r.id, r.owner),
     currency: r.currency,
     portalUrl: r.portalUrl,
     metadata: r.metadata,

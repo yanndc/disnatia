@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { syncAccountOwnerMapping } from "@/lib/portfolio/owner-dimension-write";
 import type { PortfolioSnapshotInput } from "@/types/portfolio";
 
 /**
@@ -90,6 +91,8 @@ export async function upsertPortfolioStateFromSnapshot(
         sourceImportId: importId,
       },
     });
+
+    await syncAccountOwnerMapping(accountKey, owner, "IMPORT");
     accountStatesUpserted += 1;
   }
 

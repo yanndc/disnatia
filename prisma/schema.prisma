@@ -382,6 +382,18 @@ enum NonFinancialAssetType {
   OTHER
 }
 
+enum PortfolioKind {
+  PERSONAL
+  HOUSEHOLD
+  CUSTOM
+}
+
+enum OwnerMappingSource {
+  MANUAL
+  BACKFILL
+  IMPORT
+}
+
 /**
  * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).
  * Alimenté via la série FXUSDCAD de la Banque du Canada ; les jours sans publication
@@ -419,6 +431,7 @@ model ExternalPortfolioAccount {
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
   snapshots    ExternalAccountSnapshot[]
+  ownerMapping ExternalPortfolioAccountOwner?
 
   @@index([provider])
   @@index([owner])
@@ -440,6 +453,81 @@ model ExternalAccountSnapshot {
   @@map("external_account_snapshots")
 }
 
+/** Propriétaire canonique (clé stable) pour éviter les ambiguïtés des champs texte libres. */
+model Owner {
+  id          String                         @id @default(cuid())
+  ownerKey    String                         @unique
+  displayName String
+  isActive    Boolean                        @default(true)
+  createdAt   DateTime                       @default(now())
+  updatedAt   DateTime                       @updatedAt
+  portfolios  PortfolioOwnerMembership[]
+  accountMappings PortfolioAccountOwner[]
+  externalAccountMappings ExternalPortfolioAccountOwner[]
+  nonFinancialAssetShares NonFinancialAssetOwnerShare[]
+
+  @@index([displayName])
+  @@map("owners")
+}
+
+/** Portefeuille logique (personnel, ménage, personnalisé). */
+model Portfolio {
+  id           String                    @id @default(cuid())
+  portfolioKey String                    @unique
+  displayName  String
+  kind         PortfolioKind             @default(CUSTOM)
+  isActive     Boolean                   @default(true)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  owners       PortfolioOwnerMembership[]
+
+  @@index([displayName])
+  @@map("portfolios")
+}
+
+model PortfolioOwnerMembership {
+  id          String    @id @default(cuid())
+  portfolioId String
+  ownerId     String
+  weightPct   Float     @default(100)
+  createdAt   DateTime  @default(now())
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  owner       Owner     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, ownerId])
+  @@index([ownerId])
+  @@map("portfolio_owner_memberships")
+}
+
+/** Mapping d’un compte Disnat (accountKey) vers propriétaire canonique. */
+model PortfolioAccountOwner {
+  id        String             @id @default(cuid())
+  accountKey String            @unique
+  ownerId   String
+  source    OwnerMappingSource @default(BACKFILL)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  owner     Owner              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@map("portfolio_account_owners")
+}
+
+/** Mapping d’un compte externe vers propriétaire canonique. */
+model ExternalPortfolioAccountOwner {
+  id                String             @id @default(cuid())
+  externalAccountId String             @unique
+  ownerId           String
+  source            OwnerMappingSource @default(BACKFILL)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  externalAccount   ExternalPortfolioAccount @relation(fields: [externalAccountId], references: [id], onDelete: Cascade)
+  owner             Owner              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@map("external_portfolio_account_owners")
+}
+
 /**
  * Actif non-boursier (ex. résidence principale) valorisé par snapshots manuels.
  * Utilisé pour le patrimoine net, sans l'inclure dans les rendements portefeuille.
@@ -457,6 +545,7 @@ model NonFinancialAsset {
   createdAt   DateTime                   @default(now())
   updatedAt   DateTime                   @updatedAt
   snapshots   NonFinancialAssetSnapshot[]
+  ownerShares NonFinancialAssetOwnerShare[]
 
   @@index([owner])
   @@index([assetType])
@@ -479,6 +568,23 @@ model NonFinancialAssetSnapshot {
   @@index([nonFinancialAssetId])
   @@index([asOfDate])
   @@map("non_financial_asset_snapshots")
+}
+
+/** Répartition de propriété d’un actif non-boursier entre plusieurs propriétaires. */
+model NonFinancialAssetOwnerShare {
+  id                  String             @id @default(cuid())
+  nonFinancialAssetId String
+  ownerId             String
+  sharePct            Float
+  source              OwnerMappingSource @default(BACKFILL)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  asset               NonFinancialAsset  @relation(fields: [nonFinancialAssetId], references: [id], onDelete: Cascade)
+  owner               Owner              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([nonFinancialAssetId, ownerId])
+  @@index([ownerId])
+  @@map("non_financial_asset_owner_shares")
 }
 
 /// Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).

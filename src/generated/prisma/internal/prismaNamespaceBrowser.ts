@@ -69,8 +69,14 @@ export const ModelName = {
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
   ExternalAccountSnapshot: 'ExternalAccountSnapshot',
+  Owner: 'Owner',
+  Portfolio: 'Portfolio',
+  PortfolioOwnerMembership: 'PortfolioOwnerMembership',
+  PortfolioAccountOwner: 'PortfolioAccountOwner',
+  ExternalPortfolioAccountOwner: 'ExternalPortfolioAccountOwner',
   NonFinancialAsset: 'NonFinancialAsset',
   NonFinancialAssetSnapshot: 'NonFinancialAssetSnapshot',
+  NonFinancialAssetOwnerShare: 'NonFinancialAssetOwnerShare',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -391,6 +397,66 @@ export const ExternalAccountSnapshotScalarFieldEnum = {
 export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
 
 
+export const OwnerScalarFieldEnum = {
+  id: 'id',
+  ownerKey: 'ownerKey',
+  displayName: 'displayName',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type OwnerScalarFieldEnum = (typeof OwnerScalarFieldEnum)[keyof typeof OwnerScalarFieldEnum]
+
+
+export const PortfolioScalarFieldEnum = {
+  id: 'id',
+  portfolioKey: 'portfolioKey',
+  displayName: 'displayName',
+  kind: 'kind',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioScalarFieldEnum = (typeof PortfolioScalarFieldEnum)[keyof typeof PortfolioScalarFieldEnum]
+
+
+export const PortfolioOwnerMembershipScalarFieldEnum = {
+  id: 'id',
+  portfolioId: 'portfolioId',
+  ownerId: 'ownerId',
+  weightPct: 'weightPct',
+  createdAt: 'createdAt'
+} as const
+
+export type PortfolioOwnerMembershipScalarFieldEnum = (typeof PortfolioOwnerMembershipScalarFieldEnum)[keyof typeof PortfolioOwnerMembershipScalarFieldEnum]
+
+
+export const PortfolioAccountOwnerScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  ownerId: 'ownerId',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioAccountOwnerScalarFieldEnum = (typeof PortfolioAccountOwnerScalarFieldEnum)[keyof typeof PortfolioAccountOwnerScalarFieldEnum]
+
+
+export const ExternalPortfolioAccountOwnerScalarFieldEnum = {
+  id: 'id',
+  externalAccountId: 'externalAccountId',
+  ownerId: 'ownerId',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ExternalPortfolioAccountOwnerScalarFieldEnum = (typeof ExternalPortfolioAccountOwnerScalarFieldEnum)[keyof typeof ExternalPortfolioAccountOwnerScalarFieldEnum]
+
+
 export const NonFinancialAssetScalarFieldEnum = {
   id: 'id',
   assetKey: 'assetKey',
@@ -419,6 +485,19 @@ export const NonFinancialAssetSnapshotScalarFieldEnum = {
 } as const
 
 export type NonFinancialAssetSnapshotScalarFieldEnum = (typeof NonFinancialAssetSnapshotScalarFieldEnum)[keyof typeof NonFinancialAssetSnapshotScalarFieldEnum]
+
+
+export const NonFinancialAssetOwnerShareScalarFieldEnum = {
+  id: 'id',
+  nonFinancialAssetId: 'nonFinancialAssetId',
+  ownerId: 'ownerId',
+  sharePct: 'sharePct',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NonFinancialAssetOwnerShareScalarFieldEnum = (typeof NonFinancialAssetOwnerShareScalarFieldEnum)[keyof typeof NonFinancialAssetOwnerShareScalarFieldEnum]
 
 
 export const EodReportDeliveryScalarFieldEnum = {

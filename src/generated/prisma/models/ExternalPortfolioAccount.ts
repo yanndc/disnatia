@@ -221,6 +221,7 @@ export type ExternalPortfolioAccountWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"ExternalPortfolioAccount"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ExternalPortfolioAccount"> | Date | string
   snapshots?: Prisma.ExternalAccountSnapshotListRelationFilter
+  ownerMapping?: Prisma.XOR<Prisma.ExternalPortfolioAccountOwnerNullableScalarRelationFilter, Prisma.ExternalPortfolioAccountOwnerWhereInput> | null
 }
 
 export type ExternalPortfolioAccountOrderByWithRelationInput = {
@@ -235,6 +236,7 @@ export type ExternalPortfolioAccountOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   snapshots?: Prisma.ExternalAccountSnapshotOrderByRelationAggregateInput
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerOrderByWithRelationInput
 }
 
 export type ExternalPortfolioAccountWhereUniqueInput = Prisma.AtLeast<{
@@ -252,6 +254,7 @@ export type ExternalPortfolioAccountWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"ExternalPortfolioAccount"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ExternalPortfolioAccount"> | Date | string
   snapshots?: Prisma.ExternalAccountSnapshotListRelationFilter
+  ownerMapping?: Prisma.XOR<Prisma.ExternalPortfolioAccountOwnerNullableScalarRelationFilter, Prisma.ExternalPortfolioAccountOwnerWhereInput> | null
 }, "id" | "accountKey">
 
 export type ExternalPortfolioAccountOrderByWithAggregationInput = {
@@ -298,6 +301,7 @@ export type ExternalPortfolioAccountCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   snapshots?: Prisma.ExternalAccountSnapshotCreateNestedManyWithoutExternalAccountInput
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerCreateNestedOneWithoutExternalAccountInput
 }
 
 export type ExternalPortfolioAccountUncheckedCreateInput = {
@@ -312,6 +316,7 @@ export type ExternalPortfolioAccountUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   snapshots?: Prisma.ExternalAccountSnapshotUncheckedCreateNestedManyWithoutExternalAccountInput
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerUncheckedCreateNestedOneWithoutExternalAccountInput
 }
 
 export type ExternalPortfolioAccountUpdateInput = {
@@ -326,6 +331,7 @@ export type ExternalPortfolioAccountUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   snapshots?: Prisma.ExternalAccountSnapshotUpdateManyWithoutExternalAccountNestedInput
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerUpdateOneWithoutExternalAccountNestedInput
 }
 
 export type ExternalPortfolioAccountUncheckedUpdateInput = {
@@ -340,6 +346,7 @@ export type ExternalPortfolioAccountUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   snapshots?: Prisma.ExternalAccountSnapshotUncheckedUpdateManyWithoutExternalAccountNestedInput
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerUncheckedUpdateOneWithoutExternalAccountNestedInput
 }
 
 export type ExternalPortfolioAccountCreateManyInput = {
@@ -437,6 +444,20 @@ export type ExternalPortfolioAccountUpdateOneRequiredWithoutSnapshotsNestedInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.ExternalPortfolioAccountUpdateToOneWithWhereWithoutSnapshotsInput, Prisma.ExternalPortfolioAccountUpdateWithoutSnapshotsInput>, Prisma.ExternalPortfolioAccountUncheckedUpdateWithoutSnapshotsInput>
 }
 
+export type ExternalPortfolioAccountCreateNestedOneWithoutOwnerMappingInput = {
+  create?: Prisma.XOR<Prisma.ExternalPortfolioAccountCreateWithoutOwnerMappingInput, Prisma.ExternalPortfolioAccountUncheckedCreateWithoutOwnerMappingInput>
+  connectOrCreate?: Prisma.ExternalPortfolioAccountCreateOrConnectWithoutOwnerMappingInput
+  connect?: Prisma.ExternalPortfolioAccountWhereUniqueInput
+}
+
+export type ExternalPortfolioAccountUpdateOneRequiredWithoutOwnerMappingNestedInput = {
+  create?: Prisma.XOR<Prisma.ExternalPortfolioAccountCreateWithoutOwnerMappingInput, Prisma.ExternalPortfolioAccountUncheckedCreateWithoutOwnerMappingInput>
+  connectOrCreate?: Prisma.ExternalPortfolioAccountCreateOrConnectWithoutOwnerMappingInput
+  upsert?: Prisma.ExternalPortfolioAccountUpsertWithoutOwnerMappingInput
+  connect?: Prisma.ExternalPortfolioAccountWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ExternalPortfolioAccountUpdateToOneWithWhereWithoutOwnerMappingInput, Prisma.ExternalPortfolioAccountUpdateWithoutOwnerMappingInput>, Prisma.ExternalPortfolioAccountUncheckedUpdateWithoutOwnerMappingInput>
+}
+
 export type ExternalPortfolioAccountCreateWithoutSnapshotsInput = {
   id?: string
   provider: string
@@ -448,6 +469,7 @@ export type ExternalPortfolioAccountCreateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerCreateNestedOneWithoutExternalAccountInput
 }
 
 export type ExternalPortfolioAccountUncheckedCreateWithoutSnapshotsInput = {
@@ -461,6 +483,7 @@ export type ExternalPortfolioAccountUncheckedCreateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerUncheckedCreateNestedOneWithoutExternalAccountInput
 }
 
 export type ExternalPortfolioAccountCreateOrConnectWithoutSnapshotsInput = {
@@ -490,6 +513,7 @@ export type ExternalPortfolioAccountUpdateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerUpdateOneWithoutExternalAccountNestedInput
 }
 
 export type ExternalPortfolioAccountUncheckedUpdateWithoutSnapshotsInput = {
@@ -503,6 +527,79 @@ export type ExternalPortfolioAccountUncheckedUpdateWithoutSnapshotsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerMapping?: Prisma.ExternalPortfolioAccountOwnerUncheckedUpdateOneWithoutExternalAccountNestedInput
+}
+
+export type ExternalPortfolioAccountCreateWithoutOwnerMappingInput = {
+  id?: string
+  provider: string
+  displayLabel: string
+  owner?: string | null
+  accountKey: string
+  currency?: string
+  portalUrl?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  snapshots?: Prisma.ExternalAccountSnapshotCreateNestedManyWithoutExternalAccountInput
+}
+
+export type ExternalPortfolioAccountUncheckedCreateWithoutOwnerMappingInput = {
+  id?: string
+  provider: string
+  displayLabel: string
+  owner?: string | null
+  accountKey: string
+  currency?: string
+  portalUrl?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  snapshots?: Prisma.ExternalAccountSnapshotUncheckedCreateNestedManyWithoutExternalAccountInput
+}
+
+export type ExternalPortfolioAccountCreateOrConnectWithoutOwnerMappingInput = {
+  where: Prisma.ExternalPortfolioAccountWhereUniqueInput
+  create: Prisma.XOR<Prisma.ExternalPortfolioAccountCreateWithoutOwnerMappingInput, Prisma.ExternalPortfolioAccountUncheckedCreateWithoutOwnerMappingInput>
+}
+
+export type ExternalPortfolioAccountUpsertWithoutOwnerMappingInput = {
+  update: Prisma.XOR<Prisma.ExternalPortfolioAccountUpdateWithoutOwnerMappingInput, Prisma.ExternalPortfolioAccountUncheckedUpdateWithoutOwnerMappingInput>
+  create: Prisma.XOR<Prisma.ExternalPortfolioAccountCreateWithoutOwnerMappingInput, Prisma.ExternalPortfolioAccountUncheckedCreateWithoutOwnerMappingInput>
+  where?: Prisma.ExternalPortfolioAccountWhereInput
+}
+
+export type ExternalPortfolioAccountUpdateToOneWithWhereWithoutOwnerMappingInput = {
+  where?: Prisma.ExternalPortfolioAccountWhereInput
+  data: Prisma.XOR<Prisma.ExternalPortfolioAccountUpdateWithoutOwnerMappingInput, Prisma.ExternalPortfolioAccountUncheckedUpdateWithoutOwnerMappingInput>
+}
+
+export type ExternalPortfolioAccountUpdateWithoutOwnerMappingInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  displayLabel?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accountKey?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  portalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  snapshots?: Prisma.ExternalAccountSnapshotUpdateManyWithoutExternalAccountNestedInput
+}
+
+export type ExternalPortfolioAccountUncheckedUpdateWithoutOwnerMappingInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  displayLabel?: Prisma.StringFieldUpdateOperationsInput | string
+  owner?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accountKey?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  portalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  snapshots?: Prisma.ExternalAccountSnapshotUncheckedUpdateManyWithoutExternalAccountNestedInput
 }
 
 
@@ -548,6 +645,7 @@ export type ExternalPortfolioAccountSelect<ExtArgs extends runtime.Types.Extensi
   createdAt?: boolean
   updatedAt?: boolean
   snapshots?: boolean | Prisma.ExternalPortfolioAccount$snapshotsArgs<ExtArgs>
+  ownerMapping?: boolean | Prisma.ExternalPortfolioAccount$ownerMappingArgs<ExtArgs>
   _count?: boolean | Prisma.ExternalPortfolioAccountCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["externalPortfolioAccount"]>
 
@@ -593,6 +691,7 @@ export type ExternalPortfolioAccountSelectScalar = {
 export type ExternalPortfolioAccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "provider" | "displayLabel" | "owner" | "accountKey" | "currency" | "portalUrl" | "metadata" | "createdAt" | "updatedAt", ExtArgs["result"]["externalPortfolioAccount"]>
 export type ExternalPortfolioAccountInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   snapshots?: boolean | Prisma.ExternalPortfolioAccount$snapshotsArgs<ExtArgs>
+  ownerMapping?: boolean | Prisma.ExternalPortfolioAccount$ownerMappingArgs<ExtArgs>
   _count?: boolean | Prisma.ExternalPortfolioAccountCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ExternalPortfolioAccountIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -602,6 +701,7 @@ export type $ExternalPortfolioAccountPayload<ExtArgs extends runtime.Types.Exten
   name: "ExternalPortfolioAccount"
   objects: {
     snapshots: Prisma.$ExternalAccountSnapshotPayload<ExtArgs>[]
+    ownerMapping: Prisma.$ExternalPortfolioAccountOwnerPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1018,6 +1118,7 @@ readonly fields: ExternalPortfolioAccountFieldRefs;
 export interface Prisma__ExternalPortfolioAccountClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   snapshots<T extends Prisma.ExternalPortfolioAccount$snapshotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ExternalPortfolioAccount$snapshotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ExternalAccountSnapshotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  ownerMapping<T extends Prisma.ExternalPortfolioAccount$ownerMappingArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ExternalPortfolioAccount$ownerMappingArgs<ExtArgs>>): Prisma.Prisma__ExternalPortfolioAccountOwnerClient<runtime.Types.Result.GetResult<Prisma.$ExternalPortfolioAccountOwnerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1471,6 +1572,25 @@ export type ExternalPortfolioAccount$snapshotsArgs<ExtArgs extends runtime.Types
   take?: number
   skip?: number
   distinct?: Prisma.ExternalAccountSnapshotScalarFieldEnum | Prisma.ExternalAccountSnapshotScalarFieldEnum[]
+}
+
+/**
+ * ExternalPortfolioAccount.ownerMapping
+ */
+export type ExternalPortfolioAccount$ownerMappingArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ExternalPortfolioAccountOwner
+   */
+  select?: Prisma.ExternalPortfolioAccountOwnerSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ExternalPortfolioAccountOwner
+   */
+  omit?: Prisma.ExternalPortfolioAccountOwnerOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ExternalPortfolioAccountOwnerInclude<ExtArgs> | null
+  where?: Prisma.ExternalPortfolioAccountOwnerWhereInput
 }
 
 /**

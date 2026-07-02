@@ -6,6 +6,7 @@ import { buildInitialMetadata } from "@/lib/portfolio/external-account-metadata"
 import { externalProviderPreset } from "@/lib/portfolio/external-account-providers";
 import { listExternalAccountsWithLatest } from "@/features/portfolio/external-accounts-queries";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { syncExternalAccountOwnerMapping } from "@/lib/portfolio/owner-dimension-write";
 
 const createBodySchema = z.object({
   provider: z.enum(["desjardins_erc_reer_collectif", "other"]),
@@ -115,6 +116,8 @@ export async function POST(request: Request) {
         snapshots: { orderBy: { asOfDate: "desc" }, take: 1 },
       },
     });
+
+    await syncExternalAccountOwnerMapping(account.id, owner, "IMPORT");
 
     return NextResponse.json({
       ok: true,

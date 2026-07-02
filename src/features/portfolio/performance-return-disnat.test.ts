@@ -16,6 +16,7 @@ import {
 } from "./fixtures/disnat-returns-benchmark.fixture";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
+const AS_OF = "2026-06-15T14:07:00";
 
 function ownerRef(owner: string) {
   const lower = owner.toLowerCase();
@@ -57,6 +58,7 @@ describe("Disnat % — convergence post Phase B", { skip: !hasDb }, () => {
 
   test("Yann 1 mois dans tolérance stricte (±2 pts)", async () => {
     const payload = await getPerformanceIndicatorPayload();
+    payload.asOfNow = AS_OF;
     const yann = uniquePortfolioOwners(payload.accounts.map((a) => a.owner)).find(
       (o) => o.toLowerCase().includes("yann"),
     );

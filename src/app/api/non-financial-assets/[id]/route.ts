@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { replaceNonFinancialAssetOwnerShares } from "@/lib/portfolio/owner-dimension-write";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -35,22 +36,33 @@ export async function PATCH(request: Request, ctx: RouteParams) {
   }
 
   const d = parsed.data;
+  const ownerValue =
+    d.owner === undefined
+      ? undefined
+      : d.owner === null || String(d.owner).trim() === ""
+        ? null
+        : sanitizePortfolioOwner(String(d.owner));
+
   try {
     await prisma.nonFinancialAsset.update({
       where: { id },
       data: {
         displayLabel: d.displayLabel?.trim(),
-        owner:
-          d.owner === undefined
-            ? undefined
-            : d.owner === null || String(d.owner).trim() === ""
-              ? null
-              : sanitizePortfolioOwner(String(d.owner)),
+        owner: ownerValue,
         currency: d.currency,
         assetType: d.assetType,
         isActive: d.isActive,
       },
     });
+
+    if (d.owner !== undefined) {
+      await replaceNonFinancialAssetOwnerShares(
+        id,
+        ownerValue ? [{ owner: ownerValue, sharePct: 100 }] : [],
+        "MANUAL",
+      );
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);

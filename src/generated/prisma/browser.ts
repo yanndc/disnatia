@@ -123,6 +123,31 @@ export type ExternalPortfolioAccount = Prisma.ExternalPortfolioAccountModel
  */
 export type ExternalAccountSnapshot = Prisma.ExternalAccountSnapshotModel
 /**
+ * Model Owner
+ * * Propriétaire canonique (clé stable) pour éviter les ambiguïtés des champs texte libres.
+ */
+export type Owner = Prisma.OwnerModel
+/**
+ * Model Portfolio
+ * * Portefeuille logique (personnel, ménage, personnalisé).
+ */
+export type Portfolio = Prisma.PortfolioModel
+/**
+ * Model PortfolioOwnerMembership
+ * 
+ */
+export type PortfolioOwnerMembership = Prisma.PortfolioOwnerMembershipModel
+/**
+ * Model PortfolioAccountOwner
+ * * Mapping d’un compte Disnat (accountKey) vers propriétaire canonique.
+ */
+export type PortfolioAccountOwner = Prisma.PortfolioAccountOwnerModel
+/**
+ * Model ExternalPortfolioAccountOwner
+ * * Mapping d’un compte externe vers propriétaire canonique.
+ */
+export type ExternalPortfolioAccountOwner = Prisma.ExternalPortfolioAccountOwnerModel
+/**
  * Model NonFinancialAsset
  * *
  *  * Actif non-boursier (ex. résidence principale) valorisé par snapshots manuels.
@@ -134,6 +159,11 @@ export type NonFinancialAsset = Prisma.NonFinancialAssetModel
  * 
  */
 export type NonFinancialAssetSnapshot = Prisma.NonFinancialAssetSnapshotModel
+/**
+ * Model NonFinancialAssetOwnerShare
+ * * Répartition de propriété d’un actif non-boursier entre plusieurs propriétaires.
+ */
+export type NonFinancialAssetOwnerShare = Prisma.NonFinancialAssetOwnerShareModel
 /**
  * Model EodReportDelivery
  * Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).

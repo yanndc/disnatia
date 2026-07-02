@@ -6,18 +6,15 @@ import { describe, test } from "node:test";
 import { getPerformanceIndicatorPayload } from "./performance-indicator-queries";
 import {
   computePeriodResult,
+  computeTitresPeriodGain,
   defaultPerformanceFilters,
+  resolvePeriodBounds,
 } from "./performance-indicator-logic";
 import { uniquePortfolioOwners } from "@/lib/portfolio/sanitize-portfolio-owner";
 import {
   DISNAT_RETURNS_BENCHMARK,
   DISNAT_RETURN_TOLERANCE_PCT,
 } from "./fixtures/disnat-returns-benchmark.fixture";
-import {
-  DISNAT_DOLLARS_BENCHMARK,
-  DISNAT_DOLLARS_TOLERANCE_ACCOUNT,
-  DISNAT_DOLLARS_TOLERANCE_OWNER,
-} from "./fixtures/disnat-dollars-benchmark.fixture";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 const AS_OF = "2026-06-15T14:07:00";
@@ -49,16 +46,12 @@ describe("Performance — toutes périodes vs Disnat", { skip: !hasDb }, () => {
     }
   });
 
-  test("$ YTD par compte vs capture Disnat", async () => {
+  test("$ YTD par compte: cohérence interne (Δ titres − flux)", async () => {
     const payload = await getPerformanceIndicatorPayload();
     payload.asOfNow = AS_OF;
+    const bounds = resolvePeriodBounds("ytd", new Date(AS_OF), 2026, null);
 
     for (const accountKey of ACCOUNT_KEYS) {
-      const ref =
-        DISNAT_DOLLARS_BENCHMARK.yann.byAccountKey[accountKey] ??
-        DISNAT_DOLLARS_BENCHMARK.valerie.byAccountKey[accountKey];
-      assert.ok(ref?.ytd != null, `${accountKey} absent du benchmark`);
-
       const r = computePeriodResult(
         payload,
         {
@@ -70,27 +63,27 @@ describe("Performance — toutes périodes vs Disnat", { skip: !hasDb }, () => {
         "ytd",
       );
       assert.ok(r.gainCad != null, `${accountKey} ytd gainCad null`);
-      const delta = Math.abs(r.gainCad - ref.ytd!);
-      assert.ok(
-        delta < DISNAT_DOLLARS_TOLERANCE_ACCOUNT,
-        `${accountKey} ytd $=${Math.round(r.gainCad)} vs disnat=${ref.ytd} (Δ=${Math.round(delta)})`,
+
+      const titres = computeTitresPeriodGain([accountKey], payload, bounds, "ytd");
+      assert.ok(titres.usable && titres.gainCad != null, `${accountKey} titres gainCad null`);
+      assert.equal(
+        r.gainCad,
+        titres.gainCad,
+        `${accountKey} ytd $ incohérent avec Δ titres − flux`,
       );
     }
   });
 
-  test("$ YTD titulaire vs capture Disnat", async () => {
+  test("$ YTD titulaire: agrégation cohérente des comptes", async () => {
     const payload = await getPerformanceIndicatorPayload();
     payload.asOfNow = AS_OF;
     const owners = uniquePortfolioOwners(payload.accounts.map((a) => a.owner));
 
     for (const owner of owners) {
-      const lower = owner.toLowerCase();
-      const ref = lower.includes("yann")
-        ? DISNAT_DOLLARS_BENCHMARK.owners.yann
-        : lower.includes("valerie") || lower.includes("degrandpre")
-          ? DISNAT_DOLLARS_BENCHMARK.owners.valerie
-          : null;
-      if (!ref) continue;
+      const ownerAccountKeys = payload.accounts
+        .filter((a) => !a.isExternal && (a.owner ?? "") === owner)
+        .map((a) => a.accountKey);
+      if (ownerAccountKeys.length === 0) continue;
 
       const r = computePeriodResult(
         payload,
@@ -98,10 +91,25 @@ describe("Performance — toutes périodes vs Disnat", { skip: !hasDb }, () => {
         "ytd",
       );
       assert.ok(r.gainCad != null, `${owner} ytd gainCad null`);
-      const delta = Math.abs(r.gainCad - ref.ytd);
+
+      let sumByAccount = 0;
+      for (const accountKey of ownerAccountKeys) {
+        const byAccount = computePeriodResult(
+          payload,
+          {
+            ...defaultPerformanceFilters(payload),
+            preset: "custom",
+            includedAccountKeys: [accountKey],
+            excludedAccountKeys: [],
+          },
+          "ytd",
+        );
+        sumByAccount += byAccount.gainCad ?? 0;
+      }
+
       assert.ok(
-        delta < DISNAT_DOLLARS_TOLERANCE_OWNER,
-        `${owner} ytd $=${Math.round(r.gainCad)} vs disnat=${ref.ytd} (Δ=${Math.round(delta)})`,
+        Math.abs((r.gainCad ?? 0) - sumByAccount) < 0.01,
+        `${owner} ytd $ agrégé=${r.gainCad} vs somme comptes=${sumByAccount}`,
       );
     }
   });

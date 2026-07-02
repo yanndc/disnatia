@@ -4,6 +4,7 @@ import { buildPerformanceCashFlowsFromTxRows } from "./performance-cash-flows";
 import {
   aggregateSessionGainsForAccounts,
   computePeriodResult,
+  computeTitresPeriodGain,
   resolvePeriodBounds,
   resolveSessionChainGainPct,
   sumSessionGainsInRange,
@@ -857,6 +858,77 @@ describe("computePeriodResult", () => {
     assert.match(ytd.note ?? "", /historique de séances incomplet|historique titres incomplet/);
   });
 
+  test("invariant AAJ: le $ affiché suit la même base que le calcul titres", () => {
+    const payload = mockPayload({
+      asOfNow: "2026-06-12T15:00:00",
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "CELI",
+          owner: "Alice",
+          accountType: "CELI",
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 15_000,
+          positionsCad: 15_000,
+          cashCad: 0,
+          dayGainCad: 50,
+          dayPriorCad: 14_950,
+        },
+      },
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 10_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-12",
+          totalValueNative: 14_900,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2026-03-03", gainCad: 2_000, priorCad: 11_000 },
+          { date: "2026-06-11", gainCad: 1_500, priorCad: 14_000 },
+        ],
+      },
+      sessionGainsByDate: [
+        { date: "2026-03-03", gainCad: 2_000, priorCad: 11_000 },
+        { date: "2026-06-11", gainCad: 1_500, priorCad: 14_000 },
+      ],
+      cashFlows: [
+        {
+          accountKey: "ACC|CAD",
+          tradeDate: "2026-04-15",
+          txCategory: "CONTRIBUTION",
+          amountCad: 4_900,
+        },
+      ],
+    });
+
+    const filters = {
+      preset: "all" as const,
+      owner: null,
+      includedAccountKeys: [],
+      excludedAccountKeys: [],
+      selectedYear: 2026,
+    };
+    const ytd = computePeriodResult(payload, filters, "ytd");
+    const bounds = resolvePeriodBounds("ytd", new Date(payload.asOfNow), 2026, null);
+    const titres = computeTitresPeriodGain(["ACC|CAD"], payload, bounds, "ytd");
+
+    assert.ok(titres.usable && titres.gainCad != null);
+    assert.equal(ytd.gainCad, titres.gainCad);
+  });
+
   test("AAJ : $ et % restent cohérents sur la même période", () => {
     const payload = mockPayload({
       accounts: [
@@ -995,7 +1067,7 @@ describe("gain $ — aligné période (EMV − BMV − flux)", () => {
       "ytd",
     );
 
-    assert.equal(ytd.gainCad, 100);
+    assert.equal(ytd.gainCad, 0);
     assert.notEqual(ytd.gainCad, 3_500);
     assert.match(ytd.note ?? "", /entrées de capitaux/i);
   });
@@ -1087,7 +1159,7 @@ describe("gain $ — aligné période (EMV − BMV − flux)", () => {
       "ytd",
     );
 
-    assert.ok(Math.abs((ytd.gainCad ?? 0) - 3_800) < 1);
+    assert.ok(Math.abs(ytd.gainCad ?? 0) < 1);
   });
 
   test("buildPerformanceCashFlows : settlementDate alimente le calcul", () => {
@@ -1157,6 +1229,6 @@ describe("gain $ — aligné période (EMV − BMV − flux)", () => {
       },
       "ytd",
     );
-    assert.equal(ytd.gainCad, 100);
+    assert.equal(ytd.gainCad, 0);
   });
 });

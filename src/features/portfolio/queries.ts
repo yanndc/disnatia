@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner, portfolioOwnerKey, portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { resolveNonFinancialAssetOwnerShares } from "@/lib/portfolio/non-financial-asset-owner-shares";
+import { buildOwnerDimensionResolver } from "@/lib/portfolio/owner-dimension-resolver";
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
 import { listNonFinancialAssetsWithLatest } from "./non-financial-assets-queries";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
@@ -182,7 +183,7 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
 
 /** Résumé du tableau de bord, basé sur l'état synthétisé. */
 export async function getPortfolioSummary() {
-  const [holdings, accountStates, anyImportCount, txGlobal, externalAccounts, nonFinancialAssets] = await Promise.all([
+  const [holdings, accountStates, anyImportCount, txGlobal, externalAccounts, nonFinancialAssets, ownerResolver] = await Promise.all([
     loadHoldingsForDashboard(),
     prisma.portfolioAccountState.findMany(),
     prisma.portfolioImport.count(),
@@ -193,6 +194,7 @@ export async function getPortfolioSummary() {
     }),
     listExternalAccountsWithLatest(),
     listNonFinancialAssetsWithLatest(),
+    buildOwnerDimensionResolver(),
   ]);
 
   const externalWithValue = externalAccounts.filter((a) => a.latestSnapshot !== null);
@@ -338,8 +340,9 @@ export async function getPortfolioSummary() {
   >();
 
   for (const a of accountStates) {
-    const ownerDisplay = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
-    const ownerKey = portfolioOwnerKey(a.owner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
+    const resolvedOwner = ownerResolver.resolveAccountOwner(a.accountKey, a.owner);
+    const ownerDisplay = resolvedOwner ?? "Inconnu";
+    const ownerKey = portfolioOwnerKey(resolvedOwner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
     const row =
       ownerBreakdownMap.get(ownerKey) ??
       {
@@ -363,8 +366,9 @@ export async function getPortfolioSummary() {
   }
 
   for (const a of externalWithValue) {
-    const ownerDisplay = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
-    const ownerKey = portfolioOwnerKey(a.owner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
+    const resolvedOwner = ownerResolver.resolveExternalOwner(a.id, a.owner);
+    const ownerDisplay = resolvedOwner ?? "Inconnu";
+    const ownerKey = portfolioOwnerKey(resolvedOwner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
     const row =
       ownerBreakdownMap.get(ownerKey) ??
       {
@@ -383,7 +387,11 @@ export async function getPortfolioSummary() {
   }
 
   for (const a of nonFinancialWithValue) {
-    const allocations = resolveNonFinancialAssetOwnerShares(a.owner, a.metadata);
+    const allocations = ownerResolver.resolveNonFinancialAssetOwners(
+      a.id,
+      a.owner,
+      a.metadata,
+    );
     const v = a.latestSnapshot!.netEquity;
     for (const alloc of allocations) {
       const ownerDisplay = alloc.owner;

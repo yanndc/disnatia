@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { logRecoverableServerIssue } from "@/lib/logging/recoverable-server-log";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { buildOwnerDimensionResolver } from "@/lib/portfolio/owner-dimension-resolver";
 import { formatAccountNumber, normalizeCurrency } from "@/lib/utils";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
 import {
@@ -171,7 +172,7 @@ async function loadQuotesForHoldings(
 
 export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndicatorPayload> {
   await ensureFreshQuotesDuringSession();
-  const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots, txFlows, cashLedgerTxs] =
+  const [accountStates, holdings, externalAccounts, portfolioImports, extSnapshots, txFlows, cashLedgerTxs, ownerResolver] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
         orderBy: [{ owner: "asc" }, { accountType: "asc" }],
@@ -244,6 +245,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
           currency: true,
         },
       }),
+      buildOwnerDimensionResolver(),
     ]);
 
   const quotes = await loadQuotesForHoldings(holdings);
@@ -326,7 +328,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     accounts.push({
       accountKey: a.accountKey,
       label,
-      owner: sanitizePortfolioOwner(a.owner),
+      owner: ownerResolver.resolveAccountOwner(a.accountKey, a.owner),
       accountType: a.accountType,
       currency: normalizeCurrency(a.currency),
       isExternal: false,
@@ -347,7 +349,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     accounts.push({
       accountKey: ext.accountKey,
       label: ext.displayLabel,
-      owner: sanitizePortfolioOwner(ext.owner),
+      owner: ownerResolver.resolveExternalOwner(ext.id, ext.owner),
       accountType: null,
       currency: normalizeCurrency(ext.currency),
       isExternal: true,

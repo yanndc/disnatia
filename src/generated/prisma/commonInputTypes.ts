@@ -416,6 +416,40 @@ export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
   _max?: Prisma.NestedJsonNullableFilter<$PrismaModel>
 }
 
+export type EnumPortfolioKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.PortfolioKind | Prisma.EnumPortfolioKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPortfolioKindFilter<$PrismaModel> | $Enums.PortfolioKind
+}
+
+export type EnumPortfolioKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.PortfolioKind | Prisma.EnumPortfolioKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPortfolioKindWithAggregatesFilter<$PrismaModel> | $Enums.PortfolioKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumPortfolioKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumPortfolioKindFilter<$PrismaModel>
+}
+
+export type EnumOwnerMappingSourceFilter<$PrismaModel = never> = {
+  equals?: $Enums.OwnerMappingSource | Prisma.EnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumOwnerMappingSourceFilter<$PrismaModel> | $Enums.OwnerMappingSource
+}
+
+export type EnumOwnerMappingSourceWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.OwnerMappingSource | Prisma.EnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumOwnerMappingSourceWithAggregatesFilter<$PrismaModel> | $Enums.OwnerMappingSource
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumOwnerMappingSourceFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumOwnerMappingSourceFilter<$PrismaModel>
+}
+
 export type EnumNonFinancialAssetTypeFilter<$PrismaModel = never> = {
   equals?: $Enums.NonFinancialAssetType | Prisma.EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
   in?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
@@ -781,6 +815,40 @@ export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
   gt?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   gte?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   not?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel> | Prisma.JsonNullValueFilter
+}
+
+export type NestedEnumPortfolioKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.PortfolioKind | Prisma.EnumPortfolioKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPortfolioKindFilter<$PrismaModel> | $Enums.PortfolioKind
+}
+
+export type NestedEnumPortfolioKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.PortfolioKind | Prisma.EnumPortfolioKindFieldRefInput<$PrismaModel>
+  in?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.PortfolioKind[] | Prisma.ListEnumPortfolioKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumPortfolioKindWithAggregatesFilter<$PrismaModel> | $Enums.PortfolioKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumPortfolioKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumPortfolioKindFilter<$PrismaModel>
+}
+
+export type NestedEnumOwnerMappingSourceFilter<$PrismaModel = never> = {
+  equals?: $Enums.OwnerMappingSource | Prisma.EnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumOwnerMappingSourceFilter<$PrismaModel> | $Enums.OwnerMappingSource
+}
+
+export type NestedEnumOwnerMappingSourceWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.OwnerMappingSource | Prisma.EnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  in?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  notIn?: $Enums.OwnerMappingSource[] | Prisma.ListEnumOwnerMappingSourceFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumOwnerMappingSourceWithAggregatesFilter<$PrismaModel> | $Enums.OwnerMappingSource
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumOwnerMappingSourceFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumOwnerMappingSourceFilter<$PrismaModel>
 }
 
 export type NestedEnumNonFinancialAssetTypeFilter<$PrismaModel = never> = {

@@ -7,7 +7,6 @@ import { getAccountsWithStats, getAllPositions } from "@/features/portfolio/quer
 import { getLatestUsdCadRate } from "@/lib/fx/latest-usd-cad-rate";
 import { refreshUsdCadRatesIfStale } from "@/lib/fx/refresh-usd-cad-rates";
 import { EXTERNAL_ACCOUNT_PROVIDERS } from "@/lib/portfolio/external-account-providers";
-import { resolveNonFinancialAssetOwnerShares } from "@/lib/portfolio/non-financial-asset-owner-shares";
 import { sanitizePortfolioOwner, portfolioOwnerKey } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { formatCurrency, normalizeCurrency } from "@/lib/utils";
 import {
@@ -173,7 +172,7 @@ export default async function ComptesPage() {
                     <td className="px-4 py-2 font-medium text-slate-800">{asset.displayLabel}</td>
                     <td className="px-4 py-2 text-slate-700">
                       {(() => {
-                        const shares = resolveNonFinancialAssetOwnerShares(asset.owner, asset.metadata);
+                        const shares = asset.ownerShares;
                         if (shares.length === 0) return "—";
                         return shares
                           .map((s) => `${s.owner} (${s.sharePct.toFixed(0)}%)`)
