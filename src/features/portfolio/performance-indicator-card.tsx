@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity,
   Archive,
   ChevronDown,
   Filter,
@@ -65,6 +64,34 @@ function loadStoredFilters(): StoredFilters | null {
   } catch {
     return null;
   }
+}
+
+function buildFiltersFromStorage(payload: PerformanceIndicatorPayload): PerformanceFilterState {
+  const base = defaultPerformanceFilters(payload);
+  const stored = loadStoredFilters();
+  if (!stored) return base;
+  return {
+    ...base,
+    ...stored,
+    selectedYear:
+      stored.selectedYear && payload.availableYears.includes(stored.selectedYear)
+        ? stored.selectedYear
+        : base.selectedYear,
+  };
+}
+
+function isSameFilters(a: PerformanceFilterState, b: PerformanceFilterState): boolean {
+  return (
+    a.preset === b.preset &&
+    a.owner === b.owner &&
+    (a.portfolioKey ?? null) === (b.portfolioKey ?? null) &&
+    a.selectedYear === b.selectedYear &&
+    a.activePeriod === b.activePeriod &&
+    a.includedAccountKeys.length === b.includedAccountKeys.length &&
+    a.includedAccountKeys.every((x, i) => x === b.includedAccountKeys[i]) &&
+    a.excludedAccountKeys.length === b.excludedAccountKeys.length &&
+    a.excludedAccountKeys.every((x, i) => x === b.excludedAccountKeys[i])
+  );
 }
 
 function saveStoredFilters(filters: PerformanceFilterState) {
@@ -181,21 +208,13 @@ export function PerformanceIndicatorCard({
   filtersOnly?: boolean;
   hideFiltersHeader?: boolean;
 }) {
-  const [filters, setFilters] = useState<PerformanceFilterState>(() => {
-    const base = defaultPerformanceFilters(payload);
-    const stored = loadStoredFilters();
-    if (!stored) return base;
-    return {
-      ...base,
-      ...stored,
-      selectedYear:
-        stored.selectedYear && payload.availableYears.includes(stored.selectedYear)
-          ? stored.selectedYear
-          : base.selectedYear,
-    };
-  });
+  const [filters, setFilters] = useState<PerformanceFilterState>(() =>
+    buildFiltersFromStorage(payload),
+  );
   const [scopeOpen, setScopeOpen] = useState(false);
-  const [portfolioScopes, setPortfolioScopes] = useState(() => payload.portfolioScopes ?? []);
+  const [portfolioScopesOverride, setPortfolioScopesOverride] = useState<
+    PerformanceIndicatorPayload["portfolioScopes"] | null
+  >(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [isSavingScope, setIsSavingScope] = useState(false);
   const [isArchivingScope, setIsArchivingScope] = useState(false);
@@ -212,22 +231,37 @@ export function PerformanceIndicatorCard({
   }, [filters]);
 
   useEffect(() => {
+    const sync = () => {
+      const next = buildFiltersFromStorage(payload);
+      setFilters((prev) => (isSameFilters(prev, next) ? prev : next));
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === PERFORMANCE_FILTERS_STORAGE_KEY) sync();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(PERFORMANCE_FILTERS_CHANGED_EVENT, sync as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(PERFORMANCE_FILTERS_CHANGED_EVENT, sync as EventListener);
+    };
+  }, [payload]);
+
+  useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
     return () => window.clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    setPortfolioScopes(payload.portfolioScopes ?? []);
-  }, [payload.portfolioScopes]);
 
   const owners = useMemo(
     () => uniquePortfolioOwners(payload.accounts.map((a) => a.owner)),
     [payload.accounts],
   );
-  const portfolios = useMemo(() => portfolioScopes, [portfolioScopes]);
+  const portfolios = useMemo(
+    () => portfolioScopesOverride ?? payload.portfolioScopes ?? [],
+    [portfolioScopesOverride, payload.portfolioScopes],
+  );
   const payloadWithScopes = useMemo(
-    () => ({ ...payload, portfolioScopes }),
-    [payload, portfolioScopes],
+    () => ({ ...payload, portfolioScopes: portfolios }),
+    [payload, portfolios],
   );
 
   const periodResults = useMemo(
@@ -282,7 +316,7 @@ export function PerformanceIndicatorCard({
         filters.excludedAccountKeys,
         filters.owner,
         filters.portfolioKey ?? null,
-        portfolioScopes,
+        portfolios,
       ).filter((k) => !payload.accounts.find((a) => a.accountKey === k)?.isExternal);
 
       if (!bounds.start || !bounds.baselineLookup || disnatKeys.length === 0) {
@@ -433,7 +467,7 @@ export function PerformanceIndicatorCard({
     }
 
     return rows;
-  }, [filters, payload, payloadWithScopes, reportDates, portfolioScopes]);
+  }, [filters, payload, payloadWithScopes, reportDates, portfolios]);
 
   const activeAccountKeysForScope = useMemo(
     () =>
@@ -444,9 +478,9 @@ export function PerformanceIndicatorCard({
         filters.excludedAccountKeys,
         filters.owner,
         filters.portfolioKey ?? null,
-        portfolioScopes,
+        portfolios,
       ),
-    [filters, payload.accounts, portfolioScopes],
+    [filters, payload.accounts, portfolios],
   );
 
   const selectedPortfolio = useMemo(
@@ -551,15 +585,16 @@ export function PerformanceIndicatorCard({
         ...data.scope,
         accountKeys: activeAccountKeysForScope,
       };
-      setPortfolioScopes((prev) => {
-        const filtered = prev.filter((x) => x.portfolioKey !== nextScope.portfolioKey);
+      setPortfolioScopesOverride((prev) => {
+        const base = prev ?? payload.portfolioScopes ?? [];
+        const filtered = base.filter((x) => x.portfolioKey !== nextScope.portfolioKey);
         return [...filtered, nextScope].toSorted((a, b) => a.label.localeCompare(b.label, "fr-CA"));
       });
       updateFilters({ portfolioKey: nextScope.portfolioKey });
     } finally {
       setIsSavingScope(false);
     }
-  }, [activeAccountKeysForScope, updateFilters]);
+  }, [activeAccountKeysForScope, payload.portfolioScopes, updateFilters]);
 
   const archiveSelectedPortfolioScope = useCallback(async () => {
     if (!selectedPortfolio || selectedPortfolio.kind !== "CUSTOM") return;
@@ -575,12 +610,15 @@ export function PerformanceIndicatorCard({
         window.alert(data.error ?? "Archivage impossible.");
         return;
       }
-      setPortfolioScopes((prev) => prev.filter((x) => x.id !== selectedPortfolio.id));
+      setPortfolioScopesOverride((prev) => {
+        const base = prev ?? payload.portfolioScopes ?? [];
+        return base.filter((x) => x.id !== selectedPortfolio.id);
+      });
       updateFilters({ portfolioKey: null });
     } finally {
       setIsArchivingScope(false);
     }
-  }, [selectedPortfolio, updateFilters]);
+  }, [payload.portfolioScopes, selectedPortfolio, updateFilters]);
 
   const renameSelectedPortfolioScope = useCallback(async () => {
     if (!selectedPortfolio || selectedPortfolio.kind !== "CUSTOM") return;
@@ -601,15 +639,16 @@ export function PerformanceIndicatorCard({
         window.alert(data.error ?? "Renommage impossible.");
         return;
       }
-      setPortfolioScopes((prev) =>
-        prev
+      setPortfolioScopesOverride((prev) => {
+        const base = prev ?? payload.portfolioScopes ?? [];
+        return base
           .map((x) => (x.id === data.scope!.id ? { ...x, label: data.scope!.label } : x))
-          .toSorted((a, b) => a.label.localeCompare(b.label, "fr-CA")),
-      );
+          .toSorted((a, b) => a.label.localeCompare(b.label, "fr-CA"));
+      });
     } finally {
       setIsRenamingScope(false);
     }
-  }, [selectedPortfolio]);
+  }, [payload.portfolioScopes, selectedPortfolio]);
 
   const copyAuditPromptForAi = useCallback(async (mode: "full" | "compact") => {
     if (!selectedReconciliation) return;
