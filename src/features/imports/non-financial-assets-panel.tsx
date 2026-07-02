@@ -391,16 +391,9 @@ function AssetCard({
         );
       })()}
 
-      <div className="mt-3 border-t border-slate-100 pt-3">
-        <p className="text-xs font-medium text-slate-700">Ajouter une mise à jour</p>
-        <div className="mt-2">
-          <AssetSnapshotInlineForm assetId={asset.id} currency={asset.currency} onSaved={onSaved} />
-        </div>
-      </div>
-
       <button
         type="button"
-        className="mt-3 text-xs font-medium text-amber-800 underline-offset-2 hover:underline"
+        className="mt-2 text-xs font-medium text-amber-800 underline-offset-2 hover:underline"
         onClick={() => {
           setEditOpen((o) => !o);
           setEditMsg(null);
@@ -409,6 +402,13 @@ function AssetCard({
       >
         {editOpen ? "Fermer l’édition" : "Modifier l’actif"}
       </button>
+
+      <div className="mt-3 border-t border-slate-100 pt-3">
+        <p className="text-xs font-medium text-slate-700">Ajouter une mise à jour</p>
+        <div className="mt-2">
+          <AssetSnapshotInlineForm assetId={asset.id} currency={asset.currency} onSaved={onSaved} />
+        </div>
+      </div>
 
       {editOpen ? (
         <form
