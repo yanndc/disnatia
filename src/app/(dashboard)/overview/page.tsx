@@ -62,7 +62,8 @@ export default async function OverviewPage() {
   const hasPortfolioData =
     (summary.positionCount ?? 0) > 0 ||
     (summary.accountCount ?? 0) > 0 ||
-    (summary.externalAccountsCount ?? 0) > 0;
+    (summary.externalAccountsCount ?? 0) > 0 ||
+    (summary.nonFinancialAssetsCount ?? 0) > 0;
 
   if (!hasPortfolioData) {
     return (
@@ -106,6 +107,9 @@ export default async function OverviewPage() {
       : "Encaisse = réf. réconciliation (import portefeuille)",
     summary.externalAccountsCount > 0
       ? `${summary.externalAccountsCount} compte${summary.externalAccountsCount > 1 ? "s" : ""} externe${summary.externalAccountsCount > 1 ? "s" : ""} (valeurs saisies)`
+      : null,
+    summary.nonFinancialAssetsCount > 0
+      ? `${summary.nonFinancialAssetsCount} actif${summary.nonFinancialAssetsCount > 1 ? "s" : ""} non-boursier${summary.nonFinancialAssetsCount > 1 ? "s" : ""} (équité nette)`
       : null,
   ]
     .filter((s): s is string => typeof s === "string" && s.length > 0)
@@ -196,6 +200,7 @@ export default async function OverviewPage() {
             positionsValue={summary.displayPositionsValue}
             cashValue={summary.cashValue}
             externalValueCad={summary.externalTotalCad}
+            nonFinancialAssetsCad={summary.nonFinancialTotalCad}
             detail={compositionDetail}
           />
           <CurrencyExposureKpiCard currencyExposure={summary.currencyExposure} />

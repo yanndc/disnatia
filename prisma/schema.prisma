@@ -375,6 +375,13 @@ enum MessageRole {
   tool
 }
 
+enum NonFinancialAssetType {
+  REAL_ESTATE
+  VEHICLE
+  PRIVATE_BUSINESS
+  OTHER
+}
+
 /**
  * Cours quotidien USD → CAD (nombre de dollars canadiens pour 1 USD).
  * Alimenté via la série FXUSDCAD de la Banque du Canada ; les jours sans publication
@@ -431,6 +438,47 @@ model ExternalAccountSnapshot {
   @@index([externalAccountId])
   @@index([asOfDate])
   @@map("external_account_snapshots")
+}
+
+/**
+ * Actif non-boursier (ex. résidence principale) valorisé par snapshots manuels.
+ * Utilisé pour le patrimoine net, sans l'inclure dans les rendements portefeuille.
+ */
+model NonFinancialAsset {
+  id          String                     @id @default(cuid())
+  /// Clé stable UI ; préfixe `asset:` pour éviter collisions avec comptes
+  assetKey    String                     @unique
+  assetType   NonFinancialAssetType      @default(REAL_ESTATE)
+  displayLabel String
+  owner       String?
+  currency    String                     @default("CAD")
+  isActive    Boolean                    @default(true)
+  metadata    Json?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  snapshots   NonFinancialAssetSnapshot[]
+
+  @@index([owner])
+  @@index([assetType])
+  @@index([isActive])
+  @@map("non_financial_assets")
+}
+
+model NonFinancialAssetSnapshot {
+  id                  String            @id @default(cuid())
+  nonFinancialAssetId String
+  asOfDate            DateTime          @db.Date
+  marketValue         Float
+  mortgageBalance     Float             @default(0)
+  netEquity           Float
+  notes               String?
+  createdAt           DateTime          @default(now())
+  asset               NonFinancialAsset @relation(fields: [nonFinancialAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([nonFinancialAssetId, asOfDate])
+  @@index([nonFinancialAssetId])
+  @@index([asOfDate])
+  @@map("non_financial_asset_snapshots")
 }
 
 /// Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).

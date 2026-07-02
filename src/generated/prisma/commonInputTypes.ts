@@ -416,6 +416,23 @@ export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
   _max?: Prisma.NestedJsonNullableFilter<$PrismaModel>
 }
 
+export type EnumNonFinancialAssetTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.NonFinancialAssetType | Prisma.EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel> | $Enums.NonFinancialAssetType
+}
+
+export type EnumNonFinancialAssetTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.NonFinancialAssetType | Prisma.EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNonFinancialAssetTypeWithAggregatesFilter<$PrismaModel> | $Enums.NonFinancialAssetType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -764,6 +781,23 @@ export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
   gt?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   gte?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   not?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel> | Prisma.JsonNullValueFilter
+}
+
+export type NestedEnumNonFinancialAssetTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.NonFinancialAssetType | Prisma.EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel> | $Enums.NonFinancialAssetType
+}
+
+export type NestedEnumNonFinancialAssetTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.NonFinancialAssetType | Prisma.EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NonFinancialAssetType[] | Prisma.ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNonFinancialAssetTypeWithAggregatesFilter<$PrismaModel> | $Enums.NonFinancialAssetType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel>
 }
 
 

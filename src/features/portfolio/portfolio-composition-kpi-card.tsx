@@ -14,6 +14,7 @@ export function PortfolioCompositionKpiCard({
   positionsValue,
   cashValue,
   externalValueCad = 0,
+  nonFinancialAssetsCad = 0,
   detail,
 }: {
   totalValue: number;
@@ -21,9 +22,12 @@ export function PortfolioCompositionKpiCard({
   cashValue: number;
   /** Valeur des comptes hors Disnat (déjà convertie en CAD si taux dispo). */
   externalValueCad?: number;
+  /** Valeur nette des actifs non-boursiers (équité, déjà convertie en CAD si taux dispo). */
+  nonFinancialAssetsCad?: number;
   detail?: string;
 }) {
   const ext = Math.max(0, externalValueCad);
+  const nonFinancial = Math.max(0, nonFinancialAssetsCad);
   const data: Slice[] = [
     { name: "Titres", value: Math.max(0, positionsValue), key: "positions" },
     {
@@ -40,11 +44,21 @@ export function PortfolioCompositionKpiCard({
           },
         ] as Slice[])
       : []),
+    ...(nonFinancial > 0
+      ? ([
+          {
+            name: "Actifs non-boursiers",
+            value: nonFinancial,
+            key: "non_financial_assets",
+          },
+        ] as Slice[])
+      : []),
   ];
-  const SLICES =
-    ext > 0
-      ? [...SLICE_COLORS, "#8b5cf6"]
-      : SLICE_COLORS;
+  const SLICES = [
+    ...SLICE_COLORS,
+    ...(ext > 0 ? ["#8b5cf6"] : []),
+    ...(nonFinancial > 0 ? ["#f59e0b"] : []),
+  ];
   const total = data.reduce((s, d) => s + d.value, 0);
   const rows =
     total > 0

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { sanitizePortfolioOwner, portfolioOwnerKey, portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { listExternalAccountsWithLatest } from "./external-accounts-queries";
+import { listNonFinancialAssetsWithLatest } from "./non-financial-assets-queries";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
 import { priorSessionCloseByPair } from "./daily-close-prices";
 import {
@@ -180,7 +181,7 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
 
 /** Résumé du tableau de bord, basé sur l'état synthétisé. */
 export async function getPortfolioSummary() {
-  const [holdings, accountStates, anyImportCount, txGlobal, externalAccounts] = await Promise.all([
+  const [holdings, accountStates, anyImportCount, txGlobal, externalAccounts, nonFinancialAssets] = await Promise.all([
     loadHoldingsForDashboard(),
     prisma.portfolioAccountState.findMany(),
     prisma.portfolioImport.count(),
@@ -190,15 +191,21 @@ export async function getPortfolioSummary() {
       _count: { _all: true },
     }),
     listExternalAccountsWithLatest(),
+    listNonFinancialAssetsWithLatest(),
   ]);
 
   const externalWithValue = externalAccounts.filter((a) => a.latestSnapshot !== null);
   const externalAccountsCount = externalWithValue.length;
+  const nonFinancialWithValue = nonFinancialAssets.filter(
+    (a) => a.isActive && a.latestSnapshot !== null,
+  );
+  const nonFinancialAssetsCount = nonFinancialWithValue.length;
 
   if (
     holdings.length === 0 &&
     accountStates.length === 0 &&
-    externalAccountsCount === 0
+    externalAccountsCount === 0 &&
+    nonFinancialAssetsCount === 0
   ) {
     return { ...emptySummary(), hasAnyImportsInHistory: anyImportCount > 0 };
   }
@@ -241,10 +248,14 @@ export async function getPortfolioSummary() {
   const externalAsOf = externalWithValue
     .map((a) => a.latestSnapshot!.asOfDate)
     .filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()));
+  const nonFinancialAsOf = nonFinancialWithValue
+    .map((a) => a.latestSnapshot!.asOfDate)
+    .filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()));
   const allAsOf = [
     ...accountStates.map((a) => a.asOf),
     ...holdingAsOfSource,
     ...externalAsOf,
+    ...nonFinancialAsOf,
   ].filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()));
   const referenceAsOf =
     allAsOf.length > 0 ? new Date(Math.max(...allAsOf.map((d) => d.getTime()))) : null;
@@ -277,6 +288,15 @@ export async function getPortfolioSummary() {
         )
       : sum(externalWithValue.map((a) => a.latestSnapshot!.totalValue));
 
+  const nonFinancialTotalCad =
+    usdToCad !== null
+      ? sum(
+          nonFinancialWithValue.map((a) =>
+            toCadEquivalent(a.latestSnapshot!.netEquity, a.currency, usdToCad),
+          ),
+        )
+      : sum(nonFinancialWithValue.map((a) => a.latestSnapshot!.netEquity));
+
   const disnatPositionsValue = sum(
     enrichedPositions.map((p) =>
       usdToCad !== null
@@ -284,7 +304,7 @@ export async function getPortfolioSummary() {
         : p.disnatMarketValue,
     ),
   );
-  const totalValue = displayPositionsValue + cashValue + externalTotalCad;
+  const totalValue = displayPositionsValue + cashValue + externalTotalCad + nonFinancialTotalCad;
   const disnatLiveTotalValue = displayPositionsValue + cashValue;
 
   const driftVsDisnatPct =
@@ -361,6 +381,26 @@ export async function getPortfolioSummary() {
     ownerBreakdownMap.set(ownerKey, row);
   }
 
+  for (const a of nonFinancialWithValue) {
+    const ownerDisplay = sanitizePortfolioOwner(a.owner) ?? "Inconnu";
+    const ownerKey = portfolioOwnerKey(a.owner) ?? ownerDisplay.toLocaleLowerCase("fr-CA");
+    const row =
+      ownerBreakdownMap.get(ownerKey) ??
+      {
+        owner: ownerDisplay,
+        totalValue: 0,
+        cashValue: 0,
+        marketValue: 0,
+        accountCount: 0,
+      };
+    const v = a.latestSnapshot!.netEquity;
+    const add = usdToCad !== null ? toCadEquivalent(v, a.currency, usdToCad) : v;
+    row.totalValue += add;
+    row.marketValue += add;
+    row.accountCount++;
+    ownerBreakdownMap.set(ownerKey, row);
+  }
+
   const ownerBreakdown = [...ownerBreakdownMap.values()].map((data) => ({
     owner: data.owner,
     totalValue: data.totalValue,
@@ -414,7 +454,9 @@ export async function getPortfolioSummary() {
     disnatLiveTotalValue,
     disnatPositionsValue,
     externalTotalCad,
+    nonFinancialTotalCad,
     externalAccountsCount,
+    nonFinancialAssetsCount,
     externalAccountsBrief: externalWithValue.map((a) => ({
       id: a.id,
       displayLabel: a.displayLabel,
@@ -426,6 +468,22 @@ export async function getPortfolioSummary() {
         usdToCad !== null
           ? toCadEquivalent(a.latestSnapshot!.totalValue, a.currency, usdToCad)
           : a.latestSnapshot!.totalValue,
+      asOf: a.latestSnapshot!.asOfDate,
+    })),
+    nonFinancialAssetsBrief: nonFinancialWithValue.map((a) => ({
+      id: a.id,
+      assetKey: a.assetKey,
+      assetType: a.assetType,
+      displayLabel: a.displayLabel,
+      owner: a.owner,
+      currency: a.currency,
+      marketValueNative: a.latestSnapshot!.marketValue,
+      mortgageBalanceNative: a.latestSnapshot!.mortgageBalance,
+      netEquityNative: a.latestSnapshot!.netEquity,
+      netEquityCad:
+        usdToCad !== null
+          ? toCadEquivalent(a.latestSnapshot!.netEquity, a.currency, usdToCad)
+          : a.latestSnapshot!.netEquity,
       asOf: a.latestSnapshot!.asOfDate,
     })),
     driftVsDisnatPct,
@@ -471,7 +529,8 @@ export async function getConcentrationRisk() {
   if (
     summary.positionCount === 0 &&
     summary.accountCount === 0 &&
-    summary.externalAccountsCount === 0
+    summary.externalAccountsCount === 0 &&
+    summary.nonFinancialAssetsCount === 0
   ) {
     return {
       topWeight: 0,
@@ -922,7 +981,9 @@ function emptySummary() {
     displayPositionsValue: 0,
     disnatPositionsValue: 0,
     externalTotalCad: 0,
+    nonFinancialTotalCad: 0,
     externalAccountsCount: 0,
+    nonFinancialAssetsCount: 0,
     externalAccountsBrief: [] as {
       id: string;
       displayLabel: string;
@@ -931,6 +992,19 @@ function emptySummary() {
       currency: string;
       valueNative: number;
       valueCad: number;
+      asOf: Date;
+    }[],
+    nonFinancialAssetsBrief: [] as {
+      id: string;
+      assetKey: string;
+      assetType: "REAL_ESTATE" | "VEHICLE" | "PRIVATE_BUSINESS" | "OTHER";
+      displayLabel: string;
+      owner: string | null;
+      currency: string;
+      marketValueNative: number;
+      mortgageBalanceNative: number;
+      netEquityNative: number;
+      netEquityCad: number;
       asOf: Date;
     }[],
     driftVsDisnatPct: null as number | null,

@@ -69,6 +69,8 @@ export const ModelName = {
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
   ExternalAccountSnapshot: 'ExternalAccountSnapshot',
+  NonFinancialAsset: 'NonFinancialAsset',
+  NonFinancialAssetSnapshot: 'NonFinancialAssetSnapshot',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -387,6 +389,36 @@ export const ExternalAccountSnapshotScalarFieldEnum = {
 } as const
 
 export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
+
+
+export const NonFinancialAssetScalarFieldEnum = {
+  id: 'id',
+  assetKey: 'assetKey',
+  assetType: 'assetType',
+  displayLabel: 'displayLabel',
+  owner: 'owner',
+  currency: 'currency',
+  isActive: 'isActive',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NonFinancialAssetScalarFieldEnum = (typeof NonFinancialAssetScalarFieldEnum)[keyof typeof NonFinancialAssetScalarFieldEnum]
+
+
+export const NonFinancialAssetSnapshotScalarFieldEnum = {
+  id: 'id',
+  nonFinancialAssetId: 'nonFinancialAssetId',
+  asOfDate: 'asOfDate',
+  marketValue: 'marketValue',
+  mortgageBalance: 'mortgageBalance',
+  netEquity: 'netEquity',
+  notes: 'notes',
+  createdAt: 'createdAt'
+} as const
+
+export type NonFinancialAssetSnapshotScalarFieldEnum = (typeof NonFinancialAssetSnapshotScalarFieldEnum)[keyof typeof NonFinancialAssetSnapshotScalarFieldEnum]
 
 
 export const EodReportDeliveryScalarFieldEnum = {

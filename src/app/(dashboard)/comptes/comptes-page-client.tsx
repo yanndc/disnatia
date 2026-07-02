@@ -366,6 +366,8 @@ export type ComptesPageClientProps = {
   canShowDriftBanner: boolean;
   /** Snapshots comptes externes pour le récap (solde total déclaré, pas de ventilation Disnat). */
   externalRecapSnapshots: { currency: string; totalValue: number; asOf: string }[];
+  /** Snapshots actifs non-boursiers pour le récap (équité nette, sans P&L de séance). */
+  nonFinancialRecapSnapshots: { currency: string; totalValue: number; asOf: string }[];
   /** Disnat + hors Disnat en CAD lorsque le tout est convertible ; sinon `null`. */
   grandTotalPortfolioCad: number | null;
 };
@@ -398,6 +400,7 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
     singleDominant,
     canShowDriftBanner,
     externalRecapSnapshots,
+    nonFinancialRecapSnapshots,
     grandTotalPortfolioCad,
   } = props;
 
@@ -411,6 +414,17 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
   const extUsdTotalUsd = sum(extUsdSnaps.map((s) => s.totalValue));
   const extUsdTotalCad = usdToCad != null ? extUsdTotalUsd * usdToCad : null;
   const hasExternalRecap = externalRecapSnapshots.length > 0;
+
+  const nfCadSnaps = nonFinancialRecapSnapshots.filter(
+    (s) => normalizeCurrency(s.currency) === "CAD",
+  );
+  const nfUsdSnaps = nonFinancialRecapSnapshots.filter(
+    (s) => normalizeCurrency(s.currency) === "USD",
+  );
+  const nfCadTotalCad = sum(nfCadSnaps.map((s) => s.totalValue));
+  const nfUsdTotalUsd = sum(nfUsdSnaps.map((s) => s.totalValue));
+  const nfUsdTotalCad = usdToCad != null ? nfUsdTotalUsd * usdToCad : null;
+  const hasNonFinancialRecap = nonFinancialRecapSnapshots.length > 0;
 
   const dayTitresByAccountKey = new Map<string, AccountDayTitresPnLState>(
     Object.entries(dayTitresRecord),
@@ -554,6 +568,11 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
             <p className="mt-2 text-xs text-slate-500">
               Hors Disnat : solde total au dernier snapshot saisi (pas d’encaisse / titres séparés ni P&amp;L
               jour).
+            </p>
+          ) : null}
+          {hasNonFinancialRecap ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Actifs non-boursiers : équité nette (valeur − hypothèque) au dernier snapshot saisi.
             </p>
           ) : null}
           <div className="mt-3 overflow-x-auto">
@@ -708,9 +727,61 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
                     </td>
                   </tr>
                 ) : null}
+                {nfCadSnaps.length > 0 ? (
+                  <tr className="bg-amber-50/50 text-slate-800">
+                    <td className="py-2 pr-3 font-medium text-amber-900">
+                      Actifs non-boursiers (CAD)
+                      <span className="mt-0.5 block text-xs font-normal normal-case text-slate-500">
+                        équité nette
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    {showRecon ? (
+                      <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    ) : null}
+                    <DayTitresPnLTd
+                      state={emptyDayTitresState()}
+                      currency="CAD"
+                      density="compact"
+                    />
+                    <td className="pl-2 py-2 text-right tabular-nums font-medium text-amber-950">
+                      {formatCurrency(nfCadTotalCad, "CAD")}
+                    </td>
+                  </tr>
+                ) : null}
+                {nfUsdSnaps.length > 0 ? (
+                  <tr className="bg-amber-50/50 text-slate-800">
+                    <td className="py-2 pr-3 font-medium text-amber-900">
+                      Actifs non-boursiers (USD)
+                      <span className="mt-0.5 block text-xs font-normal normal-case text-slate-500">
+                        équité nette → CAD si taux dispo.
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    {showRecon ? (
+                      <td className="px-2 py-2 text-right text-slate-400">—</td>
+                    ) : null}
+                    <DayTitresPnLTd
+                      state={emptyDayTitresState()}
+                      currency="CAD"
+                      density="compact"
+                    />
+                    <td className="pl-2 py-2 text-right tabular-nums font-medium text-amber-950">
+                      {nfUsdTotalCad != null ? (
+                        formatCurrency(nfUsdTotalCad, "CAD")
+                      ) : (
+                        <span className="text-slate-400" title="Taux USD→CAD manquant">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ) : null}
                 <tr className="border-t border-slate-300 bg-white/70 font-semibold text-slate-950">
                   <td className="py-2 pr-3">
-                    {hasExternalRecap ? "Total Disnat (CAD)" : "Total en CAD"}
+                    {hasExternalRecap || hasNonFinancialRecap ? "Total Disnat (CAD)" : "Total en CAD"}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums">
                     {consEncaisse != null ? (
@@ -768,10 +839,10 @@ export function ComptesPageClient(props: ComptesPageClientProps) {
               </tbody>
             </table>
           </div>
-          {hasExternalRecap && grandTotalPortfolioCad === null ? (
+          {(hasExternalRecap || hasNonFinancialRecap) && grandTotalPortfolioCad === null ? (
             <p className="mt-2 text-xs text-amber-800">
-              Total portefeuille indisponible : le taux USD→CAD est requis pour additionner les snapshots
-              externes en dollars US aux totaux Disnat en CAD.
+              Total portefeuille indisponible : le taux USD→CAD est requis pour additionner les
+              montants USD (externes ou actifs non-boursiers) aux totaux Disnat en CAD.
             </p>
           ) : null}
         </div>

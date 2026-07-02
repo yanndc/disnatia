@@ -167,6 +167,17 @@ Le format Disnat peut varier selon le type d'export. La V1 sépare les lignes de
 - `/positions`: table triable et recherchable du dernier import
 - `/insights`: chat IA avec outils serveur portefeuille
 
+## Actifs non-boursiers (patrimoine)
+
+Disnatia supporte aussi des actifs non-boursiers (ex. maison) via snapshots manuels.
+
+- Saisie: onglet `Actifs non-boursiers` dans `/imports`
+- Données: valeur marchande + hypothèque, équité nette = `valeur - hypothèque`
+- Agrégation: l’équité nette est incluse dans le patrimoine total (`/overview` et `/comptes`)
+- Performance: ces actifs sont exclus des calculs de rendement portefeuille (TWR/Dietz)
+
+Objectif: séparer clairement la lecture “patrimoine retraite” de la lecture “performance des placements”.
+
 ## Limites connues V1
 
 - Pas de comptes utilisateurs multi-tenant ; verrouillage site optionnel via `SITE_ACCESS_PASSWORD` uniquement.

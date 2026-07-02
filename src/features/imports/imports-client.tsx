@@ -19,6 +19,10 @@ import {
   ExternalAccountsPanel,
   type ExternalAccountDto,
 } from "@/features/imports/external-accounts-panel";
+import {
+  NonFinancialAssetsPanel,
+  type NonFinancialAssetDto,
+} from "@/features/imports/non-financial-assets-panel";
 import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
 import type { PerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-types";
 import { cn } from "@/lib/utils";
@@ -40,7 +44,7 @@ const importSchema = z.object({
 
 type ImportForm = z.infer<typeof importSchema>;
 
-type ImportsTab = "external" | "disnat" | "reconciliation" | "followup";
+type ImportsTab = "external" | "assets" | "disnat" | "reconciliation" | "followup";
 
 /** Plage d’années civiles couverte par les dates d’opération du fichier (min / max). L’horodatage d’import est affiché à part, sans répéter son année ici. */
 function dataYearsInFileLabel(dataFromIso: string | null, dataToIso: string | null): string {
@@ -63,6 +67,7 @@ export function ImportsClient({
   initialReconciliationPayload,
   initialImports,
   initialExternalAccounts,
+  initialNonFinancialAssets,
 }: {
   initialTab?: ImportsTab;
   initialReconciliationPayload: PerformanceIndicatorPayload | null;
@@ -81,6 +86,7 @@ export function ImportsClient({
     linkedAccountKeys: string[];
   }[];
   initialExternalAccounts: ExternalAccountDto[];
+  initialNonFinancialAssets: NonFinancialAssetDto[];
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ParsedDisnatRow[]>([]);
@@ -378,6 +384,7 @@ export function ImportsClient({
         {(
           [
             { id: "external" as const, label: "Comptes hors Disnat" },
+            { id: "assets" as const, label: "Actifs non-boursiers" },
             { id: "disnat" as const, label: "Fichier Disnat" },
             { id: "reconciliation" as const, label: "Réconciliation" },
             { id: "followup" as const, label: "Historique et recalcul" },
@@ -401,6 +408,10 @@ export function ImportsClient({
 
       {tab === "external" ? (
         <ExternalAccountsPanel initialAccounts={initialExternalAccounts} />
+      ) : null}
+
+      {tab === "assets" ? (
+        <NonFinancialAssetsPanel initialAssets={initialNonFinancialAssets} />
       ) : null}
 
       {tab === "disnat" ? (

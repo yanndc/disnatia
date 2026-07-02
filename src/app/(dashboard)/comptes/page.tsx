@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { listExternalAccountsWithLatest } from "@/features/portfolio/external-accounts-queries";
+import { listNonFinancialAssetsWithLatest } from "@/features/portfolio/non-financial-assets-queries";
 import type { EnrichedPosition } from "@/features/portfolio/live-enrichment";
 import { getAccountsWithStats, getAllPositions } from "@/features/portfolio/queries";
 import { getLatestUsdCadRate } from "@/lib/fx/latest-usd-cad-rate";
@@ -37,13 +38,18 @@ function toCadEquivalent(value: number, currency: string, usdToCad: number): num
 }
 
 export default async function ComptesPage() {
-  const [accounts, externalAccounts, positions] = await Promise.all([
+  const [accounts, externalAccounts, nonFinancialAssets, positions] = await Promise.all([
     getAccountsWithStats().catch(() => []),
     listExternalAccountsWithLatest().catch(() => []),
+    listNonFinancialAssetsWithLatest().catch(() => []),
     getAllPositions().catch(() => []),
   ]);
 
-  if (accounts.length === 0 && externalAccounts.length === 0) {
+  const nonFinancialWithValue = nonFinancialAssets.filter(
+    (a) => a.isActive && a.latestSnapshot,
+  );
+
+  if (accounts.length === 0 && externalAccounts.length === 0 && nonFinancialWithValue.length === 0) {
     return (
       <Card>
         <CardContent className="flex min-h-80 flex-col items-center justify-center text-center">
@@ -54,7 +60,7 @@ export default async function ComptesPage() {
             <Link href="/imports" className="underline-offset-2 hover:underline">
               compte externe
             </Link>{" "}
-            (REER collectif, autre assureur) avec des snapshots manuels.
+            ou un actif non-boursier (maison, etc.) avec des snapshots manuels.
           </p>
           <Link
             href="/imports"
@@ -133,6 +139,73 @@ export default async function ComptesPage() {
       </Card>
     ) : null;
 
+  const nonFinancialAssetsSection =
+    nonFinancialWithValue.length > 0 ? (
+      <Card>
+        <CardContent className="p-0">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h3 className="text-base font-semibold text-slate-950">Actifs non-boursiers</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Snapshots sur la page{" "}
+              <Link href="/imports" className="text-amber-700 underline-offset-2 hover:underline">
+                Imports
+              </Link>
+              .
+            </p>
+          </div>
+          <div className="overflow-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-4 py-2">Libellé</th>
+                  <th className="px-4 py-2">Propriétaire</th>
+                  <th className="px-4 py-2">Devise</th>
+                  <th className="px-4 py-2 text-right">Valeur</th>
+                  <th className="px-4 py-2 text-right">Hypothèque</th>
+                  <th className="px-4 py-2 text-right">Équité nette</th>
+                  <th className="px-4 py-2 text-right">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {nonFinancialWithValue.map((asset) => (
+                  <tr key={asset.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2 font-medium text-slate-800">{asset.displayLabel}</td>
+                    <td className="px-4 py-2 text-slate-700">
+                      {asset.owner?.trim()
+                        ? (sanitizePortfolioOwner(asset.owner) ?? asset.owner.trim())
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {asset.currency}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {formatCurrency(asset.latestSnapshot!.marketValue, asset.currency)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {formatCurrency(asset.latestSnapshot!.mortgageBalance, asset.currency)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums font-medium">
+                      {formatCurrency(asset.latestSnapshot!.netEquity, asset.currency)}
+                    </td>
+                    <td className="px-4 py-2 text-right text-xs text-slate-500">
+                      {asset.latestSnapshot
+                        ? asset.latestSnapshot.asOfDate.toLocaleDateString("fr-CA")
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+            Ces montants servent au patrimoine net, pas au rendement portefeuille.
+          </p>
+        </CardContent>
+      </Card>
+    ) : null;
+
   if (accounts.length === 0) {
     return (
       <div className="space-y-6">
@@ -151,6 +224,7 @@ export default async function ComptesPage() {
           </CardContent>
         </Card>
         {externalAccountsSection}
+        {nonFinancialAssetsSection}
       </div>
     );
   }
@@ -284,10 +358,33 @@ export default async function ComptesPage() {
     }
   }
 
+  let nonFinancialTotalCadOnly: number | null = null;
+  if (nonFinancialWithValue.length > 0) {
+    if (usdToCad != null) {
+      nonFinancialTotalCadOnly = sum(
+        nonFinancialWithValue.map((a) =>
+          toCadEquivalent(a.latestSnapshot!.netEquity, a.currency, usdToCad),
+        ),
+      );
+    } else if (nonFinancialWithValue.every((a) => normalizeCurrency(a.currency) === "CAD")) {
+      nonFinancialTotalCadOnly = sum(nonFinancialWithValue.map((a) => a.latestSnapshot!.netEquity));
+    }
+  }
+
+  const addOns = [externalTotalCadOnly, nonFinancialTotalCadOnly].filter(
+    (v): v is number => v !== null,
+  );
+  const hasAnyAddOn = extWithSnap.length > 0 || nonFinancialWithValue.length > 0;
   const grandTotalPortfolioCad =
-    extWithSnap.length > 0 && consTotal != null && externalTotalCadOnly != null
-      ? consTotal + externalTotalCadOnly
+    hasAnyAddOn && consTotal != null && addOns.length === (extWithSnap.length > 0 ? 1 : 0) + (nonFinancialWithValue.length > 0 ? 1 : 0)
+      ? consTotal + sum(addOns)
       : null;
+
+  const nonFinancialRecapSnapshots = nonFinancialWithValue.map((a) => ({
+    currency: a.currency,
+    totalValue: a.latestSnapshot!.netEquity,
+    asOf: a.latestSnapshot!.asOfDate.toISOString(),
+  }));
 
   return (
     <div className="space-y-6">
@@ -318,9 +415,11 @@ export default async function ComptesPage() {
         singleDominant={singleDominant}
         canShowDriftBanner={canShowDriftBanner}
         externalRecapSnapshots={externalRecapSnapshots}
+        nonFinancialRecapSnapshots={nonFinancialRecapSnapshots}
         grandTotalPortfolioCad={grandTotalPortfolioCad}
       />
       {externalAccountsSection}
+      {nonFinancialAssetsSection}
     </div>
   );
 }

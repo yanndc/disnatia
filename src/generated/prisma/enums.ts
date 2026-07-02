@@ -59,3 +59,13 @@ export const MessageRole = {
 } as const
 
 export type MessageRole = (typeof MessageRole)[keyof typeof MessageRole]
+
+
+export const NonFinancialAssetType = {
+  REAL_ESTATE: 'REAL_ESTATE',
+  VEHICLE: 'VEHICLE',
+  PRIVATE_BUSINESS: 'PRIVATE_BUSINESS',
+  OTHER: 'OTHER'
+} as const
+
+export type NonFinancialAssetType = (typeof NonFinancialAssetType)[keyof typeof NonFinancialAssetType]

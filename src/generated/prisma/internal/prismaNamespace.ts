@@ -402,6 +402,8 @@ export const ModelName = {
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
   ExternalAccountSnapshot: 'ExternalAccountSnapshot',
+  NonFinancialAsset: 'NonFinancialAsset',
+  NonFinancialAssetSnapshot: 'NonFinancialAssetSnapshot',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -418,7 +420,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "eodReportDelivery"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1754,6 +1756,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    NonFinancialAsset: {
+      payload: Prisma.$NonFinancialAssetPayload<ExtArgs>
+      fields: Prisma.NonFinancialAssetFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NonFinancialAssetFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NonFinancialAssetFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>
+        }
+        findFirst: {
+          args: Prisma.NonFinancialAssetFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NonFinancialAssetFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>
+        }
+        findMany: {
+          args: Prisma.NonFinancialAssetFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>[]
+        }
+        create: {
+          args: Prisma.NonFinancialAssetCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>
+        }
+        createMany: {
+          args: Prisma.NonFinancialAssetCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NonFinancialAssetCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>[]
+        }
+        delete: {
+          args: Prisma.NonFinancialAssetDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>
+        }
+        update: {
+          args: Prisma.NonFinancialAssetUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>
+        }
+        deleteMany: {
+          args: Prisma.NonFinancialAssetDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NonFinancialAssetUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NonFinancialAssetUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>[]
+        }
+        upsert: {
+          args: Prisma.NonFinancialAssetUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetPayload>
+        }
+        aggregate: {
+          args: Prisma.NonFinancialAssetAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNonFinancialAsset>
+        }
+        groupBy: {
+          args: Prisma.NonFinancialAssetGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NonFinancialAssetGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NonFinancialAssetCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NonFinancialAssetCountAggregateOutputType> | number
+        }
+      }
+    }
+    NonFinancialAssetSnapshot: {
+      payload: Prisma.$NonFinancialAssetSnapshotPayload<ExtArgs>
+      fields: Prisma.NonFinancialAssetSnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NonFinancialAssetSnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NonFinancialAssetSnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.NonFinancialAssetSnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NonFinancialAssetSnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.NonFinancialAssetSnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.NonFinancialAssetSnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.NonFinancialAssetSnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NonFinancialAssetSnapshotCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>[]
+        }
+        delete: {
+          args: Prisma.NonFinancialAssetSnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>
+        }
+        update: {
+          args: Prisma.NonFinancialAssetSnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.NonFinancialAssetSnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NonFinancialAssetSnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NonFinancialAssetSnapshotUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>[]
+        }
+        upsert: {
+          args: Prisma.NonFinancialAssetSnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NonFinancialAssetSnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.NonFinancialAssetSnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNonFinancialAssetSnapshot>
+        }
+        groupBy: {
+          args: Prisma.NonFinancialAssetSnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NonFinancialAssetSnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NonFinancialAssetSnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NonFinancialAssetSnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
     EodReportDelivery: {
       payload: Prisma.$EodReportDeliveryPayload<ExtArgs>
       fields: Prisma.EodReportDeliveryFieldRefs
@@ -2168,6 +2318,36 @@ export const ExternalAccountSnapshotScalarFieldEnum = {
 export type ExternalAccountSnapshotScalarFieldEnum = (typeof ExternalAccountSnapshotScalarFieldEnum)[keyof typeof ExternalAccountSnapshotScalarFieldEnum]
 
 
+export const NonFinancialAssetScalarFieldEnum = {
+  id: 'id',
+  assetKey: 'assetKey',
+  assetType: 'assetType',
+  displayLabel: 'displayLabel',
+  owner: 'owner',
+  currency: 'currency',
+  isActive: 'isActive',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NonFinancialAssetScalarFieldEnum = (typeof NonFinancialAssetScalarFieldEnum)[keyof typeof NonFinancialAssetScalarFieldEnum]
+
+
+export const NonFinancialAssetSnapshotScalarFieldEnum = {
+  id: 'id',
+  nonFinancialAssetId: 'nonFinancialAssetId',
+  asOfDate: 'asOfDate',
+  marketValue: 'marketValue',
+  mortgageBalance: 'mortgageBalance',
+  netEquity: 'netEquity',
+  notes: 'notes',
+  createdAt: 'createdAt'
+} as const
+
+export type NonFinancialAssetSnapshotScalarFieldEnum = (typeof NonFinancialAssetSnapshotScalarFieldEnum)[keyof typeof NonFinancialAssetSnapshotScalarFieldEnum]
+
+
 export const EodReportDeliveryScalarFieldEnum = {
   sessionDate: 'sessionDate',
   sentAt: 'sentAt',
@@ -2377,6 +2557,20 @@ export type EnumMessageRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$Pris
 export type ListEnumMessageRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'MessageRole[]'>
     
 
+
+/**
+ * Reference to a field of type 'NonFinancialAssetType'
+ */
+export type EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NonFinancialAssetType'>
+    
+
+
+/**
+ * Reference to a field of type 'NonFinancialAssetType[]'
+ */
+export type ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NonFinancialAssetType[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -2505,6 +2699,8 @@ export type GlobalOmitConfig = {
   usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
   externalPortfolioAccount?: Prisma.ExternalPortfolioAccountOmit
   externalAccountSnapshot?: Prisma.ExternalAccountSnapshotOmit
+  nonFinancialAsset?: Prisma.NonFinancialAssetOmit
+  nonFinancialAssetSnapshot?: Prisma.NonFinancialAssetSnapshotOmit
   eodReportDelivery?: Prisma.EodReportDeliveryOmit
 }
 

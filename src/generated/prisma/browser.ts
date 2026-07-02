@@ -123,6 +123,18 @@ export type ExternalPortfolioAccount = Prisma.ExternalPortfolioAccountModel
  */
 export type ExternalAccountSnapshot = Prisma.ExternalAccountSnapshotModel
 /**
+ * Model NonFinancialAsset
+ * *
+ *  * Actif non-boursier (ex. résidence principale) valorisé par snapshots manuels.
+ *  * Utilisé pour le patrimoine net, sans l'inclure dans les rendements portefeuille.
+ */
+export type NonFinancialAsset = Prisma.NonFinancialAssetModel
+/**
+ * Model NonFinancialAssetSnapshot
+ * 
+ */
+export type NonFinancialAssetSnapshot = Prisma.NonFinancialAssetSnapshotModel
+/**
  * Model EodReportDelivery
  * Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
  */
