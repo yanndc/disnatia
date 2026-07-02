@@ -173,9 +173,11 @@ function asOfAtTorontoMidday(isoDate: string): string {
 export function PerformanceIndicatorCard({
   payload,
   showReconciliationDetails = false,
+  filtersOnly = false,
 }: {
   payload: PerformanceIndicatorPayload;
   showReconciliationDetails?: boolean;
+  filtersOnly?: boolean;
 }) {
   const [filters, setFilters] = useState<PerformanceFilterState>(() => {
     const base = defaultPerformanceFilters(payload);
@@ -866,6 +868,8 @@ export function PerformanceIndicatorCard({
             </div>
           ) : null}
 
+          {!filtersOnly ? (
+            <>
           {/* Hero + matrice périodes */}
           <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
@@ -1155,6 +1159,8 @@ export function PerformanceIndicatorCard({
               </button>
             ))}
           </div>
+            </>
+          ) : null}
         </div>
       </CardContent>
     </Card>

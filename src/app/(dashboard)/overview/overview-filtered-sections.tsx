@@ -253,9 +253,7 @@ export function OverviewFilteredSections({
 
   return (
     <div className="space-y-8">
-      <OverviewSection title="Performance" description="Rendement et variation par période (source de filtres globale)">
-        <PerformanceIndicatorCard payload={payload} />
-      </OverviewSection>
+      <PerformanceIndicatorCard payload={payload} filtersOnly />
 
       <OverviewSection title="Allocation" description="Répartition du portefeuille pour le périmètre filtré">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
