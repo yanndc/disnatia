@@ -86,7 +86,7 @@ export function PortfolioCompositionKpiCard({
       <CardContent>
         {total > 0 ? (
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-            <div className="mx-auto h-40 w-40 shrink-0 sm:mx-0">
+            <div className="mx-auto h-40 w-40 shrink-0 xl:mx-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
