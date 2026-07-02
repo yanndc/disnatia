@@ -17,6 +17,7 @@ import type {
   SessionTickerRow,
   SessionTickerView,
 } from "@/features/portfolio/session-ticker-report-queries";
+import { formatTorontoCalendarDate } from "@/lib/market/equity-session";
 import { formatCurrency, formatCurrencyDetailed, formatPercent } from "@/lib/utils";
 
 const palette = {
@@ -155,14 +156,7 @@ function formatGain(value: number | null, pct: number | null): string {
 }
 
 function formatSessionDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString("fr-CA", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "America/Toronto",
-  });
+  return formatTorontoCalendarDate(iso);
 }
 
 function periodKpiCell(period: PerformancePeriodResult) {

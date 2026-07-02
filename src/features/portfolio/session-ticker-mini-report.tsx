@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn, formatCurrency, formatCurrencyDetailed } from "@/lib/utils";
 import {
+  formatTorontoCalendarDate,
   nextTradingDayIso,
   previousTradingDayIso,
 } from "@/lib/market/equity-session";
@@ -35,14 +36,7 @@ function toastClasses(variant: InlineToast["variant"]): string {
 }
 
 function formatSessionDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString("fr-CA", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "America/Toronto",
-  });
+  return formatTorontoCalendarDate(iso);
 }
 
 function sumDayGainCad(rows: SessionTickerRow[]): number {

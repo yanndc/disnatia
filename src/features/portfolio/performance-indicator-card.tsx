@@ -645,149 +645,144 @@ export function PerformanceIndicatorCard({
           {!hideFiltersHeader ? (
             <>
           {/* En-tête + filtres portée */}
-          <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-                <Activity className="size-5" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold tracking-tight">
-                    Performance dynamique
-                  </h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cyan-700 ring-1 ring-cyan-100">
-                    <Sparkles className="size-3" />
-                    Live
+          <div className="border-b border-slate-200 p-5 sm:p-6">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-semibold tracking-tight">
+                  Filtres dynamiques
+                </h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cyan-700 ring-1 ring-cyan-100">
+                  <Sparkles className="size-3" />
+                  Live
+                </span>
+                {ownerScoped ? (
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-200">
+                    Portefeuille partiel
                   </span>
-                  {ownerScoped ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-200">
-                      Portefeuille partiel
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-sm text-slate-500">
-                  Gains et pertes en $ et % · filtres par période, portée et comptes
-                </p>
-                {!payload.performanceSnapshots && !payload.sessionDataHealth.ok ? (
-                  <p className="mt-1 text-xs text-amber-700">
-                    {payload.sessionDataHealth.message ??
-                      "Historique de séance incomplet — indicateurs indisponibles."}
-                  </p>
                 ) : null}
               </div>
-            </div>
+              <p className="text-sm text-slate-500">
+                Choisis la période, la portée et les comptes. Les indicateurs en dessous suivent ce périmètre.
+              </p>
+              {!payload.performanceSnapshots && !payload.sessionDataHealth.ok ? (
+                <p className="text-xs text-amber-700">
+                  {payload.sessionDataHealth.message ??
+                    "Historique de séance incomplet — indicateurs indisponibles."}
+                </p>
+              ) : null}
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-xl bg-slate-100 p-1 ring-1 ring-slate-200">
-                {(Object.keys(PRESET_LABELS) as PerformanceScopePreset[]).map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() =>
-                      updateFilters({
-                        preset,
-                        includedAccountKeys: preset === "custom" ? filters.includedAccountKeys : [],
-                        excludedAccountKeys: preset === "all" ? [] : filters.excludedAccountKeys,
-                      })
+              <div className="flex w-full flex-wrap items-center gap-2">
+                <div className="flex rounded-xl bg-slate-100 p-1 ring-1 ring-slate-200">
+                  {(Object.keys(PRESET_LABELS) as PerformanceScopePreset[]).map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() =>
+                        updateFilters({
+                          preset,
+                          includedAccountKeys: preset === "custom" ? filters.includedAccountKeys : [],
+                          excludedAccountKeys: preset === "all" ? [] : filters.excludedAccountKeys,
+                        })
+                      }
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                        filters.preset === preset
+                          ? "bg-white text-slate-950 shadow-sm"
+                          : "text-slate-600 hover:bg-white hover:text-slate-950"
+                      }`}
+                    >
+                      {PRESET_LABELS[preset]}
+                    </button>
+                  ))}
+                </div>
+
+                {owners.length > 1 ? (
+                  <select
+                    value={filters.owner ?? ""}
+                    onChange={(e) =>
+                      updateFilters({ owner: e.target.value || null })
                     }
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                      filters.preset === preset
-                        ? "bg-white text-slate-950 shadow-sm"
-                        : "text-slate-600 hover:bg-white hover:text-slate-950"
-                    }`}
+                    className="min-w-52 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:ring-cyan-400/50"
                   >
-                    {PRESET_LABELS[preset]}
-                  </button>
-                ))}
-              </div>
+                    <option value="">Tous propriétaires</option>
+                    {owners.map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
 
-              {owners.length > 1 ? (
-                <select
-                  value={filters.owner ?? ""}
-                  onChange={(e) =>
-                    updateFilters({ owner: e.target.value || null })
-                  }
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:ring-cyan-400/50"
-                >
-                  <option value="">Tous propriétaires</option>
-                  {owners.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
+                {portfolios.length > 0 ? (
+                  <select
+                    value={filters.portfolioKey ?? ""}
+                    onChange={(e) =>
+                      updateFilters({ portfolioKey: e.target.value || null })
+                    }
+                    className="min-w-52 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:ring-cyan-400/50"
+                  >
+                    <option value="">Tous portefeuilles</option>
+                    {portfolios.map((p) => (
+                      <option key={p.portfolioKey} value={p.portfolioKey}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
 
-              {portfolios.length > 0 ? (
-                <select
-                  value={filters.portfolioKey ?? ""}
-                  onChange={(e) =>
-                    updateFilters({ portfolioKey: e.target.value || null })
-                  }
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:ring-cyan-400/50"
-                >
-                  <option value="">Tous portefeuilles</option>
-                  {portfolios.map((p) => (
-                    <option key={p.portfolioKey} value={p.portfolioKey}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
-                onClick={createPortfolioScope}
-                disabled={isSavingScope}
-              >
-                <FolderPlus className="size-4" />
-                {isSavingScope ? "Création..." : "Sauver portée"}
-              </Button>
-
-              {selectedPortfolio?.kind === "CUSTOM" ? (
                 <Button
                   type="button"
                   variant="ghost"
                   className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
-                  onClick={renameSelectedPortfolioScope}
-                  disabled={isRenamingScope}
+                  onClick={createPortfolioScope}
+                  disabled={isSavingScope}
                 >
-                  <Pencil className="size-4" />
-                  {isRenamingScope ? "Renommage..." : "Renommer"}
+                  <FolderPlus className="size-4" />
+                  {isSavingScope ? "Création..." : "Sauver portée"}
                 </Button>
-              ) : null}
 
-              {selectedPortfolio?.kind === "CUSTOM" ? (
+                {selectedPortfolio?.kind === "CUSTOM" ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-9 gap-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+                    onClick={renameSelectedPortfolioScope}
+                    disabled={isRenamingScope}
+                  >
+                    <Pencil className="size-4" />
+                    {isRenamingScope ? "Renommage..." : "Renommer"}
+                  </Button>
+                ) : null}
+
+                {selectedPortfolio?.kind === "CUSTOM" ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-9 gap-2 rounded-xl border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                    onClick={archiveSelectedPortfolioScope}
+                    disabled={isArchivingScope}
+                  >
+                    <Archive className="size-4" />
+                    {isArchivingScope ? "Archivage..." : "Archiver"}
+                  </Button>
+                ) : null}
+
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-9 gap-2 rounded-xl border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                  onClick={archiveSelectedPortfolioScope}
-                  disabled={isArchivingScope}
+                  className={`h-9 gap-2 rounded-xl border bg-white hover:bg-slate-50 hover:text-slate-950 ${
+                    ownerScoped
+                      ? "border-emerald-200 text-emerald-800"
+                      : "border-slate-200 text-slate-700"
+                  }`}
+                  onClick={() => setScopeOpen((v) => !v)}
                 >
-                  <Archive className="size-4" />
-                  {isArchivingScope ? "Archivage..." : "Archiver"}
+                  <Filter className="size-4" />
+                  {scopeSummary}
+                  <ChevronDown
+                    className={`size-4 transition ${scopeOpen ? "rotate-180" : ""}`}
+                  />
                 </Button>
-              ) : null}
-
-              <Button
-                type="button"
-                variant="ghost"
-                className={`h-9 gap-2 rounded-xl border bg-white hover:bg-slate-50 hover:text-slate-950 ${
-                  ownerScoped
-                    ? "border-emerald-200 text-emerald-800"
-                    : "border-slate-200 text-slate-700"
-                }`}
-                onClick={() => setScopeOpen((v) => !v)}
-              >
-                <Filter className="size-4" />
-                {scopeSummary}
-                <ChevronDown
-                  className={`size-4 transition ${scopeOpen ? "rotate-180" : ""}`}
-                />
-              </Button>
+              </div>
             </div>
           </div>
 

@@ -1,5 +1,3 @@
-import { subDays } from "date-fns";
-
 const TORONTO_TZ = "America/Toronto";
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -143,6 +141,17 @@ export function isTradingDay(now: Date): boolean {
 /** Jour ouvré pour une date ISO `YYYY-MM-DD` (calendrier Toronto). */
 export function isTradingDayDate(isoDate: string): boolean {
   return isTradingDayIso(isoDate);
+}
+
+/** Formate une date de séance ISO sans dépendre du fuseau du process. */
+export function formatTorontoCalendarDate(iso: string, locale = "fr-CA"): string {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: TORONTO_TZ,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parseIsoCalendarDate(iso));
 }
 
 /** Séance actions en cours (lun–ven, 9 h 30–16 h, heure de Toronto). */
