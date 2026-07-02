@@ -738,8 +738,8 @@ function resolveAccountEmvTitresCad(
   endDate: string,
 ): number | null {
   const hist =
-    titresCadFullCoverageAtOrBefore([accountKey], payload, endDate)?.valueCad ??
     titresCadAtPeriodEnd([accountKey], payload, endDate)?.valueCad ??
+    titresCadFullCoverageAtOrBefore([accountKey], payload, endDate)?.valueCad ??
     null;
   if (hist != null) return hist;
   const live = payload.currentByAccount[accountKey]?.positionsCad ?? 0;
@@ -809,58 +809,6 @@ function resolveAccountReferenceTitresCad(
   );
 }
 
-/** Seuil : historique du jour quasi-live → ancrage import clôture veille (AAJ $). */
-const DISNAT_YTD_SAME_DAY_HIST_MAX_GAP_RATIO = 0.002;
-
-/**
- * Historique « projeté » pour le gain $ AAJ : en séance, si l'historique du jour
- * est quasi-live, ancrage sur le dernier import (clôture précédente).
- */
-function resolveDisnatYtdHistCad(
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): number | null {
-  const now = sessionClockForBounds(payload.asOfNow);
-  const refDay = referenceTradingSessionDayIso(now);
-  const inLiveSession =
-    isEquityMarketSessionOpen(now) || isBeforeTodaySessionOpen(now);
-  const sameDayHist = resolveAccountEmvTitresCad(accountKey, payload, endDate);
-  const live = payload.currentByAccount[accountKey]?.positionsCad;
-
-  if (
-    inLiveSession &&
-    endDate >= refDay &&
-    live != null &&
-    live > 0 &&
-    sameDayHist != null &&
-    Math.abs(live - sameDayHist) / live <= DISNAT_YTD_SAME_DAY_HIST_MAX_GAP_RATIO
-  ) {
-    return resolveAccountEmvTitresCad(
-      accountKey,
-      payload,
-      previousTradingDayIso(endDate, 1),
-    );
-  }
-
-  return sameDayHist;
-}
-
-/**
- * Gain $ Disnat (tableau portefeuille, colonne AAJ) = valeur titres de référence
- * − historique projeté à la fin de période. Le % reste TWR/Dietz sur les séances.
- */
-function accountDisnatYtdGainCad(
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): number | null {
-  const refCad = resolveAccountReferenceTitresCad(accountKey, payload, endDate);
-  const histCad = resolveDisnatYtdHistCad(accountKey, payload, endDate);
-  if (refCad == null || histCad == null) return null;
-  return refCad - histCad;
-}
-
 /** Gain $ titres classique = EMV − BMV − flux (séance, mois, total, etc.). */
 function accountLegacyTitresGainCad(
   accountKey: string,
@@ -890,7 +838,7 @@ function accountLegacyTitresGainCad(
   return emvCad - bmvCadForGain - sumFlows;
 }
 
-/** Gain $ affiché = Σ par compte (AAJ Disnat ou legacy selon période). */
+/** Gain $ affiché = Σ par compte sur la période (EMV − BMV − flux). */
 function sumPerAccountDisplayGainCad(
   materialKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -915,10 +863,7 @@ function sumPerAccountDisplayGainCad(
             (g) => g.date >= bounds.start && g.date <= bounds.end,
           );
 
-    const dollars =
-      periodId === "ytd"
-        ? accountDisnatYtdGainCad(key, payload, bounds.end)
-        : accountLegacyTitresGainCad(key, payload, bounds);
+    const dollars = accountLegacyTitresGainCad(key, payload, bounds);
 
     if (dollars == null || !Number.isFinite(dollars)) {
       incomplete = true;
@@ -929,7 +874,11 @@ function sumPerAccountDisplayGainCad(
     count++;
 
     const bmv = accountBmvTitresCad(key, payload, bounds.start, lookup);
-    if (sessions.length === 0) incomplete = true;
+    // En 3 ans / total, l'absence de sessions sur un compte ne rend pas
+    // forcément le résultat partiel si les bornes titres sont complètes.
+    if (sessions.length === 0 && periodId !== "year3" && periodId !== "all") {
+      incomplete = true;
+    }
     if (bmv && bmv.asOf > latestAllowedFirstSessionDate(bounds.start)) {
       incomplete = true;
     }
@@ -1194,7 +1143,7 @@ export function resolveSessionChainGainPct(
   };
 }
 
-/** $ affiché : AAJ = formule Disnat ; autres périodes = $ cohérent avec le %. */
+/** $ affiché : montant de période privilégié selon la meilleure couverture. */
 function pickPeriodGainCad(params: {
   ret: PeriodReturnPercent;
   displayGainCad: number | null;

@@ -98,19 +98,32 @@ const PERIOD_ORDER: PerformancePeriodId[] = [
   "all",
 ];
 
+const MONEY_DISPLAY_EPSILON = 0.005;
+const PCT_DISPLAY_EPSILON = 0.005;
+
+function normalizeMoneyDisplay(value: number): number {
+  return Math.abs(value) < MONEY_DISPLAY_EPSILON ? 0 : value;
+}
+
+function normalizePctDisplay(value: number): number {
+  return Math.abs(value) < PCT_DISPLAY_EPSILON ? 0 : value;
+}
+
 function formatGain(value: number | null, compact = false): string {
   if (value === null) return "—";
-  const prefix = value > 0 ? "+" : "";
-  if (compact && Math.abs(value) >= 100_000) {
-    return `${prefix}${(value / 1000).toFixed(1)}k $`;
+  const normalized = normalizeMoneyDisplay(value);
+  const prefix = normalized > 0 ? "+" : "";
+  if (compact && Math.abs(normalized) >= 100_000) {
+    return `${prefix}${(normalized / 1000).toFixed(1)}k $`;
   }
-  return `${prefix}${formatCurrency(value, "CAD")}`;
+  return `${prefix}${formatCurrency(normalized, "CAD")}`;
 }
 
 function formatGainPct(value: number | null, annualized = false): string {
   if (value === null) return "—";
-  const prefix = value > 0 ? "+" : "";
-  return `${prefix}${formatPercent(value)}${annualized ? "/an" : ""}`;
+  const normalized = normalizePctDisplay(value);
+  const prefix = normalized > 0 ? "+" : "";
+  return `${prefix}${formatPercent(normalized)}${annualized ? "/an" : ""}`;
 }
 
 type ReconciliationRow = {
@@ -190,6 +203,8 @@ export function PerformanceIndicatorCard({
     () => computePeriodResultWithSnapshots(payload, filters, filters.activePeriod),
     [payload, filters],
   );
+  const activeGainCadDisplay =
+    active.gainCad === null ? null : normalizeMoneyDisplay(active.gainCad);
 
   const reportDates = useMemo(() => {
     const unique = new Set<string>();
@@ -657,9 +672,9 @@ export function PerformanceIndicatorCard({
               </div>
 
               <div className="mt-3 flex items-end gap-3">
-                {active.gainCad !== null && active.gainCad >= 0 ? (
+                {activeGainCadDisplay !== null && activeGainCadDisplay >= 0 ? (
                   <TrendingUp className="size-8 shrink-0 text-emerald-600/80" />
-                ) : active.gainCad !== null && active.gainCad < 0 ? (
+                ) : activeGainCadDisplay !== null && activeGainCadDisplay < 0 ? (
                   <TrendingDown className="size-8 shrink-0 text-rose-600/80" />
                 ) : null}
                 <div>

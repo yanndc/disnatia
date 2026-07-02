@@ -724,6 +724,109 @@ describe("computePeriodResult", () => {
     assert.equal(year3.incomplete, true);
   });
 
+  test("3 ans / total : pas d alerte si un sous-compte n a pas de sessions mais bornes titres complètes", () => {
+    const payload = mockPayload({
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "Actif",
+          owner: "Alice",
+          accountType: null,
+          currency: "CAD",
+          isExternal: false,
+        },
+        {
+          accountKey: "ACC2|CAD",
+          label: "Sans sessions",
+          owner: "Alice",
+          accountType: null,
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2023-06-09",
+          totalValueNative: 100_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2023-06-09",
+          totalValueNative: 50_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-10",
+          totalValueNative: 120_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC2|CAD",
+          asOf: "2026-06-10",
+          totalValueNative: 55_000,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2024-01-03", gainCad: 500, priorCad: 100_000 },
+          { date: "2026-06-10", gainCad: 700, priorCad: 119_300 },
+        ],
+        "ACC2|CAD": [],
+      },
+      sessionGainsByDate: [
+        { date: "2024-01-03", gainCad: 500, priorCad: 100_000 },
+        { date: "2026-06-10", gainCad: 700, priorCad: 119_300 },
+      ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 120_000,
+          positionsCad: 120_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+        "ACC2|CAD": {
+          totalCad: 55_000,
+          positionsCad: 55_000,
+          cashCad: 0,
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+      },
+      asOfNow: "2026-06-10T22:00:00",
+    });
+
+    const year3 = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "year3",
+    );
+    const all = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "all",
+    );
+
+    assert.equal(year3.incomplete, false);
+    assert.equal(all.incomplete, false);
+  });
+
   test("AAJ : alerte si séances tardives sans historique titres au début d année", () => {
     const payload = mockPayload({
       historyPoints: [],
@@ -753,10 +856,76 @@ describe("computePeriodResult", () => {
     assert.equal(ytd.incomplete, true);
     assert.match(ytd.note ?? "", /historique de séances incomplet|historique titres incomplet/);
   });
+
+  test("AAJ : $ et % restent cohérents sur la même période", () => {
+    const payload = mockPayload({
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "CELI",
+          owner: "Alice",
+          accountType: "CELI",
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 115_000,
+          positionsCad: 115_000,
+          cashCad: 0,
+          dayGainCad: 0,
+          dayPriorCad: 115_000,
+        },
+      },
+      historyPoints: [
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2025-12-31",
+          totalValueNative: 100_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: "ACC|CAD",
+          asOf: "2026-06-12",
+          totalValueNative: 115_000,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2026-01-02", gainCad: 10_000, priorCad: 100_000 },
+          { date: "2026-06-12", gainCad: 5_000, priorCad: 110_000 },
+        ],
+      },
+      sessionGainsByDate: [
+        { date: "2026-01-02", gainCad: 10_000, priorCad: 100_000 },
+        { date: "2026-06-12", gainCad: 5_000, priorCad: 110_000 },
+      ],
+      cashFlows: [],
+      asOfNow: "2026-06-12T15:00:00",
+    });
+
+    const ytd = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "ytd",
+    );
+
+    assert.ok((ytd.gainPct ?? 0) > 10);
+    assert.ok((ytd.gainCad ?? 0) > 10_000);
+    assert.equal(ytd.incomplete, false);
+  });
 });
 
-describe("gain $ — aligné Disnat (référence live − historique fin période)", () => {
-  test("YTD : gain $ = positions live − historique projeté (pas Σ séances)", () => {
+describe("gain $ — aligné période (EMV − BMV − flux)", () => {
+  test("YTD : gain $ utilise EMV de fin de période (live si disponible)", () => {
     const sessionGainsByAccount = {
       "ACC|CAD": [
         { date: "2026-03-03", gainCad: 2_000, priorCad: 11_000 },
@@ -831,7 +1000,7 @@ describe("gain $ — aligné Disnat (référence live − historique fin périod
     assert.match(ytd.note ?? "", /entrées de capitaux/i);
   });
 
-  test("YTD multi-comptes : somme des écarts live − historique", () => {
+  test("YTD multi-comptes : somme EMV − BMV − flux", () => {
     const sessionGainsByAccount = {
       "ACC|CAD": [{ date: "2026-01-02", gainCad: 100, priorCad: 10_000 }],
       "ACC2|USD": [{ date: "2026-01-02", gainCad: 200, priorCad: 11_200 }],
