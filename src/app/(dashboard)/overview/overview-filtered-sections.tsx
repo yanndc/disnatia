@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CurrencyExposureKpiCard } from "@/features/portfolio/currency-exposure-kpi-card";
 import { PortfolioCompositionKpiCard } from "@/features/portfolio/portfolio-composition-kpi-card";
@@ -13,8 +12,9 @@ import {
 import {
   defaultPerformanceFilters,
   resolveActiveAccountKeys,
-  signedGainClass,
 } from "@/features/portfolio/performance-indicator-logic";
+import { SessionTickerMiniReport } from "@/features/portfolio/session-ticker-mini-report";
+import type { SessionTickerMiniReport as SessionTickerMiniReportData } from "@/features/portfolio/session-ticker-report-queries";
 import { TopPositionsKpiCard } from "@/features/portfolio/top-positions-kpi-card";
 import { type PerformanceFilterState, type PerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-types";
 import { formatAggregatedTickerLabel, resolveAggregationGroupMeta } from "@/features/portfolio/ticker-aggregation-groups";
@@ -112,6 +112,9 @@ export function OverviewFilteredSections({
   baseNonFinancialAssetsCad: number;
 }) {
   const [filters, setFilters] = useState<PerformanceFilterState>(() => parseStoredFilters(payload));
+  const [marketReport, setMarketReport] = useState<SessionTickerMiniReportData | null>(null);
+  const [marketError, setMarketError] = useState<string | null>(null);
+  const [marketLoading, setMarketLoading] = useState(false);
 
   useEffect(() => {
     const sync = () => setFilters(parseStoredFilters(payload));
@@ -217,10 +220,71 @@ export function OverviewFilteredSections({
       .slice(0, 8);
   }, [payload.holdings, payload.usdToCad, activeSet]);
 
-  const sessionRows = useMemo(() => buildSessionRows(payload, new Set(disnatKeys)), [payload, disnatKeys]);
-  const gainers = useMemo(() => sessionRows.filter((r) => r.dayGainCad > 0).toSorted((a, b) => b.dayGainCad - a.dayGainCad).slice(0, 6), [sessionRows]);
-  const losers = useMemo(() => sessionRows.filter((r) => r.dayGainCad < 0).toSorted((a, b) => a.dayGainCad - b.dayGainCad).slice(0, 6), [sessionRows]);
-  const sessionTotal = useMemo(() => sessionRows.reduce((s, r) => s + r.dayGainCad, 0), [sessionRows]);
+  const marketScopedAccountKeys = useMemo(() => {
+    const scoped = resolveActiveAccountKeys(
+      payload.accounts,
+      "all",
+      filters.includedAccountKeys,
+      filters.excludedAccountKeys,
+      null,
+      filters.portfolioKey ?? null,
+      payload.portfolioScopes ?? [],
+    );
+    return scoped.filter((k) => {
+      const acc = payload.accounts.find((a) => a.accountKey === k);
+      return acc ? !acc.isExternal : false;
+    });
+  }, [payload, filters.includedAccountKeys, filters.excludedAccountKeys, filters.portfolioKey]);
+
+  const marketScopeKey = useMemo(() => marketScopedAccountKeys.toSorted().join("|"), [marketScopedAccountKeys]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMarket() {
+      setMarketLoading(true);
+      setMarketError(null);
+      try {
+        const params = new URLSearchParams();
+        if (marketScopedAccountKeys.length > 0) {
+          params.set("accountKeys", marketScopedAccountKeys.join(","));
+        }
+        const res = await fetch(`/api/portfolio/session-ticker-report?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          message?: string;
+          view?: SessionTickerMiniReportData["view"];
+          maxSessionDate?: string;
+          minSessionDate?: string;
+          sessionDataHealth?: SessionTickerMiniReportData["sessionDataHealth"];
+          previousSessionDate?: string;
+        };
+        if (!res.ok || !data.ok || !data.view || !data.maxSessionDate || !data.minSessionDate || !data.sessionDataHealth || !data.previousSessionDate) {
+          throw new Error(data.message || "Chargement marché impossible.");
+        }
+        if (cancelled) return;
+        setMarketReport({
+          view: data.view,
+          maxSessionDate: data.maxSessionDate,
+          minSessionDate: data.minSessionDate,
+          sessionDataHealth: data.sessionDataHealth,
+          previousSessionDate: data.previousSessionDate,
+          history: [],
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setMarketReport(null);
+        setMarketError(e instanceof Error ? e.message : "Chargement marché impossible.");
+      } finally {
+        if (!cancelled) setMarketLoading(false);
+      }
+    }
+    void loadMarket();
+    return () => {
+      cancelled = true;
+    };
+  }, [marketScopeKey]);
 
   const control = useMemo(() => {
     const latestByAccount = latestSnapshotByAccount(payload);
@@ -270,19 +334,24 @@ export function OverviewFilteredSections({
         </div>
       </OverviewSection>
 
-      <OverviewSection title="Marche" description="Mouvement des titres du périmètre filtré">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <SessionListCard title="Hausse" rows={gainers} emptyHint="Aucun titre en hausse." />
-          <SessionListCard title="Baisse" rows={losers} emptyHint="Aucun titre en baisse." />
-        </div>
-        <Card className="border-slate-200 bg-white">
-          <CardContent className="py-3 text-right text-sm">
-            <span className="text-slate-600">Total séance filtré: </span>
-            <span className={`tabular-nums font-semibold ${signedGainClass(sessionTotal)}`}>
-              {formatCurrency(sessionTotal, "CAD")}
-            </span>
-          </CardContent>
-        </Card>
+      <OverviewSection title="Performance" description="Indicateurs de rendement pour le périmètre filtré">
+        <PerformanceIndicatorCard payload={payload} hideFiltersHeader />
+      </OverviewSection>
+
+      <OverviewSection title="Marche" description="Fluctuations par séance (scope comptes/portefeuille)">
+        {marketLoading ? (
+          <Card className="border-dashed border-slate-300 bg-slate-50/60">
+            <CardContent className="py-6 text-sm text-slate-500">Chargement du rapport marché…</CardContent>
+          </Card>
+        ) : marketReport ? (
+          <SessionTickerMiniReport report={marketReport} accountKeys={marketScopedAccountKeys} />
+        ) : (
+          <Card className="border-dashed border-slate-300 bg-slate-50/60">
+            <CardContent className="py-6 text-sm text-slate-500">
+              {marketError ?? "Aucun mini-rapport de séance disponible pour le périmètre actuel."}
+            </CardContent>
+          </Card>
+        )}
       </OverviewSection>
 
       <OverviewSection title="Controle" description="Reconciliation Disnat pour le périmètre filtré">
@@ -303,51 +372,6 @@ export function OverviewFilteredSections({
         </section>
       </OverviewSection>
     </div>
-  );
-}
-
-function SessionListCard({
-  title,
-  rows,
-  emptyHint,
-}: {
-  title: string;
-  rows: TickerRow[];
-  emptyHint: string;
-}) {
-  const Icon = title === "Hausse" ? TrendingUp : TrendingDown;
-
-  return (
-    <Card className="border-slate-200 bg-white">
-      <CardContent className="py-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <Icon className="size-4 text-slate-500" />
-          {title}
-        </div>
-        {rows.length === 0 ? (
-          <p className="text-sm text-slate-500">{emptyHint}</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {rows.map((row) => (
-              <li key={`${row.ticker}|${row.currency}`} className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900">{row.ticker}</p>
-                  <p className="truncate text-xs text-slate-500" title={row.securityName}>{row.securityName}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`tabular-nums text-sm ${signedGainClass(row.dayGainCad)}`}>
-                    {formatCurrency(row.dayGainCad, "CAD")}
-                  </p>
-                  <p className={`tabular-nums text-xs ${signedGainClass(row.changePerShare)}`}>
-                    {formatCurrency(row.changePerShare, row.currency)} / action
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

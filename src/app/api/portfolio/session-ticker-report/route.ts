@@ -14,25 +14,58 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function applyAccountScope<T extends { accountKey: string }>(rows: T[], allowed: Set<string>): T[] {
+  return rows.filter((r) => allowed.has(r.accountKey));
+}
+
 export async function GET(request: Request) {
   try {
-    const sessionDate =
-      new URL(request.url).searchParams.get("sessionDate")?.trim() ?? "";
+    const search = new URL(request.url).searchParams;
+    const sessionDateRaw = search.get("sessionDate")?.trim() ?? "";
+    const accountKeysRaw = search.get("accountKeys")?.trim() ?? "";
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
-      return NextResponse.json(
-        { error: "Paramètre sessionDate requis (YYYY-MM-DD)." },
-        { status: 400 },
-      );
-    }
-
-    const payload = await getPerformanceIndicatorPayload();
+    let payload = await getPerformanceIndicatorPayload();
     const now = parsePayloadClock(payload.asOfNow);
     const maxSessionDate = referenceTradingSessionDayIso(now);
     const minSessionDate = previousTradingDayIso(
       maxSessionDate,
       SESSION_TICKER_MAX_LOOKBACK_DAYS,
     );
+
+    const sessionDate = sessionDateRaw || maxSessionDate;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
+      return NextResponse.json(
+        { error: "Paramètre sessionDate invalide (YYYY-MM-DD)." },
+        { status: 400 },
+      );
+    }
+
+    if (accountKeysRaw) {
+      const allowed = new Set(
+        accountKeysRaw
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0),
+      );
+      payload = {
+        ...payload,
+        accounts: applyAccountScope(payload.accounts, allowed),
+        snapshots: applyAccountScope(payload.snapshots, allowed),
+        historyPoints: applyAccountScope(payload.historyPoints, allowed),
+        cashFlows: applyAccountScope(payload.cashFlows, allowed),
+        holdings: applyAccountScope(payload.holdings, allowed),
+        enrichedHoldings: applyAccountScope(payload.enrichedHoldings, allowed),
+        currentByAccount: Object.fromEntries(
+          Object.entries(payload.currentByAccount).filter(([k]) => allowed.has(k)),
+        ),
+        sessionGainsByAccount: Object.fromEntries(
+          Object.entries(payload.sessionGainsByAccount).filter(([k]) => allowed.has(k)),
+        ),
+        accountCashLedgers: Object.fromEntries(
+          Object.entries(payload.accountCashLedgers).filter(([k]) => allowed.has(k)),
+        ),
+      };
+    }
 
     if (sessionDate > maxSessionDate || sessionDate < minSessionDate) {
       return NextResponse.json(

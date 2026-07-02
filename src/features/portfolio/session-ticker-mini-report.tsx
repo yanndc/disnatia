@@ -163,7 +163,13 @@ function SessionBlock({ view }: { view: SessionTickerView }) {
   );
 }
 
-export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniReport }) {
+export function SessionTickerMiniReport({
+  report,
+  accountKeys,
+}: {
+  report: SessionTickerMiniReport;
+  accountKeys?: string[];
+}) {
   const [view, setView] = useState(report.view);
   const [maxSessionDate, setMaxSessionDate] = useState(report.maxSessionDate);
   const [minSessionDate, setMinSessionDate] = useState(report.minSessionDate);
@@ -207,10 +213,15 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
     setLoading(true);
     pushToast("info", "Chargement de la séance en cours...", 2200);
     try {
-      const res = await fetch(
-        `/api/portfolio/session-ticker-report?sessionDate=${encodeURIComponent(sessionDate)}`,
-        { cache: "no-store" },
-      );
+      const params = new URLSearchParams({
+        sessionDate,
+      });
+      if (accountKeys && accountKeys.length > 0) {
+        params.set("accountKeys", accountKeys.join(","));
+      }
+      const res = await fetch(`/api/portfolio/session-ticker-report?${params.toString()}`, {
+        cache: "no-store",
+      });
       const data = (await res.json()) as {
         ok: boolean;
         view: SessionTickerView;
@@ -256,7 +267,7 @@ export function SessionTickerMiniReport({ report }: { report: SessionTickerMiniR
     } finally {
       setLoading(false);
     }
-  }, [publishDiagnostics, pushToast]);
+  }, [accountKeys, publishDiagnostics, pushToast]);
 
   useEffect(() => {
     if (lastDiagnosticsSessionDate.current === report.view.sessionDate) return;

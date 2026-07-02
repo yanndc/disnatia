@@ -174,10 +174,12 @@ export function PerformanceIndicatorCard({
   payload,
   showReconciliationDetails = false,
   filtersOnly = false,
+  hideFiltersHeader = false,
 }: {
   payload: PerformanceIndicatorPayload;
   showReconciliationDetails?: boolean;
   filtersOnly?: boolean;
+  hideFiltersHeader?: boolean;
 }) {
   const [filters, setFilters] = useState<PerformanceFilterState>(() => {
     const base = defaultPerformanceFilters(payload);
@@ -640,6 +642,8 @@ export function PerformanceIndicatorCard({
         <div className="relative isolate">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(5,150,105,0.06),transparent_42%),radial-gradient(circle_at_85%_15%,rgba(14,165,233,0.05),transparent_38%)]" />
 
+          {!hideFiltersHeader ? (
+            <>
           {/* En-tête + filtres portée */}
           <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-3">
@@ -866,6 +870,8 @@ export function PerformanceIndicatorCard({
                 isoler la performance Desjardins.
               </p>
             </div>
+          ) : null}
+            </>
           ) : null}
 
           {!filtersOnly ? (
