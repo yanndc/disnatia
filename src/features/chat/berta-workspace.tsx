@@ -110,7 +110,7 @@ export function BertaWorkspace({
         <div className="space-y-6">
           {/* Onglet « Chat » */}
           <section className={cn(tab !== "chat" && "hidden", "xl:block")}>
-            <Card className="flex w-full flex-col xl:min-h-[680px]">
+            <Card className="flex h-[calc(100dvh-13rem)] w-full flex-col xl:h-auto xl:min-h-[680px]">
               <CardHeader className="hidden xl:block">
                 <CardTitle>Berta</CardTitle>
                 <p className="text-xs text-slate-500">
@@ -118,8 +118,8 @@ export function BertaWorkspace({
                   sur cette page.
                 </p>
               </CardHeader>
-              <CardContent className="flex min-w-0 flex-col xl:min-h-[600px] xl:flex-1 xl:min-h-0">
-                <div className="min-w-0 space-y-4 xl:flex-1 xl:overflow-y-auto">
+              <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col xl:min-h-[600px]">
+                <div className="min-w-0 flex-1 space-y-4 overflow-y-auto">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -152,7 +152,7 @@ export function BertaWorkspace({
                     </div>
                   ))}
                   {messages.length === 0 ? (
-                    <div className="flex min-h-[50vh] items-center justify-center text-center xl:h-full xl:min-h-40">
+                    <div className="flex h-full min-h-40 items-center justify-center text-center">
                       <div>
                         <p className="text-lg font-semibold text-slate-950">
                           Discute avec Berta de ton portefeuille
@@ -172,10 +172,7 @@ export function BertaWorkspace({
                   </p>
                 ) : null}
 
-                <form
-                  onSubmit={submit}
-                  className="sticky bottom-0 z-20 mt-4 flex shrink-0 items-end gap-2 border-t border-slate-200 bg-white pt-3 pb-[env(safe-area-inset-bottom)] xl:static xl:border-t-0 xl:bg-transparent xl:pt-0 xl:pb-0"
-                >
+                <form onSubmit={submit} className="mt-4 flex shrink-0 items-end gap-2">
                   <Textarea
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
