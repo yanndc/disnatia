@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
+import { resolveNonFinancialAssetOwnerShares } from "@/lib/portfolio/non-financial-asset-owner-shares";
 
 export type NonFinancialAssetDto = {
   id: string;
@@ -18,6 +19,7 @@ export type NonFinancialAssetDto = {
   currency: string;
   isActive: boolean;
   metadata: unknown;
+  ownerShares?: Array<{ owner: string; sharePct: number }>;
   snapshotCount: number;
   latestSnapshot: {
     asOfDate: string;
@@ -76,17 +78,34 @@ const editAssetSchema = z.object({
   assetType: z.enum(["REAL_ESTATE", "VEHICLE", "PRIVATE_BUSINESS", "OTHER"]),
   displayLabel: z.string().min(1, "Nom requis").max(240),
   owner: z.string().max(200).optional(),
+  coOwner: z.string().max(200).optional(),
+  coOwnerSharePct: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? 0 : Number(v)),
+    z.number().finite().min(0).max(100),
+  ),
   currency: z.enum(["CAD", "USD"]),
   isActive: z.boolean(),
+}).refine((v) => {
+  const hasCoOwner = Boolean(v.coOwner?.trim());
+  if (!hasCoOwner) return true;
+  return Boolean(v.owner?.trim()) && v.coOwnerSharePct > 0 && v.coOwnerSharePct < 100;
+}, {
+  message: "Avec un 2e copropriétaire, renseigne aussi le copropriétaire 1 et une part entre 0 et 100.",
+  path: ["coOwnerSharePct"],
 });
 
 type EditAssetForm = z.infer<typeof editAssetSchema>;
 
 function editAssetDefaults(asset: NonFinancialAssetDto): EditAssetForm {
+  const shares = asset.ownerShares ?? resolveNonFinancialAssetOwnerShares(asset.owner, asset.metadata);
+  const mainOwner = shares[0]?.owner ?? sanitizePortfolioOwner(asset.owner) ?? "";
+  const secondary = shares[1] ?? null;
   return {
     assetType: asset.assetType,
     displayLabel: asset.displayLabel,
-    owner: asset.owner ?? "",
+    owner: mainOwner,
+    coOwner: secondary?.owner ?? "",
+    coOwnerSharePct: secondary?.sharePct ?? 50,
     currency: asset.currency === "USD" ? "USD" : "CAD",
     isActive: asset.isActive,
   };
@@ -309,6 +328,10 @@ function AssetCard({
           assetType: values.assetType,
           displayLabel: values.displayLabel.trim(),
           owner: values.owner?.trim() || null,
+          coOwners:
+            values.coOwner?.trim()
+              ? [{ owner: values.coOwner.trim(), sharePct: values.coOwnerSharePct }]
+              : [],
           currency: values.currency,
           isActive: values.isActive,
         }),
@@ -357,6 +380,16 @@ function AssetCard({
           Valeur: {formatCurrency(asset.latestSnapshot.marketValue, asset.currency)} · Hypothèque: {formatCurrency(asset.latestSnapshot.mortgageBalance, asset.currency)}
         </p>
       ) : null}
+
+      {(() => {
+        const shares = asset.ownerShares ?? resolveNonFinancialAssetOwnerShares(asset.owner, asset.metadata);
+        if (shares.length === 0) return null;
+        return (
+          <p className="mt-1 text-xs text-slate-600">
+            Parts: {shares.map((s) => `${s.owner} ${s.sharePct.toFixed(1)}%`).join(" · ")}
+          </p>
+        );
+      })()}
 
       <div className="mt-3 border-t border-slate-100 pt-3">
         <p className="text-xs font-medium text-slate-700">Ajouter une mise à jour</p>
@@ -409,6 +442,13 @@ function AssetCard({
             />
           </label>
           <label>
+            <span className="mb-0.5 block text-xs font-medium text-slate-600">Copropriétaire 2</span>
+            <input
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              {...editForm.register("coOwner")}
+            />
+          </label>
+          <label>
             <span className="mb-0.5 block text-xs font-medium text-slate-600">Devise</span>
             <select
               className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
@@ -418,10 +458,22 @@ function AssetCard({
               <option value="USD">USD</option>
             </select>
           </label>
+          <label>
+            <span className="mb-0.5 block text-xs font-medium text-slate-600">Part du copropriétaire 2 (%)</span>
+            <input
+              type="number"
+              step="0.01"
+              className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              {...editForm.register("coOwnerSharePct")}
+            />
+          </label>
           <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" className="h-4 w-4 rounded border-slate-300" {...editForm.register("isActive")} />
             Actif visible dans le patrimoine
           </label>
+          {editForm.formState.errors.coOwnerSharePct ? (
+            <p className="sm:col-span-2 text-xs text-red-600">{editForm.formState.errors.coOwnerSharePct.message}</p>
+          ) : null}
           {editMsg ? <p className="sm:col-span-2 text-xs text-slate-700">{editMsg}</p> : null}
           <div className="sm:col-span-2">
             <Button type="submit" className="h-8 px-3 text-xs" variant="secondary" disabled={editBusy}>

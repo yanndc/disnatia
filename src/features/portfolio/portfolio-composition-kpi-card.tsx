@@ -85,7 +85,7 @@ export function PortfolioCompositionKpiCard({
       </CardHeader>
       <CardContent>
         {total > 0 ? (
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
             <div className="mx-auto h-40 w-40 shrink-0 sm:mx-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -124,7 +124,7 @@ export function PortfolioCompositionKpiCard({
                     style={{ backgroundColor: SLICES[index % SLICES.length] }}
                   />
                   <span className="min-w-0 flex-1 truncate font-semibold text-slate-950">{row.name}</span>
-                  <span className="min-w-[10.5rem] shrink-0 whitespace-nowrap text-right tabular-nums text-slate-700 sm:min-w-[11.5rem]">
+                  <span className="shrink-0 whitespace-nowrap text-right tabular-nums text-slate-700">
                     {formatCurrency(row.value, "CAD")}
                     <span className="text-slate-400"> · </span>
                     <span className="text-slate-500">{formatPercent(row.pct)}</span>

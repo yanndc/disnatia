@@ -97,6 +97,7 @@ export default async function ComptesPage() {
                   <th className="px-4 py-2">Devise</th>
                   <th className="px-4 py-2 text-right">Solde</th>
                   <th className="px-4 py-2 text-right">Date</th>
+                  <th className="px-4 py-2 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -126,6 +127,14 @@ export default async function ComptesPage() {
                       {ex.latestSnapshot
                         ? ex.latestSnapshot.asOfDate.toLocaleDateString("fr-CA")
                         : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right text-xs">
+                      <Link
+                        href="/imports"
+                        className="font-medium text-violet-700 underline-offset-2 hover:underline"
+                      >
+                        Modifier
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -164,6 +173,7 @@ export default async function ComptesPage() {
                   <th className="px-4 py-2 text-right">Hypothèque</th>
                   <th className="px-4 py-2 text-right">Équité nette</th>
                   <th className="px-4 py-2 text-right">Date</th>
+                  <th className="px-4 py-2 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -175,7 +185,7 @@ export default async function ComptesPage() {
                         const shares = asset.ownerShares;
                         if (shares.length === 0) return "—";
                         return shares
-                          .map((s) => `${s.owner} (${s.sharePct.toFixed(0)}%)`)
+                          .map((s) => `${s.owner} (${s.sharePct.toFixed(1)}%)`)
                           .join(" · ");
                       })()}
                     </td>
@@ -197,6 +207,14 @@ export default async function ComptesPage() {
                       {asset.latestSnapshot
                         ? asset.latestSnapshot.asOfDate.toLocaleDateString("fr-CA")
                         : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right text-xs">
+                      <Link
+                        href="/imports"
+                        className="font-medium text-amber-700 underline-offset-2 hover:underline"
+                      >
+                        Modifier
+                      </Link>
                     </td>
                   </tr>
                 ))}
