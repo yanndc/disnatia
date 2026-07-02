@@ -164,10 +164,10 @@ export function OverviewFilteredSections({
     const positionsCad = disnatKeys.reduce((s, k) => s + (payload.currentByAccount[k]?.positionsCad ?? 0), 0);
     const cashCad = disnatKeys.reduce((s, k) => s + (payload.currentByAccount[k]?.cashCad ?? 0), 0);
     const externalCad = externalKeys.reduce((s, k) => s + (payload.currentByAccount[k]?.totalCad ?? 0), 0);
+    const scopeMatchesAllAccounts = selectedAccounts.length === payload.accounts.length;
     const useGlobalNonFinancial =
-      filters.preset === "all" &&
+      scopeMatchesAllAccounts &&
       !filters.owner &&
-      !filters.portfolioKey &&
       filters.includedAccountKeys.length === 0 &&
       filters.excludedAccountKeys.length === 0;
     const nonFinancialCad = useGlobalNonFinancial ? baseNonFinancialAssetsCad : 0;
@@ -178,7 +178,7 @@ export function OverviewFilteredSections({
       nonFinancialCad,
       totalCad: positionsCad + cashCad + externalCad + nonFinancialCad,
     };
-  }, [payload.currentByAccount, disnatKeys, externalKeys, filters, baseNonFinancialAssetsCad]);
+  }, [payload.currentByAccount, payload.accounts.length, disnatKeys, externalKeys, selectedAccounts.length, filters, baseNonFinancialAssetsCad]);
 
   const currencyExposure = useMemo(() => {
     const byCurrency = new Map<string, number>();
