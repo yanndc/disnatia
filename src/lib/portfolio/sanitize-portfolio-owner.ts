@@ -17,6 +17,11 @@ const LOWER_PARTICLES = new Set([
   "et",
 ]);
 
+/** Alias d'affichage pour noms connus souvent exportés sans accents. */
+const OWNER_DISPLAY_ALIASES = new Map<string, string>([
+  ["valerie degrandpre", "Valérie Degrandpré"],
+]);
+
 function collapseWhitespace(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
 }
@@ -37,13 +42,21 @@ function capitalizeWord(word: string): string {
   return lower.charAt(0).toLocaleUpperCase("fr-CA") + lower.slice(1);
 }
 
+function stripDiacritics(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function ownerAliasKey(value: string): string {
+  return stripDiacritics(collapseWhitespace(value)).toLocaleLowerCase("fr-CA");
+}
+
 /**
  * Forme d'affichage canonique : « YANN DE CHAMPLAIN » → « Yann de Champlain ».
  */
 export function formatPortfolioOwnerDisplay(raw: string): string {
   const s = collapseWhitespace(raw);
   if (!s) return s;
-  return s
+  const formatted = s
     .split(" ")
     .map((word, index) => {
       const lower = word.toLocaleLowerCase("fr-CA");
@@ -51,6 +64,8 @@ export function formatPortfolioOwnerDisplay(raw: string): string {
       return capitalizeWord(word);
     })
     .join(" ");
+
+  return OWNER_DISPLAY_ALIASES.get(ownerAliasKey(formatted)) ?? formatted;
 }
 
 /**
@@ -67,7 +82,7 @@ export function sanitizePortfolioOwner(raw: string | null | undefined): string |
 /** Clé de regroupement insensible à la casse / aux variantes Disnat vs saisie manuelle. */
 export function portfolioOwnerKey(raw: string | null | undefined): string | null {
   const display = sanitizePortfolioOwner(raw);
-  return display ? display.toLocaleLowerCase("fr-CA") : null;
+  return display ? ownerAliasKey(display) : null;
 }
 
 export function portfolioOwnersMatch(
