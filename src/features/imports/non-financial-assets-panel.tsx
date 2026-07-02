@@ -339,7 +339,6 @@ function AssetCard({
               </>
             ) : null}
           </p>
-          <p className="mt-1 font-mono text-xs text-slate-400">{asset.assetKey}</p>
         </div>
         <div className="text-right">
           {asset.latestSnapshot ? (
