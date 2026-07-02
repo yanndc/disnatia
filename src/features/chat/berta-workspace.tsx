@@ -118,13 +118,13 @@ export function BertaWorkspace({
                   sur cette page.
                 </p>
               </CardHeader>
-              <CardContent className="flex min-h-0 flex-1 flex-col xl:min-h-[600px]">
-                <div className="flex-1 space-y-4 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col xl:min-h-[600px]">
+                <div className="min-w-0 flex-1 space-y-4 overflow-y-auto">
                   {messages.map((message) => (
                     <div
                       key={message.id}
                       className={cn(
-                        "max-w-3xl rounded-lg border px-4 py-3 text-sm leading-6",
+                        "w-fit max-w-[85%] rounded-lg border px-4 py-3 text-sm leading-6 sm:max-w-3xl",
                         message.role === "user"
                           ? "ml-auto border-slate-900 bg-slate-950 text-white"
                           : "border-slate-200 bg-white text-slate-800",
