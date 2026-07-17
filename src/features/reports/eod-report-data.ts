@@ -33,9 +33,12 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
   const previousSessionDate = priorReferenceSessionDateIso(now);
   const { label: sessionLabel } = resolveDayPeriodLabels(now);
 
+  // Le rapport est toujours envoyé après la clôture : on ne veut jamais du live,
+  // seulement les gains de séance persistés (session_gains), pour rester cohérent
+  // avec le sujet du courriel (computeDayPeriod).
   const [currentSession, previousSession] = await Promise.all([
-    buildSessionTickerViewForDate(payload, sessionDate, now),
-    buildSessionTickerViewForDate(payload, previousSessionDate, now),
+    buildSessionTickerViewForDate(payload, sessionDate, now, { disableLive: true }),
+    buildSessionTickerViewForDate(payload, previousSessionDate, now, { disableLive: true }),
   ]);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || null;

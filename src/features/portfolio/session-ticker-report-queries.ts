@@ -70,6 +70,8 @@ export type SessionTickerDiagnostics = {
 type BuildSessionTickerOptions = {
   repairHoldingsIfMissing?: boolean;
   nowForRepair?: Date;
+  /** Force l'usage des données persistées (session_gains), même en séance. À utiliser pour tout rapport envoyé après la clôture. */
+  disableLive?: boolean;
 };
 
 export class SessionTickerDataError extends Error {
@@ -600,7 +602,9 @@ export async function buildSessionTickerViewForDate(
   const refSessionDate = referenceTradingSessionDayIso(now);
   const disnatAccountKeys = disnatAccountKeysFromPayload(payload);
   const useLive =
-    sessionDate === refSessionDate && shouldUseLiveForCurrentSession(payload, now);
+    !options?.disableLive &&
+    sessionDate === refSessionDate &&
+    shouldUseLiveForCurrentSession(payload, now);
 
   const dailyCloses = useLive
     ? payload.dailyCloses
@@ -630,9 +634,12 @@ export async function buildSessionTickerViewForDate(
     ? sumLiveDayGainCad(payload, disnatAccountKeys)
     : null;
   const rowTotal = rows.reduce((sum, row) => sum + row.dayGainCad, 0);
+  // Le total persisté (session_gains) est la même source que le sujet du courriel
+  // et que la ligne "séance précédente" : on le priorise pour rester cohérent une
+  // fois la séance clôturée, et on ne retombe sur le live que tant qu'il n'existe pas encore.
   const totalGainCad =
-    liveTotal ??
     persistedTotal ??
+    liveTotal ??
     (rows.length > 0 && Number.isFinite(rowTotal) ? rowTotal : null);
 
   return {
