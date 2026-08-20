@@ -20,6 +20,8 @@ import {
   computeAllPeriodResultsWithSnapshots,
   computePeriodResultWithSnapshots,
   defaultPerformanceFilters,
+  minAcceptableHistoryAsOf,
+  TITRES_HISTORY_MAX_GAP_TRADING_DAYS,
   resolveActiveAccountKeys,
   resolvePeriodBounds,
   resolvePeriodMeta,
@@ -187,10 +189,15 @@ type ReconciliationRow = {
   periodStart: string | null;
   periodEnd: string | null;
   baselineLookup: string | null;
+  /** Date réelle (la plus ancienne parmi les comptes utilisés) du snapshot de départ effectivement retenu. */
+  baselineActualDate: string | null;
+  /** Date réelle (la plus ancienne parmi les comptes utilisés) du snapshot de fin effectivement retenu. */
+  endActualDate: string | null;
   flowsCad: number | null;
   appMethod: string;
   appNote: string | null;
   missingAccountLabels: string[];
+  staleAccountLabels: string[];
 };
 
 function asOfAtTorontoMidday(isoDate: string): string {
@@ -339,23 +346,37 @@ export function PerformanceIndicatorCard({
           appMethod: app.method,
           appNote: app.note,
           missingAccountLabels: [],
+          staleAccountLabels: [],
+          baselineActualDate: null,
+          endActualDate: null,
         });
         continue;
       }
 
-      const usdToCad = payload.usdToCad;
-      const toCad = (native: number, accountKey: string) => {
+      const toCad = (native: number, accountKey: string, dateIso: string) => {
         const acc = payload.accounts.find((a) => a.accountKey === accountKey);
-        if (acc?.currency.toUpperCase().includes("USD") && usdToCad) {
-          return native * usdToCad;
+        const rate = payload.usdCadRateByDate[dateIso] ?? payload.usdToCad;
+        if (acc?.currency.toUpperCase().includes("USD") && rate) {
+          return native * rate;
         }
         return native;
       };
+
+      // Un snapshot plus vieux que ce seuil que la date visée n'est pas une vraie baseline/fin —
+      // le compte est traité comme manquant plutôt que de fausser silencieusement le gain sur des mois.
+      const minStartAsOf = minAcceptableHistoryAsOf(bounds.baselineLookup);
+      const minEndAsOf = minAcceptableHistoryAsOf(bounds.end);
 
       let gainCad = 0;
       let baselineCad = 0;
       let used = 0;
       const missingAccountKeys: string[] = [];
+      const staleAccountKeys: string[] = [];
+      // Date réelle (la plus vieille / la plus ancienne parmi les comptes utilisés) des
+      // snapshots retenus — pour afficher ce qui a VRAIMENT été utilisé, pas seulement
+      // la date cible demandée (`bounds.baselineLookup`/`bounds.end`).
+      let oldestStartAsOfUsed: string | null = null;
+      let oldestEndAsOfUsed: string | null = null;
 
       for (const accountKey of disnatKeys) {
         let startNative: number | null = null;
@@ -386,9 +407,13 @@ export function PerformanceIndicatorCard({
           missingAccountKeys.push(accountKey);
           continue;
         }
+        if (startAsOf! < minStartAsOf || endAsOf! < minEndAsOf) {
+          staleAccountKeys.push(accountKey);
+          continue;
+        }
 
-        const startCad = toCad(startNative, accountKey);
-        const endCad = toCad(endNative, accountKey);
+        const startCad = toCad(startNative, accountKey, startAsOf!);
+        const endCad = toCad(endNative, accountKey, endAsOf!);
         const flowsCad = (payload.cashFlows ?? [])
           .filter(
             (f) =>
@@ -401,6 +426,12 @@ export function PerformanceIndicatorCard({
         gainCad += endCad - startCad - flowsCad;
         baselineCad += startCad + flowsCad;
         used += 1;
+        if (oldestStartAsOfUsed == null || startAsOf! < oldestStartAsOfUsed) {
+          oldestStartAsOfUsed = startAsOf;
+        }
+        if (oldestEndAsOfUsed == null || endAsOf! < oldestEndAsOfUsed) {
+          oldestEndAsOfUsed = endAsOf;
+        }
       }
 
       const refGainCad = used > 0 ? gainCad : null;
@@ -413,6 +444,11 @@ export function PerformanceIndicatorCard({
       const reasons: string[] = [];
       if (used < disnatKeys.length) {
         reasons.push("Couverture comptes incomplète");
+      }
+      if (staleAccountKeys.length > 0) {
+        reasons.push(
+          `Snapshot périmé (>${TITRES_HISTORY_MAX_GAP_TRADING_DAYS}j ouvrés) pour ${staleAccountKeys.length} compte(s)`,
+        );
       }
       if (app.incomplete) {
         reasons.push("Indicateur app partiel");
@@ -431,6 +467,9 @@ export function PerformanceIndicatorCard({
       }
 
       const missingAccountLabels = missingAccountKeys
+        .map((key) => payload.accounts.find((a) => a.accountKey === key)?.label ?? key)
+        .slice(0, 5);
+      const staleAccountLabels = staleAccountKeys
         .map((key) => payload.accounts.find((a) => a.accountKey === key)?.label ?? key)
         .slice(0, 5);
 
@@ -454,15 +493,18 @@ export function PerformanceIndicatorCard({
         deltaPct,
         accountsUsed: used,
         accountsExpected: disnatKeys.length,
-        incomplete: used < disnatKeys.length,
+        incomplete: used < disnatKeys.length || staleAccountKeys.length > 0,
         reasons,
         periodStart: bounds.start,
         periodEnd: bounds.end,
         baselineLookup: bounds.baselineLookup,
+        baselineActualDate: oldestStartAsOfUsed,
+        endActualDate: oldestEndAsOfUsed,
         flowsCad,
         appMethod: app.method,
         appNote: app.note,
         missingAccountLabels,
+        staleAccountLabels,
       });
     }
 
@@ -1128,8 +1170,26 @@ export function PerformanceIndicatorCard({
                           {selectedReconciliation.periodEnd ?? "—"}
                         </span>
                         <span>
-                          <span className="font-semibold">Baseline:</span>{" "}
+                          <span className="font-semibold">Baseline (cible):</span>{" "}
                           {selectedReconciliation.baselineLookup ?? "—"}
+                        </span>
+                        <span>
+                          <span className="font-semibold">Baseline (réelle):</span>{" "}
+                          {selectedReconciliation.baselineActualDate ?? "—"}
+                          {selectedReconciliation.baselineActualDate &&
+                          selectedReconciliation.baselineActualDate !==
+                            selectedReconciliation.baselineLookup ? (
+                            <span className="text-amber-700"> (décalée)</span>
+                          ) : null}
+                        </span>
+                        <span>
+                          <span className="font-semibold">Fin (réelle):</span>{" "}
+                          {selectedReconciliation.endActualDate ?? "—"}
+                          {selectedReconciliation.endActualDate &&
+                          selectedReconciliation.endActualDate !==
+                            selectedReconciliation.periodEnd ? (
+                            <span className="text-amber-700"> (décalée)</span>
+                          ) : null}
                         </span>
                         <span>
                           <span className="font-semibold">Flux nets:</span>{" "}
@@ -1146,6 +1206,11 @@ export function PerformanceIndicatorCard({
                       {selectedReconciliation.missingAccountLabels.length > 0 ? (
                         <p className="mt-2 text-amber-700">
                           Comptes sans snapshot complet: {selectedReconciliation.missingAccountLabels.join(", ")}
+                        </p>
+                      ) : null}
+                      {selectedReconciliation.staleAccountLabels.length > 0 ? (
+                        <p className="mt-2 text-amber-700">
+                          Comptes exclus (snapshot périmé de plus de {TITRES_HISTORY_MAX_GAP_TRADING_DAYS} jours ouvrés): {selectedReconciliation.staleAccountLabels.join(", ")}
                         </p>
                       ) : null}
                     </div>

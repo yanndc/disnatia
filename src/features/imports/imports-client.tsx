@@ -363,6 +363,12 @@ export function ImportsClient({
           );
         }
       }
+      if (snapshot.warnings.length > 0) {
+        msgs.push(
+          `⚠ ${snapshot.warnings.length} avertissement${snapshot.warnings.length > 1 ? "s" : ""} lors de la lecture du fichier :`,
+          ...snapshot.warnings,
+        );
+      }
       setMessages(msgs);
       const historyResponse = await fetch("/api/imports");
       const historyPayload = await historyResponse.json();

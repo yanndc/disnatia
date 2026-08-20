@@ -138,6 +138,8 @@ export type PerformanceIndicatorPayload = {
   dailyCloses: Record<string, number>;
   usdToCad: number | null;
   usdToCadDate: string | null;
+  /** Taux USD→CAD par date (ISO), pour convertir les valeurs historiques au taux du jour visé plutôt qu'au taux courant. */
+  usdCadRateByDate: Record<string, number>;
   availableYears: number[];
   quotesAsOf: string | null;
   asOfNow: string;

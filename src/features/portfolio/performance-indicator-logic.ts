@@ -296,7 +296,7 @@ function computeDayPeriod(
     };
   }
 
-  if (isEquityMarketSessionOpen(now)) {
+  if (canUseLiveValuesForAsOf(payload) && isEquityMarketSessionOpen(now)) {
     let gain = 0;
     let prior = 0;
     let hasGain = false;
@@ -445,6 +445,14 @@ function currentPositionsCadInGainScope(
   );
 }
 
+/** Taux USD→CAD à une date donnée, avec repli sur le taux courant si absent de la carte historique. */
+function usdCadRateForDate(
+  payload: PerformanceIndicatorPayload,
+  dateIso: string,
+): number | null {
+  return payload.usdCadRateByDate[dateIso] ?? payload.usdToCad;
+}
+
 function historyPointCad(
   valueNative: number,
   currency: string,
@@ -456,17 +464,25 @@ function historyPointCad(
   return valueNative;
 }
 
+/**
+ * Vrai seulement si les cotations live du payload sont fraîches pour le jour visé —
+ * pas seulement si l'horloge réelle est aussi sur ce jour. Ça évite qu'une simulation
+ * historique (asOfNow forcé à une date passée, ex. l'outil de conciliation) réutilise
+ * silencieusement des cotations live d'un autre jour.
+ */
 function canUseLiveValuesForAsOf(payload: PerformanceIndicatorPayload): boolean {
   if (!payload.asOfNow) return true;
   const asOfDay = isoDateInToronto(parseIsoDate(payload.asOfNow));
-  const todayDay = isoDateInToronto(new Date());
-  return asOfDay === todayDay;
+  const quotesDay = payload.quotesAsOf
+    ? isoDateInToronto(parseIsoDate(payload.quotesAsOf))
+    : isoDateInToronto(new Date());
+  return asOfDay === quotesDay;
 }
 
 /** Historique plus vieux que ce seuil (jours ouvrés) → ignoré pour V(t). */
-const TITRES_HISTORY_MAX_GAP_TRADING_DAYS = 5;
+export const TITRES_HISTORY_MAX_GAP_TRADING_DAYS = 5;
 
-function minAcceptableHistoryAsOf(targetDate: string): string {
+export function minAcceptableHistoryAsOf(targetDate: string): string {
   return previousTradingDayIso(targetDate, TITRES_HISTORY_MAX_GAP_TRADING_DAYS);
 }
 
@@ -506,7 +522,7 @@ export function titresCadAtOrBefore(
     const valueCad = historyPointCad(
       pt.totalValueNative,
       pt.currency,
-      payload.usdToCad,
+      usdCadRateForDate(payload, pt.asOf),
     );
     const cur = byAccount.get(pt.accountKey);
     if (!cur || pt.asOf > cur.asOf) {
@@ -520,7 +536,7 @@ export function titresCadAtOrBefore(
     const valueCad = historyPointCad(
       pt.totalValueNative,
       pt.currency,
-      payload.usdToCad,
+      usdCadRateForDate(payload, pt.asOf),
     );
     const cur = byAccount.get(pt.accountKey);
     if (!cur || pt.asOf > cur.asOf) {
@@ -679,7 +695,7 @@ function firstImportMarketCadInPeriod(
     if (pt.accountKey !== accountKey) continue;
     if (pt.asOf < periodStart || pt.asOf > periodEnd) continue;
     const native = pt.marketValueNative ?? pt.totalValueNative;
-    const valueCad = historyPointCad(native, pt.currency, payload.usdToCad);
+    const valueCad = historyPointCad(native, pt.currency, usdCadRateForDate(payload, pt.asOf));
     if (!best || pt.asOf < best.asOf) {
       best = { asOf: pt.asOf, valueCad };
     }
@@ -768,7 +784,7 @@ function latestImportTitresNativeAtOrBefore(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
   endDate: string,
-): number | null {
+): { asOf: string; native: number } | null {
   let best: { asOf: string; native: number } | null = null;
   for (const pt of payload.snapshots ?? []) {
     if (pt.accountKey !== accountKey || pt.asOf > endDate) continue;
@@ -777,17 +793,19 @@ function latestImportTitresNativeAtOrBefore(
       best = { asOf: pt.asOf, native };
     }
   }
-  return best?.native ?? null;
+  return best;
 }
 
 function nativeToDisplayCad(
   native: number,
   accountKey: string,
   payload: PerformanceIndicatorPayload,
+  dateIso: string,
 ): number {
   const acc = payload.accounts.find((a) => a.accountKey === accountKey);
-  if (acc?.currency.toUpperCase().includes("USD") && payload.usdToCad) {
-    return native * payload.usdToCad;
+  const rate = usdCadRateForDate(payload, dateIso);
+  if (acc?.currency.toUpperCase().includes("USD") && rate) {
+    return native * rate;
   }
   return native;
 }
@@ -798,9 +816,9 @@ function latestImportTitresCadAtOrBefore(
   payload: PerformanceIndicatorPayload,
   endDate: string,
 ): number | null {
-  const native = latestImportTitresNativeAtOrBefore(accountKey, payload, endDate);
-  if (native == null) return null;
-  return nativeToDisplayCad(native, accountKey, payload);
+  const hit = latestImportTitresNativeAtOrBefore(accountKey, payload, endDate);
+  if (hit == null) return null;
+  return nativeToDisplayCad(hit.native, accountKey, payload, hit.asOf);
 }
 
 /**
@@ -1309,7 +1327,12 @@ function computeSessionChainPeriod(
   const now = sessionClockForBounds(payload.asOfNow);
   const refDay = isoDate(referenceTradingSessionDay(now));
   const endIsToday = bounds.end === refDay;
-  if (endIsToday && periodId !== "yesterday" && isEquityMarketSessionOpen(now)) {
+  if (
+    endIsToday &&
+    periodId !== "yesterday" &&
+    canUseLiveValuesForAsOf(payload) &&
+    isEquityMarketSessionOpen(now)
+  ) {
     const chainToday = sessions.find((g) => g.date === refDay);
     const liveToday = sumLiveDayGainCad(accountKeys, payload);
     if (chainToday) sessionGainCad -= chainToday.gainCad;

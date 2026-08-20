@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "icons": "node scripts/generate-icons.cjs",
-    "test": "npx tsx --test src/features/portfolio/**/*.test.ts",
+    "test": "npx tsx --test src/features/portfolio/**/*.test.ts src/lib/market/**/*.test.ts src/lib/csv/**/*.test.ts",
     "test:performance": "npx tsx --test src/features/portfolio/performance-*.test.ts src/features/portfolio/performance-return-disnat.test.ts src/features/portfolio/desjardins-day-pnl.test.ts",
     "rebuild:performance": "tsx scripts/rebuild-performance-facts.ts",
     "seed:house": "npx tsx scripts/seed-house-asset.ts",

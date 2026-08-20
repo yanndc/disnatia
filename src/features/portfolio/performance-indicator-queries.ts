@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
+import { loadUsdCadRateMap } from "@/lib/fx/usd-cad-rate-map";
 import { logRecoverableServerIssue } from "@/lib/logging/recoverable-server-log";
 import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { buildOwnerDimensionResolver } from "@/lib/portfolio/owner-dimension-resolver";
@@ -510,17 +511,20 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   const sessionGainTo = isoDate(now);
   const defaultSessionGainFrom = isoDate(subYears(now, 4));
 
-  const [historyPoints, dailyTotalsCad, earliestSessionGainRow] = await Promise.all([
-    loadPerformanceAccountHistory(defaultSessionGainFrom),
-    loadPerformanceDailyTotalsCad(usdToCad),
-    disnatAccountKeys.length > 0
-      ? prisma.portfolioDailyAccountSessionGain.findFirst({
-          where: { accountKey: { in: disnatAccountKeys } },
-          orderBy: { sessionDate: "asc" },
-          select: { sessionDate: true },
-        })
-      : Promise.resolve(null),
-  ]);
+  const [historyPoints, dailyTotalsCad, earliestSessionGainRow, usdCadRateMap] =
+    await Promise.all([
+      loadPerformanceAccountHistory(defaultSessionGainFrom),
+      loadPerformanceDailyTotalsCad(usdToCad),
+      disnatAccountKeys.length > 0
+        ? prisma.portfolioDailyAccountSessionGain.findFirst({
+            where: { accountKey: { in: disnatAccountKeys } },
+            orderBy: { sessionDate: "asc" },
+            select: { sessionDate: true },
+          })
+        : Promise.resolve(null),
+      loadUsdCadRateMap(defaultSessionGainFrom, sessionGainTo),
+    ]);
+  const usdCadRateByDate = Object.fromEntries(usdCadRateMap);
 
   const sessionGainFrom = earliestSessionGainRow
     ? isoDateFromDbDate(earliestSessionGainRow.sessionDate)
@@ -651,6 +655,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     dailyCloses,
     usdToCad,
     usdToCadDate: fxRow?.rateDate ? isoDate(fxRow.rateDate) : null,
+    usdCadRateByDate,
     availableYears,
     quotesAsOf,
     asOfNow: new Date().toISOString(),

@@ -123,19 +123,99 @@ function torontoClock(now: Date): { day: number; minutes: number } {
   };
 }
 
-/** Jour ouvré lun–ven pour une date ISO (weekday évalué à Toronto). */
+/** Dimanche de Pâques (algorithme grégorien anonyme), ancré midi UTC. */
+function easterSundayUtc(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monthIndex0 = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, monthIndex0, day, 12));
+}
+
+/** N-ième occurrence (1 = première) d'un jour de semaine (0=dim..6=sam) dans un mois. */
+function nthWeekdayOfMonthUtc(
+  year: number,
+  monthIndex0: number,
+  weekday: number,
+  n: number,
+): Date {
+  const first = new Date(Date.UTC(year, monthIndex0, 1, 12));
+  const offset = (weekday - first.getUTCDay() + 7) % 7;
+  return new Date(Date.UTC(year, monthIndex0, 1 + offset + (n - 1) * 7, 12));
+}
+
+/** Congé fixe déplacé au lundi (dimanche) ou vendredi (samedi) s'il tombe le week-end. */
+function observedFixedHolidayUtc(year: number, monthIndex0: number, day: number): Date {
+  const d = new Date(Date.UTC(year, monthIndex0, day, 12));
+  const wd = d.getUTCDay();
+  if (wd === 6) return new Date(Date.UTC(year, monthIndex0, day - 1, 12));
+  if (wd === 0) return new Date(Date.UTC(year, monthIndex0, day + 1, 12));
+  return d;
+}
+
+/**
+ * Congés boursiers TSX/NYSE communs (les deux bourses ferment) pour une année donnée.
+ * Ne couvre pas les congés propres à une seule bourse (ex: Family Day, Juneteenth,
+ * Presidents Day) — TSX et NYSE restent alors ouverts pour les titres de l'autre marché.
+ */
+function commonMarketHolidaysIsoForYear(year: number): Set<string> {
+  const dates = [
+    observedFixedHolidayUtc(year, 0, 1), // Jour de l'An
+    easterSundayUtc(year), // ancre pour Vendredi saint (soustrait 2 jours plus bas)
+    nthWeekdayOfMonthUtc(year, 8, 1, 1), // Fête du Travail (1er lundi de septembre)
+    observedFixedHolidayUtc(year, 11, 25), // Noël
+  ];
+  const good = easterSundayUtc(year);
+  good.setUTCDate(good.getUTCDate() - 2);
+  dates.push(good);
+  return new Set(dates.map(isoDateFromUtcParts));
+}
+
+const holidayCacheByYear = new Map<number, Set<string>>();
+
+function commonMarketHolidaysIso(year: number): Set<string> {
+  let cached = holidayCacheByYear.get(year);
+  if (!cached) {
+    cached = commonMarketHolidaysIsoForYear(year);
+    holidayCacheByYear.set(year, cached);
+  }
+  return cached;
+}
+
+/** Vrai si TSX ET NYSE sont fermées ce jour-là (congé commun aux deux bourses). */
+export function isCommonMarketHoliday(iso: string): boolean {
+  const year = Number(iso.slice(0, 4));
+  if (!Number.isFinite(year)) return false;
+  // Le Jour de l'An de `year + 1` peut être observé le 31 décembre de `year`
+  // quand il tombe un samedi — il faut donc aussi vérifier l'année suivante.
+  return commonMarketHolidaysIso(year).has(iso) || commonMarketHolidaysIso(year + 1).has(iso);
+}
+
+/** Jour ouvré lun–ven pour une date ISO (weekday évalué à Toronto), hors congés boursiers communs. */
 export function isTradingDayIso(iso: string): boolean {
   const wd = new Intl.DateTimeFormat("en-CA", {
     timeZone: TORONTO_TZ,
     weekday: "short",
   }).format(parseIsoCalendarDate(iso));
-  return wd !== "Sat" && wd !== "Sun";
+  if (wd === "Sat" || wd === "Sun") return false;
+  return !isCommonMarketHoliday(iso);
 }
 
-/** Jour ouvré actions (lun–ven, heure de Toronto) — pour un instant « maintenant ». */
+/** Jour ouvré actions (lun–ven, heure de Toronto, hors congés boursiers communs) — pour un instant « maintenant ». */
 export function isTradingDay(now: Date): boolean {
   const { day } = torontoClock(now);
-  return day >= 1 && day <= 5;
+  if (day < 1 || day > 5) return false;
+  return !isCommonMarketHoliday(isoDateInToronto(now));
 }
 
 /** Jour ouvré pour une date ISO `YYYY-MM-DD` (calendrier Toronto). */
@@ -154,11 +234,12 @@ export function formatTorontoCalendarDate(iso: string, locale = "fr-CA"): string
   }).format(parseIsoCalendarDate(iso));
 }
 
-/** Séance actions en cours (lun–ven, 9 h 30–16 h, heure de Toronto). */
+/** Séance actions en cours (lun–ven, 9 h 30–16 h, heure de Toronto, hors congés boursiers communs). */
 export function isEquityMarketSessionOpen(now = new Date()): boolean {
   const { day, minutes } = torontoClock(now);
   if (day === 0 || day === 6) return false;
-  return minutes >= SESSION_OPEN_MINUTES && minutes < SESSION_CLOSE_MINUTES;
+  if (minutes < SESSION_OPEN_MINUTES || minutes >= SESSION_CLOSE_MINUTES) return false;
+  return !isCommonMarketHoliday(isoDateInToronto(now));
 }
 
 /** Jour ouvré Toronto, avant l'ouverture (9 h 30) — la séance du jour n'a pas commencé. */

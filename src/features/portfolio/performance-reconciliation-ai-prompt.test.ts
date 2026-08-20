@@ -21,10 +21,13 @@ function mockRow(overrides: Partial<ReconciliationAuditPromptRow> = {}): Reconci
     periodStart: "2026-06-01",
     periodEnd: "2026-06-18",
     baselineLookup: "2026-05-30",
+    baselineActualDate: "2026-05-30",
+    endActualDate: "2026-06-18",
     flowsCad: -250,
     appMethod: "session-chain",
     appNote: null,
     missingAccountLabels: [],
+    staleAccountLabels: [],
     ...overrides,
   };
 }
@@ -75,7 +78,7 @@ describe("buildAiAuditPrompt", () => {
     assert.match(prompt, /Santé données séance: INCOMPLETE/);
     assert.match(prompt, /Taux USD\/CAD: N\/A/);
     assert.match(prompt, /- App gain \$ CAD: N\/A/);
-    assert.match(prompt, /- Baseline lookup: N\/A/);
+    assert.match(prompt, /- Baseline lookup \(cible\): N\/A/);
     assert.match(prompt, /Note app: N\/A/);
     assert.match(prompt, /Comptes sans snapshot complet: aucun/);
   });
@@ -94,6 +97,21 @@ describe("buildAiAuditPrompt", () => {
 
     assert.match(prompt, /Comptes sans snapshot complet: CELI YANN, REER VALERIE/);
     assert.match(prompt, /Diagnostic court: Couverture comptes incomplète/);
+  });
+
+  test("liste les comptes exclus pour snapshot périmé quand présents", () => {
+    const prompt = buildAiAuditPrompt({
+      row: mockRow({
+        staleAccountLabels: ["REER YANN"],
+        reasons: ["Snapshot périmé (>5j ouvrés) pour 1 compte(s)"],
+      }),
+      scopeSummary: "Disnat · YANN",
+      periodLabel: "1 mois",
+      usdToCad: 1.35,
+      sessionHealthOk: true,
+    });
+
+    assert.match(prompt, /Comptes exclus \(snapshot périmé\): REER YANN/);
   });
 
   test("format compact orienté debug est bien généré", () => {

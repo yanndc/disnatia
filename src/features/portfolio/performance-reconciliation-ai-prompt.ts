@@ -12,10 +12,13 @@ export type ReconciliationAuditPromptRow = {
   periodStart: string | null;
   periodEnd: string | null;
   baselineLookup: string | null;
+  baselineActualDate: string | null;
+  endActualDate: string | null;
   flowsCad: number | null;
   appMethod: string;
   appNote: string | null;
   missingAccountLabels: string[];
+  staleAccountLabels: string[];
 };
 
 export function buildAiAuditPrompt(params: {
@@ -45,7 +48,9 @@ export function buildAiAuditPrompt(params: {
     `- Couverture comptes: ${row.accountsUsed}/${row.accountsExpected}`,
     `- Début période: ${row.periodStart ?? "N/A"}`,
     `- Fin période: ${row.periodEnd ?? "N/A"}`,
-    `- Baseline lookup: ${row.baselineLookup ?? "N/A"}`,
+    `- Baseline lookup (cible): ${row.baselineLookup ?? "N/A"}`,
+    `- Baseline (snapshot réel utilisé): ${row.baselineActualDate ?? "N/A"}`,
+    `- Fin (snapshot réel utilisé): ${row.endActualDate ?? "N/A"}`,
     `- Flux nets CAD: ${row.flowsCad ?? "N/A"}`,
     "",
     `Diagnostic court: ${row.reasons.join(" | ")}`,
@@ -53,6 +58,9 @@ export function buildAiAuditPrompt(params: {
     row.missingAccountLabels.length > 0
       ? `Comptes sans snapshot complet: ${row.missingAccountLabels.join(", ")}`
       : "Comptes sans snapshot complet: aucun",
+    row.staleAccountLabels.length > 0
+      ? `Comptes exclus (snapshot périmé): ${row.staleAccountLabels.join(", ")}`
+      : "Comptes exclus (snapshot périmé): aucun",
     "",
     "Tâche demandée à l'IA:",
     "1) Expliquer la cause la plus probable de l'écart.",
@@ -82,6 +90,9 @@ export function buildAiAuditPromptCompact(params: {
     row.missingAccountLabels.length > 0
       ? `Manquants=${row.missingAccountLabels.join(", ")}`
       : "Manquants=aucun",
+    row.staleAccountLabels.length > 0
+      ? `Périmés=${row.staleAccountLabels.join(", ")}`
+      : "Périmés=aucun",
     "Réponds en 4 points: cause probable, formule vs données, vérifs minimales, correction prioritaire.",
   ];
   return lines.join("\n");

@@ -112,6 +112,7 @@ function mockPayload(
     dailyCloses: {},
     usdToCad: 1.35,
     usdToCadDate: "2026-05-27",
+    usdCadRateByDate: {},
     availableYears: [2026],
     quotesAsOf: null,
     asOfNow: "2026-05-28T15:00:00",
@@ -299,6 +300,35 @@ describe("computePeriodResult", () => {
     assert.ok((prec.gainCad ?? 0) < 1_500, "vendredi, pas le lundi (référence)");
     assert.equal(prec.gainCad, 700);
     assert.notEqual(prec.gainCad, 1_500);
+  });
+
+  test("Jour : n'utilise pas des cotations live d'un autre jour (simulation d'audit historique)", () => {
+    // Reproduit le scénario du bug de conciliation : `asOfNow` est forcé à une date
+    // passée pendant les heures de marché, mais `quotesAsOf` (cotations réellement
+    // en main) reste daté d'un autre jour. Le P&L "Aujourd'hui" ne doit pas fabriquer
+    // un résultat "live-quotes" à partir de cotations qui ne sont pas de ce jour-là.
+    const payload = mockPayload({
+      asOfNow: "2026-06-02T15:00:00", // mardi, heures de marché
+      quotesAsOf: "2026-08-17T20:00:00.000Z", // cotations réellement en main : bien plus tard
+      sessionGainsByAccount: {
+        "ACC|CAD": [{ date: "2026-06-01", gainCad: 400, priorCad: 90_000 }],
+        "ACC2|CAD": [{ date: "2026-06-01", gainCad: 100, priorCad: 40_000 }],
+      },
+    });
+
+    const day = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "day",
+    );
+
+    assert.notEqual(day.method, "live-quotes");
   });
 
   test("Préc. : complet malgré compte vide et historique figé 2024", () => {

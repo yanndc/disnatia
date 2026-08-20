@@ -209,6 +209,7 @@ export function desjardinsPerformancePayload(
     dailyCloses: {},
     usdToCad: REF.usdToCad,
     usdToCadDate: REF.asOf,
+    usdCadRateByDate: {},
     availableYears: [2026],
     quotesAsOf: `${REF.asOf}T20:00:00.000Z`,
     asOfNow: marketOpen ? `${REF.asOf}T15:00:00` : `${REF.asOf}T22:00:00`,

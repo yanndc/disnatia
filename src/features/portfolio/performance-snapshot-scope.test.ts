@@ -54,8 +54,9 @@ function miniPayload(): PerformanceIndicatorPayload {
     dailyCloses: {},
     usdToCad: 1.4,
     usdToCadDate: "2026-05-27",
+    usdCadRateByDate: {},
     availableYears: [2026],
-    quotesAsOf: null,
+    quotesAsOf: "2026-05-28T20:00:00.000Z",
     asOfNow: "2026-05-28T15:00:00",
   };
 }

@@ -283,6 +283,13 @@ export function normalizeDisnatRows(
       rowAccountType = undefined;
     }
 
+    const rawQuantity = readMoney(row, columnAliases.quantity);
+    if (rawQuantity === undefined) {
+      warnings.push(
+        `Ligne ${index + 2}: quantité manquante pour ${ticker} — traitée comme 0, vérifier le fichier source.`,
+      );
+    }
+
     const candidate = {
       accountName,
       accountNumber,
@@ -290,7 +297,7 @@ export function normalizeDisnatRows(
       ticker: normalizeDisnatTickerForPortfolio(ticker.toUpperCase(), currency),
       securityName: rawSecurityName,
       currency,
-      quantity: readMoney(row, columnAliases.quantity) ?? 0,
+      quantity: rawQuantity ?? 0,
       averageCost: readMoney(row, columnAliases.averageCost),
       marketPrice: readMoney(row, columnAliases.marketPrice),
       marketValue,
@@ -520,7 +527,7 @@ function normalizeTransaction(
   return {
     accountName: readText(row, columnAliases.accountName) || undefined,
     accountNumber: readText(row, columnAliases.accountNumber) || undefined,
-    tradeDate,
+    tradeDate: tradeDate ?? settlementDate,
     settlementDate,
     transactionType,
     txCategory: categorizeTxType(transactionType),
