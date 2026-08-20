@@ -198,6 +198,7 @@ type ReconciliationRow = {
   appNote: string | null;
   missingAccountLabels: string[];
   staleAccountLabels: string[];
+  reconstructedAccountLabels: string[];
 };
 
 function asOfAtTorontoMidday(isoDate: string): string {
@@ -347,6 +348,7 @@ export function PerformanceIndicatorCard({
           appNote: app.note,
           missingAccountLabels: [],
           staleAccountLabels: [],
+          reconstructedAccountLabels: [],
           baselineActualDate: null,
           endActualDate: null,
         });
@@ -362,58 +364,91 @@ export function PerformanceIndicatorCard({
         return native;
       };
 
-      // Un snapshot plus vieux que ce seuil que la date visée n'est pas une vraie baseline/fin —
+      // Un point plus vieux que ce seuil que la date visée n'est pas une vraie baseline/fin —
       // le compte est traité comme manquant plutôt que de fausser silencieusement le gain sur des mois.
       const minStartAsOf = minAcceptableHistoryAsOf(bounds.baselineLookup);
       const minEndAsOf = minAcceptableHistoryAsOf(bounds.end);
+
+      // Cherche le point le plus récent ≤ targetDate (et ≥ minAsOf) pour un compte, dans une
+      // liste de points (imports Disnat OU reconstruction quotidienne titres × prix).
+      const bestPointAtOrBefore = (
+        points: typeof payload.snapshots,
+        accountKey: string,
+        targetDate: string,
+        minAsOf: string,
+      ): { native: number; asOf: string } | null => {
+        let best: { native: number; asOf: string } | null = null;
+        for (const pt of points ?? []) {
+          if (pt.accountKey !== accountKey) continue;
+          if (pt.asOf > targetDate || pt.asOf < minAsOf) continue;
+          if (!best || pt.asOf > best.asOf) {
+            best = { native: pt.marketValueNative ?? pt.totalValueNative, asOf: pt.asOf };
+          }
+        }
+        return best;
+      };
 
       let gainCad = 0;
       let baselineCad = 0;
       let used = 0;
       const missingAccountKeys: string[] = [];
       const staleAccountKeys: string[] = [];
+      const reconstructedAccountKeys: string[] = [];
       // Date réelle (la plus vieille / la plus ancienne parmi les comptes utilisés) des
-      // snapshots retenus — pour afficher ce qui a VRAIMENT été utilisé, pas seulement
+      // points retenus — pour afficher ce qui a VRAIMENT été utilisé, pas seulement
       // la date cible demandée (`bounds.baselineLookup`/`bounds.end`).
       let oldestStartAsOfUsed: string | null = null;
       let oldestEndAsOfUsed: string | null = null;
 
       for (const accountKey of disnatKeys) {
-        let startNative: number | null = null;
-        let endNative: number | null = null;
-        let startAsOf: string | null = null;
-        let endAsOf: string | null = null;
+        // Priorité au vrai import Disnat (`snapshots`) s'il est assez frais — c'est la seule
+        // source réellement indépendante de l'app pour valider ses propres calculs. On ne
+        // retombe sur la reconstruction quotidienne (`historyPoints`) que s'il n'y a pas
+        // d'import Disnat assez récent, pour éviter de marquer un compte "périmé" alors que
+        // l'app suit très bien sa valeur au jour le jour entre deux imports.
+        const startFromImport = bestPointAtOrBefore(
+          payload.snapshots,
+          accountKey,
+          bounds.baselineLookup,
+          minStartAsOf,
+        );
+        const endFromImport = bestPointAtOrBefore(
+          payload.snapshots,
+          accountKey,
+          bounds.end,
+          minEndAsOf,
+        );
+        const startFromHistory = startFromImport
+          ? null
+          : bestPointAtOrBefore(payload.historyPoints, accountKey, bounds.baselineLookup, minStartAsOf);
+        const endFromHistory = endFromImport
+          ? null
+          : bestPointAtOrBefore(payload.historyPoints, accountKey, bounds.end, minEndAsOf);
 
-        for (const snap of payload.snapshots ?? []) {
-          if (snap.accountKey !== accountKey) continue;
-          const native = snap.marketValueNative ?? snap.totalValueNative;
-          if (
-            snap.asOf <= bounds.baselineLookup &&
-            (startAsOf == null || snap.asOf > startAsOf)
-          ) {
-            startNative = native;
-            startAsOf = snap.asOf;
-          }
-          if (
-            snap.asOf <= bounds.end &&
-            (endAsOf == null || snap.asOf > endAsOf)
-          ) {
-            endNative = native;
-            endAsOf = snap.asOf;
-          }
-        }
+        const start = startFromImport ?? startFromHistory;
+        const end = endFromImport ?? endFromHistory;
+        const usedReconstruction = (!startFromImport && !!startFromHistory) || (!endFromImport && !!endFromHistory);
 
-        if (startNative == null || endNative == null) {
-          missingAccountKeys.push(accountKey);
+        if (!start || !end) {
+          // Ni import récent, ni reconstruction récente disponible pour ce compte.
+          const hasAnyDataAtAll =
+            (payload.snapshots ?? []).some((s) => s.accountKey === accountKey) ||
+            (payload.historyPoints ?? []).some((s) => s.accountKey === accountKey);
+          if (hasAnyDataAtAll) {
+            staleAccountKeys.push(accountKey);
+          } else {
+            missingAccountKeys.push(accountKey);
+          }
           continue;
         }
-        if (startAsOf! < minStartAsOf || endAsOf! < minEndAsOf) {
-          staleAccountKeys.push(accountKey);
-          continue;
+        if (usedReconstruction) {
+          reconstructedAccountKeys.push(accountKey);
         }
 
-        const startCad = toCad(startNative, accountKey, startAsOf!);
-        const endCad = toCad(endNative, accountKey, endAsOf!);
+        const startAsOf = start.asOf;
+        const endAsOf = end.asOf;
+        const startCad = toCad(start.native, accountKey, startAsOf);
+        const endCad = toCad(end.native, accountKey, endAsOf);
         const flowsCad = (payload.cashFlows ?? [])
           .filter(
             (f) =>
@@ -426,10 +461,10 @@ export function PerformanceIndicatorCard({
         gainCad += endCad - startCad - flowsCad;
         baselineCad += startCad + flowsCad;
         used += 1;
-        if (oldestStartAsOfUsed == null || startAsOf! < oldestStartAsOfUsed) {
+        if (oldestStartAsOfUsed == null || startAsOf < oldestStartAsOfUsed) {
           oldestStartAsOfUsed = startAsOf;
         }
-        if (oldestEndAsOfUsed == null || endAsOf! < oldestEndAsOfUsed) {
+        if (oldestEndAsOfUsed == null || endAsOf < oldestEndAsOfUsed) {
           oldestEndAsOfUsed = endAsOf;
         }
       }
@@ -448,6 +483,11 @@ export function PerformanceIndicatorCard({
       if (staleAccountKeys.length > 0) {
         reasons.push(
           `Snapshot périmé (>${TITRES_HISTORY_MAX_GAP_TRADING_DAYS}j ouvrés) pour ${staleAccountKeys.length} compte(s)`,
+        );
+      }
+      if (reconstructedAccountKeys.length > 0) {
+        reasons.push(
+          `Référence reconstruite (pas d'import Disnat récent) pour ${reconstructedAccountKeys.length} compte(s)`,
         );
       }
       if (app.incomplete) {
@@ -470,6 +510,9 @@ export function PerformanceIndicatorCard({
         .map((key) => payload.accounts.find((a) => a.accountKey === key)?.label ?? key)
         .slice(0, 5);
       const staleAccountLabels = staleAccountKeys
+        .map((key) => payload.accounts.find((a) => a.accountKey === key)?.label ?? key)
+        .slice(0, 5);
+      const reconstructedAccountLabels = reconstructedAccountKeys
         .map((key) => payload.accounts.find((a) => a.accountKey === key)?.label ?? key)
         .slice(0, 5);
 
@@ -505,6 +548,7 @@ export function PerformanceIndicatorCard({
         appNote: app.note,
         missingAccountLabels,
         staleAccountLabels,
+        reconstructedAccountLabels,
       });
     }
 
@@ -1211,6 +1255,11 @@ export function PerformanceIndicatorCard({
                       {selectedReconciliation.staleAccountLabels.length > 0 ? (
                         <p className="mt-2 text-amber-700">
                           Comptes exclus (snapshot périmé de plus de {TITRES_HISTORY_MAX_GAP_TRADING_DAYS} jours ouvrés): {selectedReconciliation.staleAccountLabels.join(", ")}
+                        </p>
+                      ) : null}
+                      {selectedReconciliation.reconstructedAccountLabels.length > 0 ? (
+                        <p className="mt-2 text-slate-600">
+                          Référence reconstruite (pas d&apos;import Disnat assez récent, valeur estimée à partir des positions × prix de clôture) pour: {selectedReconciliation.reconstructedAccountLabels.join(", ")}
                         </p>
                       ) : null}
                     </div>

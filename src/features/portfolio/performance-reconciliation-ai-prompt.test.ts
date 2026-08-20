@@ -28,6 +28,7 @@ function mockRow(overrides: Partial<ReconciliationAuditPromptRow> = {}): Reconci
     appNote: null,
     missingAccountLabels: [],
     staleAccountLabels: [],
+    reconstructedAccountLabels: [],
     ...overrides,
   };
 }
@@ -112,6 +113,24 @@ describe("buildAiAuditPrompt", () => {
     });
 
     assert.match(prompt, /Comptes exclus \(snapshot périmé\): REER YANN/);
+  });
+
+  test("liste les comptes en référence reconstruite quand présents", () => {
+    const prompt = buildAiAuditPrompt({
+      row: mockRow({
+        reconstructedAccountLabels: ["CELI YANN"],
+        reasons: ["Référence reconstruite (pas d'import Disnat récent) pour 1 compte(s)"],
+      }),
+      scopeSummary: "Disnat · YANN",
+      periodLabel: "1 mois",
+      usdToCad: 1.35,
+      sessionHealthOk: true,
+    });
+
+    assert.match(
+      prompt,
+      /Comptes en référence reconstruite \(pas d'import Disnat récent, valeur estimée titres × prix\): CELI YANN/,
+    );
   });
 
   test("format compact orienté debug est bien généré", () => {

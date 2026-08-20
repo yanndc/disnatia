@@ -19,6 +19,7 @@ export type ReconciliationAuditPromptRow = {
   appNote: string | null;
   missingAccountLabels: string[];
   staleAccountLabels: string[];
+  reconstructedAccountLabels: string[];
 };
 
 export function buildAiAuditPrompt(params: {
@@ -61,6 +62,9 @@ export function buildAiAuditPrompt(params: {
     row.staleAccountLabels.length > 0
       ? `Comptes exclus (snapshot périmé): ${row.staleAccountLabels.join(", ")}`
       : "Comptes exclus (snapshot périmé): aucun",
+    row.reconstructedAccountLabels.length > 0
+      ? `Comptes en référence reconstruite (pas d'import Disnat récent, valeur estimée titres × prix): ${row.reconstructedAccountLabels.join(", ")}`
+      : "Comptes en référence reconstruite: aucun",
     "",
     "Tâche demandée à l'IA:",
     "1) Expliquer la cause la plus probable de l'écart.",
@@ -93,6 +97,9 @@ export function buildAiAuditPromptCompact(params: {
     row.staleAccountLabels.length > 0
       ? `Périmés=${row.staleAccountLabels.join(", ")}`
       : "Périmés=aucun",
+    row.reconstructedAccountLabels.length > 0
+      ? `Reconstruits=${row.reconstructedAccountLabels.join(", ")}`
+      : "Reconstruits=aucun",
     "Réponds en 4 points: cause probable, formule vs données, vérifs minimales, correction prioritaire.",
   ];
   return lines.join("\n");
