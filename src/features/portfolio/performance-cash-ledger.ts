@@ -71,6 +71,59 @@ export function buildAccountCashLedgers(
   return out;
 }
 
+/**
+ * Le ledger cash est un solde CUMULATIF construit à partir des transactions connues en base —
+ * pas un solde absolu réel. S'il démarre nettement APRÈS le début de l'historique titres connu
+ * pour ce compte, un financement initial (ou une activité cash antérieure) est probablement
+ * manquant en base, et le delta cash calculé sur une fenêtre qui chevauche ce trou serait faux.
+ * Dans ce cas on désactive l'usage du ledger pour ce compte (retour à titres seuls).
+ * Si le ledger démarre à/avant le début de l'historique titres (ou n'a aucune donnée), il est
+ * considéré fiable — un solde constant (delta nul) n'a de toute façon aucun effet sur un calcul
+ * de delta BMV/EMV.
+ */
+const CASH_LEDGER_GAP_TOLERANCE_DAYS = 45;
+
+/**
+ * Si le ledger d'un compte n'a plus reçu la moindre transaction cash (dépôt, dividende,
+ * intérêt, achat/vente...) depuis longtemps alors que ce compte a continué à avoir de
+ * l'activité titres (holdings/imports plus récents), c'est le signe que le suivi cash s'est
+ * arrêté en base pour ce compte (ex. import incomplet) plutôt qu'un compte réellement inactif.
+ * Le solde cumulé figé (souvent négatif de façon persistante, ex. financement initial non
+ * importé) n'est alors plus représentatif au-delà de ce point mort — on désactive le ledger.
+ */
+const CASH_LEDGER_STALENESS_TOLERANCE_DAYS = 90;
+
+export function cashLedgerReliableForAccount(
+  accountKey: string,
+  ledgers: Record<string, AccountCashLedgerPoint[]>,
+  earliestTitresAsOf: string | null,
+  latestTitresAsOf: string | null = null,
+): boolean {
+  const series = ledgers[accountKey];
+  if (!series || series.length === 0) return true;
+
+  if (earliestTitresAsOf) {
+    const earliestMs = Date.parse(earliestTitresAsOf);
+    const ledgerStartMs = Date.parse(series[0]!.date);
+    if (Number.isFinite(earliestMs) && Number.isFinite(ledgerStartMs)) {
+      const toleranceMs = CASH_LEDGER_GAP_TOLERANCE_DAYS * 24 * 60 * 60 * 1000;
+      if (ledgerStartMs - earliestMs > toleranceMs) return false;
+    }
+  }
+
+  if (latestTitresAsOf) {
+    const latestMs = Date.parse(latestTitresAsOf);
+    const ledgerEndMs = Date.parse(series[series.length - 1]!.date);
+    if (Number.isFinite(latestMs) && Number.isFinite(ledgerEndMs)) {
+      const staleToleranceMs =
+        CASH_LEDGER_STALENESS_TOLERANCE_DAYS * 24 * 60 * 60 * 1000;
+      if (latestMs - ledgerEndMs > staleToleranceMs) return false;
+    }
+  }
+
+  return true;
+}
+
 /** Solde cash (CAD) au plus tard à `targetDate`. */
 export function cashCadAtOrBefore(
   accountKeys: string[],

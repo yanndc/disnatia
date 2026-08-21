@@ -30,6 +30,10 @@ import {
   netExternalFlowsCad,
 } from "./performance-cash-flows";
 import {
+  cashCadAtOrBefore,
+  cashLedgerReliableForAccount,
+} from "./performance-cash-ledger";
+import {
   resolvePeriodReturnPercent,
   weightedExternalFlowsForDietz,
   gainCadFromPeriodReturn,
@@ -438,11 +442,12 @@ function disnatAccountKeysInScope(
 function currentPositionsCadInGainScope(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
+  anchorDate: string,
 ): number {
-  return disnatAccountKeysInScope(accountKeys, payload).reduce(
-    (s, k) => s + (payload.currentByAccount[k]?.positionsCad ?? 0),
-    0,
-  );
+  return disnatAccountKeysInScope(accountKeys, payload).reduce((s, k) => {
+    const positionsCad = payload.currentByAccount[k]?.positionsCad ?? 0;
+    return s + cashAdjustedTitresCad(k, payload, positionsCad, anchorDate);
+  }, 0);
 }
 
 /** Taux USD→CAD à une date donnée, avec repli sur le taux courant si absent de la carte historique. */
@@ -479,6 +484,75 @@ function canUseLiveValuesForAsOf(payload: PerformanceIndicatorPayload): boolean 
   return asOfDay === quotesDay;
 }
 
+/** Plus ancien / plus récent point titres (historyPoints/snapshots) connu pour un compte. */
+function titresAsOfBoundsForAccount(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+): { earliest: string | null; latest: string | null } {
+  const dates = [
+    ...(payload.historyPoints ?? [])
+      .filter((p) => p.accountKey === accountKey)
+      .map((p) => p.asOf),
+    ...(payload.snapshots ?? [])
+      .filter((p) => p.accountKey === accountKey)
+      .map((p) => p.asOf),
+  ];
+  if (dates.length === 0) return { earliest: null, latest: null };
+  const sorted = dates.toSorted();
+  return { earliest: sorted[0]!, latest: sorted[sorted.length - 1]! };
+}
+
+/** Mémoïse la fiabilité du ledger cash par compte pour un payload donné (évite un rescan). */
+const cashLedgerReliabilityCache = new WeakMap<
+  PerformanceIndicatorPayload,
+  Map<string, boolean>
+>();
+
+function isCashLedgerReliable(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+): boolean {
+  let cache = cashLedgerReliabilityCache.get(payload);
+  if (!cache) {
+    cache = new Map();
+    cashLedgerReliabilityCache.set(payload, cache);
+  }
+  const cached = cache.get(accountKey);
+  if (cached !== undefined) return cached;
+
+  const { earliest, latest } = titresAsOfBoundsForAccount(accountKey, payload);
+  const reliable = cashLedgerReliableForAccount(
+    accountKey,
+    payload.accountCashLedgers,
+    earliest,
+    latest,
+  );
+  cache.set(accountKey, reliable);
+  return reliable;
+}
+
+/**
+ * Ajoute l'encaisse (ledger) à une valeur titres, uniquement si le ledger cash de ce
+ * compte est jugé fiable (voir cashLedgerReliableForAccount) — sinon retourne la valeur
+ * titres seule (comportement historique), pour éviter d'introduire un delta cash faux
+ * quand le ledger démarre au milieu de la fenêtre mesurée (financement initial manquant)
+ * ou s'est arrêté d'être alimenté bien avant la fin de l'historique titres connu.
+ */
+function cashAdjustedTitresCad(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  titresValueCad: number,
+  anchorDate: string,
+): number {
+  if (!isCashLedgerReliable(accountKey, payload)) {
+    return titresValueCad;
+  }
+  return (
+    titresValueCad +
+    cashCadAtOrBefore([accountKey], payload.accountCashLedgers, anchorDate)
+  );
+}
+
 /** Historique plus vieux que ce seuil (jours ouvrés) → ignoré pour V(t). */
 export const TITRES_HISTORY_MAX_GAP_TRADING_DAYS = 5;
 
@@ -511,7 +585,9 @@ export function titresCadAtOrBefore(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
   targetDate: string,
+  options?: { includeCash?: boolean },
 ): { valueCad: number; asOf: string; accountsWithData: number } | null {
+  const includeCash = options?.includeCash ?? true;
   const keys = new Set(accountKeys);
   const byAccount = new Map<string, { asOf: string; valueCad: number }>();
   const minAsOf = minAcceptableHistoryAsOf(targetDate);
@@ -519,11 +595,19 @@ export function titresCadAtOrBefore(
   for (const pt of payload.historyPoints ?? []) {
     if (!keys.has(pt.accountKey)) continue;
     if (pt.asOf > targetDate || pt.asOf < minAsOf) continue;
-    const valueCad = historyPointCad(
+    const titresCad = historyPointCad(
       pt.totalValueNative,
       pt.currency,
       usdCadRateForDate(payload, pt.asOf),
     );
+    // historyPoints = valeur titres projetée seulement (pas de cash) : on ajoute l'encaisse
+    // du ledger (si fiable) pour ne pas compter à tort une conversion encaisse→titres comme
+    // un gain de performance. Les snapshots (ci-dessous), eux, incluent déjà le cash.
+    // `includeCash: false` permet aux appels internes qui comparent explicitement à des
+    // valeurs marché-seulement (ex. plancher d'import) de rester apples-to-apples.
+    const valueCad = includeCash
+      ? cashAdjustedTitresCad(pt.accountKey, payload, titresCad, pt.asOf)
+      : titresCad;
     const cur = byAccount.get(pt.accountKey);
     if (!cur || pt.asOf > cur.asOf) {
       byAccount.set(pt.accountKey, { asOf: pt.asOf, valueCad });
@@ -568,6 +652,7 @@ export function titresCadFullCoverageAtOrBefore(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
   targetDate: string,
+  options?: { includeCash?: boolean },
 ): { valueCad: number; asOf: string } | null {
   if (accountKeys.length === 0) return null;
 
@@ -575,7 +660,7 @@ export function titresCadFullCoverageAtOrBefore(
   let coverageAsOf = targetDate;
 
   for (const key of accountKeys) {
-    const hit = titresCadAtOrBefore([key], payload, targetDate);
+    const hit = titresCadAtOrBefore([key], payload, targetDate, options);
     if (hit) {
       total += hit.valueCad;
       if (hit.asOf < coverageAsOf) coverageAsOf = hit.asOf;
@@ -608,7 +693,7 @@ function titresCadAtPeriodEnd(
       const cur = payload.currentByAccount[key];
       if (!cur) return null;
       if (cur.positionsCad > 0) {
-        total += cur.positionsCad;
+        total += cashAdjustedTitresCad(key, payload, cur.positionsCad, endDate);
         continue;
       }
       const hit = titresCadAtOrBefore([key], payload, endDate);
@@ -639,7 +724,7 @@ function resolveEndTitresCad(
       endDate === refDay &&
       (isEquityMarketSessionOpen(now) || endDate === today);
     if (useLiveEnd) {
-      const live = currentPositionsCadInGainScope(accountKeys, payload);
+      const live = currentPositionsCadInGainScope(accountKeys, payload, endDate);
       if (live > 0) return live;
     }
   }
@@ -667,13 +752,29 @@ function accountBmvTitresCad(
     firstSession.priorCad > 0 &&
     firstSession.date <= latestAllowed
   ) {
-    return { valueCad: firstSession.priorCad, asOf: firstSession.date };
+    return {
+      valueCad: cashAdjustedTitresCad(
+        accountKey,
+        payload,
+        firstSession.priorCad,
+        firstSession.date,
+      ),
+      asOf: firstSession.date,
+    };
   }
   if (historyHit) {
     return { valueCad: historyHit.valueCad, asOf: historyHit.asOf };
   }
   if (firstSession && firstSession.priorCad > 0) {
-    return { valueCad: firstSession.priorCad, asOf: firstSession.date };
+    return {
+      valueCad: cashAdjustedTitresCad(
+        accountKey,
+        payload,
+        firstSession.priorCad,
+        firstSession.date,
+      ),
+      asOf: firstSession.date,
+    };
   }
   return null;
 }
@@ -689,15 +790,25 @@ function firstImportMarketCadInPeriod(
   payload: PerformanceIndicatorPayload,
   periodStart: string,
   periodEnd: string,
-): { valueCad: number; asOf: string } | null {
-  let best: { asOf: string; valueCad: number } | null = null;
+): { valueCad: number; totalValueCad: number; asOf: string } | null {
+  let best: { asOf: string; valueCad: number; totalValueCad: number } | null = null;
   for (const pt of payload.snapshots ?? []) {
     if (pt.accountKey !== accountKey) continue;
     if (pt.asOf < periodStart || pt.asOf > periodEnd) continue;
     const native = pt.marketValueNative ?? pt.totalValueNative;
     const valueCad = historyPointCad(native, pt.currency, usdCadRateForDate(payload, pt.asOf));
+    // Le snapshot d'import connaît le vrai total (titres + cash réel), plus fiable que le
+    // ledger cash reconstruit : on le garde à disposition pour l'utiliser comme BMV quand le
+    // plancher se déclenche (cf. resolveBmvCadForPeriodGain), tout en comparant le seuil de
+    // déclenchement sur la valeur marché seule (`valueCad`) pour rester cohérent avec
+    // `historyCadMarketOnly`.
+    const totalValueCad = historyPointCad(
+      pt.totalValueNative,
+      pt.currency,
+      usdCadRateForDate(payload, pt.asOf),
+    );
     if (!best || pt.asOf < best.asOf) {
-      best = { asOf: pt.asOf, valueCad };
+      best = { asOf: pt.asOf, valueCad, totalValueCad };
     }
   }
   return best;
@@ -732,14 +843,30 @@ function resolveBmvCadForPeriodGain(
     (pt) => pt.accountKey === accountKey && pt.asOf <= baselineLookup,
   );
 
+  // Le plancher d'import compare une valeur marché-seulement (`importHit`, tirée de
+  // `marketValueNative`) : le seuil de déclenchement doit rester lui aussi marché-seulement
+  // (sans l'ajustement d'encaisse), sinon l'ajout du cash au ledger change artificiellement
+  // si ce plancher se déclenche ou non — ce qui a causé une régression sur le calcul $ AAJ
+  // (voir performance-contributions-disnat.test.ts).
+  const historyCadMarketOnly =
+    (titresCadFullCoverageAtOrBefore([accountKey], payload, baselineLookup, {
+      includeCash: false,
+    })?.valueCad ??
+      titresCadAtOrBefore([accountKey], payload, baselineLookup, {
+        includeCash: false,
+      })?.valueCad) ??
+    historyCad;
+
   if (
     isCalendarYtdStart &&
     !hasSnapAtBaseline &&
     importHit &&
     importHit.asOf > baselineLookup &&
-    importHit.valueCad > historyCad * IMPORT_BMV_FLOOR_RATIO
+    importHit.valueCad > historyCadMarketOnly * IMPORT_BMV_FLOOR_RATIO
   ) {
-    return importHit.valueCad;
+    // Le snapshot connaît le vrai total (titres + cash réel à l'import) : on l'utilise plutôt
+    // que la valeur marché seule pour rester cohérent avec un EMV désormais cash-inclusif.
+    return importHit.totalValueCad;
   }
 
   return anchorCad;
@@ -776,7 +903,7 @@ function resolveAccountEmvTitresCad(
     null;
   if (hist != null) return hist;
   const live = payload.currentByAccount[accountKey]?.positionsCad ?? 0;
-  return live > 0 ? live : null;
+  return live > 0 ? cashAdjustedTitresCad(accountKey, payload, live, endDate) : null;
 }
 
 /** Valeur titres native (devise du compte) au plus tard à `endDate`. */
@@ -835,7 +962,7 @@ function resolveAccountReferenceTitresCad(
   const live = payload.currentByAccount[accountKey]?.positionsCad;
 
   if (canUseLiveValuesForAsOf(payload) && endDate >= refDay && live != null && live > 0) {
-    return live;
+    return cashAdjustedTitresCad(accountKey, payload, live, endDate);
   }
 
   return (
