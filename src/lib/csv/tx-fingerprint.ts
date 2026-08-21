@@ -16,6 +16,19 @@ export type TxFingerprintInput = {
 };
 
 /**
+ * Vrai pour un ticker "placeholder" (« - », « --C », « --U »…) que Disnat met sur les lignes
+ * sans titre réel (dépôt, virement en argent). Ce placeholder varie d'un export "Historique"
+ * à l'autre pour le MÊME événement (ex. "-" vs "--C" pour le même dépôt) — l'inclure dans
+ * l'empreinte ferait passer deux imports du même dépôt comme des lignes distinctes (doublon
+ * non détecté). Un vrai symbole boursier (AAPL, RY, BBD.B…) ne matche jamais ce test, donc un
+ * virement EN NATURE de deux titres différents le même jour reste correctement distingué.
+ */
+function isPlaceholderTicker(ticker: string): boolean {
+  const stripped = ticker.replace(/-/g, "");
+  return stripped.length <= 1;
+}
+
+/**
  * Fingerprint déterministe incluant accountKey.
  *
  * accountKey est inclus pour éviter les faux-positifs entre comptes différents
@@ -27,12 +40,13 @@ export type TxFingerprintInput = {
  * réimporter avec le bon compte.
  */
 export function txFingerprint(accountKey: string, tx: TxFingerprintInput): string {
+  const tickerNorm = (tx.ticker ?? "").toUpperCase().trim();
   const parts = [
     accountKey,
     tx.tradeDate?.toISOString().slice(0, 10) ?? "",
     tx.settlementDate?.toISOString().slice(0, 10) ?? "",
     (tx.transactionType ?? "").toLowerCase().trim(),
-    (tx.ticker ?? "").toUpperCase().trim(),
+    isPlaceholderTicker(tickerNorm) ? "" : tickerNorm,
     tx.amount !== null && tx.amount !== undefined ? String(Math.round(tx.amount * 100)) : "",
     (tx.currency ?? "").toUpperCase(),
     tx.quantity !== null && tx.quantity !== undefined ? String(tx.quantity) : "",
