@@ -13,9 +13,12 @@ const defaultOrder: HoldingOrder[] = [{ snapshotValue: "desc" }];
  * Les exports CSV « portefeuille » Disnat ne servent pas à remplir cette liste : ils alimentent
  * `portfolio_account_states` (comptes, propriétaires, totaux de référence) et les écarts de validation.
  */
-export async function loadHoldingsForDashboard() {
+export async function loadHoldingsForDashboard(accountKeys?: string[]) {
   return prisma.portfolioHolding.findMany({
-    where: { sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID },
+    where: {
+      sourceImportId: PROJECTED_HOLDINGS_SOURCE_ID,
+      ...(accountKeys ? { accountKey: { in: accountKeys } } : {}),
+    },
     orderBy: defaultOrder,
   });
 }

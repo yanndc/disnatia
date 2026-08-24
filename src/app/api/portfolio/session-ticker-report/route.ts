@@ -24,7 +24,14 @@ export async function GET(request: Request) {
     const sessionDateRaw = search.get("sessionDate")?.trim() ?? "";
     const accountKeysRaw = search.get("accountKeys")?.trim() ?? "";
 
-    let payload = await getPerformanceIndicatorPayload();
+    const accountKeys = accountKeysRaw
+      ? accountKeysRaw
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+      : undefined;
+
+    let payload = await getPerformanceIndicatorPayload({ accountKeysFilter: accountKeys });
     const now = parsePayloadClock(payload.asOfNow);
     const maxSessionDate = referenceTradingSessionDayIso(now);
     const minSessionDate = previousTradingDayIso(
@@ -38,33 +45,6 @@ export async function GET(request: Request) {
         { error: "Paramètre sessionDate invalide (YYYY-MM-DD)." },
         { status: 400 },
       );
-    }
-
-    if (accountKeysRaw) {
-      const allowed = new Set(
-        accountKeysRaw
-          .split(",")
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0),
-      );
-      payload = {
-        ...payload,
-        accounts: applyAccountScope(payload.accounts, allowed),
-        snapshots: applyAccountScope(payload.snapshots, allowed),
-        historyPoints: applyAccountScope(payload.historyPoints, allowed),
-        cashFlows: applyAccountScope(payload.cashFlows, allowed),
-        holdings: applyAccountScope(payload.holdings, allowed),
-        enrichedHoldings: applyAccountScope(payload.enrichedHoldings, allowed),
-        currentByAccount: Object.fromEntries(
-          Object.entries(payload.currentByAccount).filter(([k]) => allowed.has(k)),
-        ),
-        sessionGainsByAccount: Object.fromEntries(
-          Object.entries(payload.sessionGainsByAccount).filter(([k]) => allowed.has(k)),
-        ),
-        accountCashLedgers: Object.fromEntries(
-          Object.entries(payload.accountCashLedgers).filter(([k]) => allowed.has(k)),
-        ),
-      };
     }
 
     if (sessionDate > maxSessionDate || sessionDate < minSessionDate) {

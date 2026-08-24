@@ -172,8 +172,13 @@ async function loadQuotesForHoldings(
   }
 }
 
-export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndicatorPayload> {
+export async function getPerformanceIndicatorPayload(options?: {
+  accountKeysFilter?: string[];
+}): Promise<PerformanceIndicatorPayload> {
   await ensureFreshQuotesDuringSession();
+  const accountKeySet = options?.accountKeysFilter
+    ? new Set(options.accountKeysFilter)
+    : null;
   const [
     accountStates,
     holdings,
@@ -189,9 +194,10 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
   ] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
+        where: accountKeySet ? { accountKey: { in: [...accountKeySet] } } : undefined,
         orderBy: [{ owner: "asc" }, { accountType: "asc" }],
       }),
-      loadHoldingsForDashboard(),
+      loadHoldingsForDashboard(accountKeySet ? [...accountKeySet] : undefined),
       listExternalAccountsWithLatest(),
       prisma.portfolioImport.findMany({
         where: {
@@ -421,15 +427,15 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     };
   }
 
-  const accountKeySet = new Set(accounts.map((a) => a.accountKey));
+  const loadedAccountKeySet = new Set(accounts.map((a) => a.accountKey));
   const accountOwnerKeyByAccount = new Map<string, string>();
   for (const m of accountOwnerMappings) {
-    if (!accountKeySet.has(m.accountKey)) continue;
+    if (!loadedAccountKeySet.has(m.accountKey)) continue;
     accountOwnerKeyByAccount.set(m.accountKey, m.owner.ownerKey);
   }
   for (const m of externalOwnerMappings) {
     const accountKey = m.externalAccount.accountKey;
-    if (!accountKeySet.has(accountKey)) continue;
+    if (!loadedAccountKeySet.has(accountKey)) continue;
     accountOwnerKeyByAccount.set(accountKey, m.owner.ownerKey);
   }
 
