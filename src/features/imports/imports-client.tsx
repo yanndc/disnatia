@@ -228,6 +228,7 @@ export function ImportsClient({
         tickersProcessed?: number;
         tickersSkipped?: number;
         pricesUpserted?: number;
+        missingPricesFilled?: number;
         dailyValuesUpserted?: number;
         sessionGainsUpserted?: number;
         integrity?: {

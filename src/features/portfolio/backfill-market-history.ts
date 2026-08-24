@@ -32,6 +32,7 @@ export type BackfillMarketHistoryResult = {
   tickersProcessed: number;
   tickersSkipped: number;
   pricesUpserted: number;
+  missingPricesFilled: number;
   dailyValuesUpserted: number;
   sessionGainsUpserted: number;
   coverageRanges: TickerCoverageRange[];
@@ -239,7 +240,19 @@ async function upsertDailyPrices(
   currency: string,
   yahooSymbol: string,
   points: { date: string; close: number }[],
-): Promise<number> {
+): Promise<{ upserted: number; missingFilled: number }> {
+  const existing = await prisma.portfolioDailyPrice.findMany({
+    where: {
+      ticker,
+      currency,
+      priceDate: {
+        in: points.map((point) => parseIsoDateLocal(point.date)),
+      },
+    },
+    select: { priceDate: true },
+  });
+  const existingDates = new Set(existing.map((row) => isoDateFromDbDate(row.priceDate)));
+
   let upserted = 0;
   for (const point of points) {
     await prisma.portfolioDailyPrice.upsert({
@@ -266,15 +279,18 @@ async function upsertDailyPrices(
     });
     upserted += 1;
   }
-  return upserted;
+  return {
+    upserted,
+    missingFilled: points.filter((point) => !existingDates.has(point.date)).length,
+  };
 }
 
 async function backfillPricesForPair(
   range: TickerCoverageRange,
   force: boolean,
-): Promise<{ upserted: number; skipped: boolean }> {
+): Promise<{ upserted: number; missingFilled: number; skipped: boolean }> {
   const needs = await pairNeedsBackfill(range.ticker, range.currency, range.fromDate, force);
-  if (!needs) return { upserted: 0, skipped: true };
+  if (!needs) return { upserted: 0, missingFilled: 0, skipped: true };
 
   const yahooRange = pickYahooChartRange(parseIsoDateLocal(range.fromDate));
   const raw = await fetchYahooChartDailyCloses(range.yahooSymbol, yahooRange);
@@ -286,15 +302,15 @@ async function backfillPricesForPair(
     return d >= from && d <= to;
   });
 
-  if (filtered.length === 0) return { upserted: 0, skipped: false };
+  if (filtered.length === 0) return { upserted: 0, missingFilled: 0, skipped: false };
 
-  const upserted = await upsertDailyPrices(
+  const result = await upsertDailyPrices(
     range.ticker,
     range.currency,
     range.yahooSymbol,
     filtered,
   );
-  return { upserted, skipped: false };
+  return { ...result, skipped: false };
 }
 
 /** Recalcule `portfolio_daily_values` à partir des holdings et clôtures sur une plage ISO. */
@@ -480,6 +496,7 @@ export async function backfillMarketHistory(options?: {
       tickersProcessed: 0,
       tickersSkipped: 0,
       pricesUpserted: 0,
+      missingPricesFilled: 0,
       dailyValuesUpserted: 0,
       sessionGainsUpserted: 0,
       coverageRanges: [],
@@ -491,6 +508,7 @@ export async function backfillMarketHistory(options?: {
   let tickersProcessed = 0;
   let tickersSkipped = 0;
   let pricesUpserted = 0;
+  let missingPricesFilled = 0;
 
   const chunkSize = 4;
   for (let i = 0; i < coverageRanges.length; i += chunkSize) {
@@ -502,6 +520,7 @@ export async function backfillMarketHistory(options?: {
       if (result.skipped) tickersSkipped += 1;
       else tickersProcessed += 1;
       pricesUpserted += result.upserted;
+      missingPricesFilled += result.missingFilled;
     }
   }
 
@@ -545,9 +564,10 @@ export async function backfillMarketHistory(options?: {
     tickersProcessed,
     tickersSkipped,
     pricesUpserted,
+    missingPricesFilled,
     dailyValuesUpserted,
     sessionGainsUpserted,
     coverageRanges,
-    message: `${tickersProcessed} titre(s) mis à jour, ${tickersSkipped} déjà couverts, ${pricesUpserted} clôtures enregistrées.`,
+    message: `${tickersProcessed} titre(s) mis à jour, ${tickersSkipped} déjà couverts, ${missingPricesFilled} clôture(s) manquante(s) ajoutée(s), ${pricesUpserted} clôtures enregistrées.`,
   };
 }
