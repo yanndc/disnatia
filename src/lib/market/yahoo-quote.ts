@@ -231,22 +231,33 @@ export async function fetchYahooQuotesBySymbol(
     }
   }
 
-  for (const symbol of seen) {
-    if (out.has(symbol)) continue;
-    const row = await fetchYahooChartFallback(symbol);
-    if (row !== null) {
-      out.set(symbol, row);
-    }
+  const missingSymbols = seen.filter((symbol) => !out.has(symbol));
+  if (missingSymbols.length > 0) {
+    await Promise.all(
+      missingSymbols.map(async (symbol) => {
+        const row = await fetchYahooChartFallback(symbol);
+        if (row !== null) {
+          out.set(symbol, row);
+        }
+      }),
+    );
   }
 
-  /** Si quote v7 n’envoie que le cours (souvent sur les .TO/.V), enrichir depuis chart (veille + delta). */
-  for (const symbol of seen) {
+  const needsChartEnrichment = seen.filter((symbol) => {
     const row = out.get(symbol);
-    if (!row || !rowNeedsChartSessionFields(row)) continue;
-    const chart = await fetchYahooChartFallback(symbol);
-    if (chart !== null) {
-      out.set(symbol, mergeYahooQuoteRow(row, chart));
-    }
+    return row && rowNeedsChartSessionFields(row);
+  });
+  if (needsChartEnrichment.length > 0) {
+    await Promise.all(
+      needsChartEnrichment.map(async (symbol) => {
+        const row = out.get(symbol);
+        if (!row) return;
+        const chart = await fetchYahooChartFallback(symbol);
+        if (chart !== null) {
+          out.set(symbol, mergeYahooQuoteRow(row, chart));
+        }
+      }),
+    );
   }
 
   return out;
