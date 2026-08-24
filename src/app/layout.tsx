@@ -42,7 +42,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await connection();
+  connection().catch(() => {
+    // Connection failures are non-blocking — pages can still render
+  });
+
   after(() => {
     void refreshUsdCadRatesIfStale().catch((err) => {
       logRecoverableServerIssue("[usd-cad-rates]", err);

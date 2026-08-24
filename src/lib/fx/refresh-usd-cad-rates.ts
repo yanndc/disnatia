@@ -123,13 +123,25 @@ function buildDailySeriesFromApi(
 export async function refreshUsdCadRatesIfStale(): Promise<void> {
   const today = todayUtcDate();
 
-  const agg = await prisma.usdCadDailyRate.aggregate({
-    _max: { rateDate: true },
-    _count: { _all: true },
-  });
+  let maxDate: Date | null = null;
+  let needsFullBackfill = false;
 
-  let maxDate = agg._max.rateDate;
-  let needsFullBackfill = agg._count._all === 0;
+  try {
+    const agg = await Promise.race([
+      prisma.usdCadDailyRate.aggregate({
+        _max: { rateDate: true },
+        _count: { _all: true },
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("USD/CAD query timeout")), 3000)
+      ),
+    ]);
+    maxDate = (agg as any)._max.rateDate;
+    needsFullBackfill = (agg as any)._count._all === 0;
+  } catch (err) {
+    // If aggregate query fails, skip refresh — rates are non-critical
+    return;
+  }
 
   /* Ancienne source (Frankfurter) : un seul passage pour réaligner tout l’historique sur la BoC. */
   if (!needsFullBackfill) {
