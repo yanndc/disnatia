@@ -293,8 +293,6 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       }),
     ]);
 
-  const quotes = await loadQuotesForHoldings(holdings);
-  const quoteMap = indexQuotesByTickerCurrency(quotes);
   const uniquePairs = [
     ...new Map(
       holdings.map((h) => [
@@ -303,8 +301,14 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
       ]),
     ).values(),
   ];
-  const priorCloseByPair = await priorSessionCloseByPair(uniquePairs);
-  const fxRow = await getUsdCadRateNear(new Date());
+
+  const [quotes, priorCloseByPair, fxRow] = await Promise.all([
+    loadQuotesForHoldings(holdings),
+    priorSessionCloseByPair(uniquePairs),
+    getUsdCadRateNear(new Date()),
+  ]);
+
+  const quoteMap = indexQuotesByTickerCurrency(quotes);
   const usdToCad = fxRow?.usdToCad ?? null;
 
   const positionsByAccount = new Map<string, ReturnType<typeof enrichPositionRow>[]>();
@@ -607,7 +611,6 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     }));
 
   const { sessionEnd, sessionStart } = yesterdayCloseDates(new Date());
-  const closeFrom = sessionStart;
   const closeTo = isoDate(new Date());
 
   const closeHistoryPairs = [
@@ -619,6 +622,7 @@ export async function getPerformanceIndicatorPayload(): Promise<PerformanceIndic
     ).values(),
   ];
 
+  const closeFrom = isoDateInToronto(subDays(parseIsoDateLocal(closeTo), 15));
   let closeMap = await loadDailyCloseMap(performanceHoldings, closeFrom, closeTo);
   const needingHistory = pairsNeedingChartHistory(closeHistoryPairs, closeMap, sessionEnd);
   if (needingHistory.length > 0) {

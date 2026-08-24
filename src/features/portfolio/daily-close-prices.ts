@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import { fetchYahooChartDailyCloses } from "@/lib/market/yahoo-chart-closes";
 import {
@@ -104,42 +105,63 @@ export async function backfillDailyClosesForPairs(
   pairs: { ticker: string; currency: string; yahooSymbol: string }[],
 ): Promise<number> {
   const chartCloses = await fetchChartClosesInMemory(pairs);
-  let upserted = 0;
+  if (chartCloses.size === 0) return 0;
+
+  const yahooSymbolByKey = new Map<string, string>();
+  for (const { ticker, currency, yahooSymbol } of pairs) {
+    yahooSymbolByKey.set(
+      `${ticker.toUpperCase()}|${currency.toUpperCase()}`,
+      yahooSymbol,
+    );
+  }
+
+  const rows: Array<{
+    ticker: string;
+    currency: string;
+    priceDate: Date;
+    closePrice: number;
+    source: string;
+    yahooSymbol: string | null;
+  }> = [];
 
   for (const [key, close] of chartCloses) {
     const [ticker, currency, date] = key.split("|");
+    if (!ticker || !currency || !date) continue;
     const yahooSymbol =
-      pairs.find(
-        (p) =>
-          p.ticker.toUpperCase() === ticker &&
-          p.currency.toUpperCase() === currency,
-      )?.yahooSymbol ?? null;
-    await prisma.portfolioDailyPrice.upsert({
-      where: {
-        ticker_currency_priceDate: {
-          ticker: ticker!,
-          currency: currency!,
-          priceDate: parseIsoDateLocal(date!),
-        },
-      },
-      create: {
-        ticker: ticker!,
-        currency: currency!,
-        priceDate: parseIsoDateLocal(date!),
-        closePrice: close,
-        source: "yahoo-chart",
-        yahooSymbol,
-      },
-      update: {
-        closePrice: close,
-        source: "yahoo-chart",
-        yahooSymbol,
-      },
+      yahooSymbolByKey.get(`${ticker}|${currency}`) ?? null;
+    rows.push({
+      ticker,
+      currency,
+      priceDate: parseIsoDateLocal(date),
+      closePrice: close,
+      source: "yahoo-chart",
+      yahooSymbol,
     });
-    upserted += 1;
   }
 
-  return upserted;
+  if (rows.length === 0) return 0;
+
+  const values = rows.map(
+    (r) => Prisma.sql`(
+      ${r.ticker},
+      ${r.currency},
+      ${r.priceDate},
+      ${r.closePrice},
+      ${r.source},
+      ${r.yahooSymbol}
+    )`,
+  );
+
+  await prisma.$executeRaw`
+    INSERT INTO "portfolio_daily_price" (ticker, currency, "priceDate", "closePrice", source, "yahooSymbol")
+    VALUES ${Prisma.join(values)}
+    ON CONFLICT (ticker, currency, "priceDate") DO UPDATE
+    SET "closePrice" = EXCLUDED."closePrice",
+        source = EXCLUDED.source,
+        "yahooSymbol" = EXCLUDED."yahooSymbol"
+  `;
+
+  return rows.length;
 }
 
 /** Charge les clôtures Yahoo (10 j) en parallèle, sans écriture DB. */
