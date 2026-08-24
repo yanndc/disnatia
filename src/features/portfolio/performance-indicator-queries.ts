@@ -272,7 +272,7 @@ export async function getPerformanceIndicatorPayload(options?: {
                   "BUY",
                   "FEE",
                   "INTEREST",
-                  "WITHHOLDING_TAX",
+                  "TAX_WITHHOLD",
                 ],
               },
             },

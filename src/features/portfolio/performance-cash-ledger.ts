@@ -11,7 +11,7 @@ const CASH_LEDGER_CATEGORIES = new Set([
   "BUY",
   "FEE",
   "INTEREST",
-  "WITHHOLDING_TAX",
+  "TAX_WITHHOLD",
 ]);
 
 export type CashLedgerTx = {
