@@ -16,6 +16,16 @@ export type TxFingerprintInput = {
 };
 
 /**
+ * Normalise un ticker en enlevant les suffixes de devise (-U, -C) pour comparaison.
+ * AAPL-U, AAPL-C, et AAPL → tous normalisés à "AAPL" pour éviter les faux-positifs
+ * quand Disnat exporte la même transaction avec des représentations différentes.
+ */
+function normalizeTickerForFingerprint(ticker: string): string {
+  const upper = ticker.toUpperCase().trim();
+  return upper.replace(/-(U|C)$/, "");
+}
+
+/**
  * Vrai pour un ticker "placeholder" (« - », « --C », « --U »…) que Disnat met sur les lignes
  * sans titre réel (dépôt, virement en argent). Ce placeholder varie d'un export "Historique"
  * à l'autre pour le MÊME événement (ex. "-" vs "--C" pour le même dépôt) — l'inclure dans
@@ -40,13 +50,14 @@ function isPlaceholderTicker(ticker: string): boolean {
  * réimporter avec le bon compte.
  */
 export function txFingerprint(accountKey: string, tx: TxFingerprintInput): string {
-  const tickerNorm = (tx.ticker ?? "").toUpperCase().trim();
+  const tickerRaw = (tx.ticker ?? "").toUpperCase().trim();
+  const tickerNorm = isPlaceholderTicker(tickerRaw) ? "" : normalizeTickerForFingerprint(tickerRaw);
   const parts = [
     accountKey,
     tx.tradeDate?.toISOString().slice(0, 10) ?? "",
     tx.settlementDate?.toISOString().slice(0, 10) ?? "",
     (tx.transactionType ?? "").toLowerCase().trim(),
-    isPlaceholderTicker(tickerNorm) ? "" : tickerNorm,
+    tickerNorm,
     tx.amount !== null && tx.amount !== undefined ? String(Math.round(tx.amount * 100)) : "",
     (tx.currency ?? "").toUpperCase(),
     tx.quantity !== null && tx.quantity !== undefined ? String(tx.quantity) : "",

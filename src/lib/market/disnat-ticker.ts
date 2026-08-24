@@ -116,11 +116,12 @@ export function normalizeDisnatTickerForPortfolio(
     .replace(/\.TO$/i, "");
   if (c === "USD") {
     const stem = raw.replace(/-U$/, "");
-    return canonicalDisnatStemForQuotes(stem);
+    const normalized = canonicalDisnatStemForQuotes(stem);
+    return normalized.endsWith("-U") ? normalized : `${normalized}-U`;
   }
   if (c === "CAD") {
     let stem = raw.endsWith("-C") ? raw.slice(0, -2) : raw;
-    /* Même titre que la variante -U : évite « AMZN-U-C » si jamais listingCurrency est CAD avec suffixe US. */
+    /* Enlever le suffixe -U s'il est présent (ex. achat USD transféré; très rare). */
     stem = stem.replace(/-U$/i, "");
     const merged = canonicalDisnatStemForQuotes(stem);
     return merged.endsWith("-C") ? merged : `${merged}-C`;
