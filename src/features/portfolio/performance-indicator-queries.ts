@@ -258,6 +258,20 @@ export async function getPerformanceIndicatorPayload(options?: {
         where: {
           accountKey: accountKeySet ? { in: [...accountKeySet], not: null } : { not: null },
           OR: [{ tradeDate: { not: null } }, { settlementDate: { not: null } }],
+          txCategory: {
+            in: [
+              "CONTRIBUTION",
+              "TRANSFER_IN",
+              "TRANSFER_OUT",
+              "INTERNAL_TRANSFER",
+              "DIVIDEND",
+              "SELL",
+              "BUY",
+              "FEE",
+              "INTEREST",
+              "WITHHOLDING_TAX",
+            ],
+          },
         },
         select: {
           accountKey: true,
