@@ -76,10 +76,9 @@ export function RefreshQuotesButton({ compact = false }: { compact?: boolean }) 
       {!compact && refreshState.status === "success" ? (
         <p className="max-w-sm text-xs leading-relaxed text-slate-500">
           Dernier test OK en {formatDuration(refreshState.durationMs)} ·{" "}
-          {refreshState.result.quotesUpserted}/{refreshState.result.positionsConsidered} cours mis à
-          jour
+          {refreshState.result.quotesUpserted}/{refreshState.result.positionsConsidered} tickers couverts
           {refreshState.result.quotesMissing > 0
-            ? ` · ${refreshState.result.quotesMissing} manquant(s)`
+            ? ` · ${refreshState.result.quotesMissing} en attente de prix`
             : ""}{" "}
           · {refreshState.result.yahooSymbolsRequested} appels Yahoo ·
           {` ${refreshState.result.stooqFilled ?? 0} via Stooq · `}
