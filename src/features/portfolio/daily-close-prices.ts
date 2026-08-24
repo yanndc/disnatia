@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import { fetchYahooChartDailyCloses } from "@/lib/market/yahoo-chart-closes";
 import {

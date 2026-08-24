@@ -27,16 +27,16 @@ async function analyzeSpy() {
   console.log(`Found ${all.length} SPY/SPY-U positions\n`);
 
   // Group by account + import date
-  const byAccountAndDate = new Map();
+  const byAccountAndDate = new Map<string, typeof all>();
   for (const pos of all) {
     const key = `${pos.accountNumber} | ${pos.import.importedAt.toISOString().split("T")[0]}`;
     if (!byAccountAndDate.has(key)) byAccountAndDate.set(key, []);
-    byAccountAndDate.get(key).push(pos);
+    byAccountAndDate.get(key)!.push(pos);
   }
 
   for (const [key, positions] of byAccountAndDate) {
     console.log(`${key}:`);
-    positions.forEach(p => {
+    positions.forEach((p) => {
       console.log(`  ${p.ticker}: ${p.quantity} (${p.currency})`);
     });
     if (positions.length > 1) {

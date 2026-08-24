@@ -15,11 +15,11 @@ async function checkMismatch() {
   });
 
   // Group by account + ticker
-  const groups = new Map();
+  const groups = new Map<string, typeof txs>();
   for (const tx of txs) {
     const key = `${tx.accountKey}|${tx.ticker}`;
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(tx);
+    groups.get(key)!.push(tx);
   }
 
   // Find cases where same ticker in same account has mixed currencies
@@ -31,11 +31,11 @@ async function checkMismatch() {
   }> = [];
 
   for (const [key, txList] of groups) {
-    const currencies = new Set(txList.map(t => t.currency));
+    const currencies = new Set(txList.map(t => t.currency).filter((c): c is string => c !== null));
     if (currencies.size > 1) {
       mismatches.push({
         key,
-        ticker: txList[0].ticker,
+        ticker: txList[0]!.ticker ?? "UNKNOWN",
         currencies: [...currencies],
         transactions: txList.length
       });
