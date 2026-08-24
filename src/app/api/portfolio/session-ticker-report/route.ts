@@ -19,10 +19,13 @@ function applyAccountScope<T extends { accountKey: string }>(rows: T[], allowed:
 }
 
 export async function GET(request: Request) {
+  const apiStartTime = Date.now();
   try {
     const search = new URL(request.url).searchParams;
     const sessionDateRaw = search.get("sessionDate")?.trim() ?? "";
     const accountKeysRaw = search.get("accountKeys")?.trim() ?? "";
+
+    console.log(`[api] session-ticker-report request: sessionDate=${sessionDateRaw}, accountKeys=${accountKeysRaw}`);
 
     const accountKeys = accountKeysRaw
       ? accountKeysRaw
@@ -31,7 +34,10 @@ export async function GET(request: Request) {
           .filter((s) => s.length > 0)
       : undefined;
 
+    const payloadStartTime = Date.now();
     let payload = await getPerformanceIndicatorPayload({ accountKeysFilter: accountKeys });
+    const payloadEndTime = Date.now();
+    console.log(`[api] getPerformanceIndicatorPayload took ${payloadEndTime - payloadStartTime}ms`);
     const now = parsePayloadClock(payload.asOfNow);
     const maxSessionDate = referenceTradingSessionDayIso(now);
     const minSessionDate = previousTradingDayIso(
@@ -59,6 +65,8 @@ export async function GET(request: Request) {
       nowForRepair: new Date(),
     });
 
+    const apiEndTime = Date.now();
+    console.log(`[api] session-ticker-report completed in ${apiEndTime - apiStartTime}ms`);
     return NextResponse.json({
       ok: true,
       view,
@@ -68,6 +76,8 @@ export async function GET(request: Request) {
       previousSessionDate: priorReferenceSessionDateIso(now),
     });
   } catch (cause) {
+    const apiErrorTime = Date.now();
+    console.log(`[api] session-ticker-report failed after ${apiErrorTime - apiStartTime}ms`, cause);
     if (cause instanceof SessionTickerDataError) {
       return NextResponse.json(
         {

@@ -21,6 +21,7 @@ function formatDateTimeInDisplayTimeZone(value: Date) {
 }
 
 export default async function OverviewPage() {
+  const pageStartTime = Date.now();
   let summary: Awaited<ReturnType<typeof getPortfolioSummary>>;
   let performancePayload: Awaited<
     ReturnType<typeof getPerformanceIndicatorPayload>
@@ -28,10 +29,16 @@ export default async function OverviewPage() {
   try {
     [summary, performancePayload] = await Promise.all([
       getPortfolioSummary(),
-      getPerformanceIndicatorPayload().catch(() => null),
+      getPerformanceIndicatorPayload().catch((e) => {
+        console.error("[overview] getPerformanceIndicatorPayload error", e);
+        return null;
+      }),
     ]);
+    const pageLoadTime = Date.now() - pageStartTime;
+    console.log(`[overview] Page loaded in ${pageLoadTime}ms`, { hasSummary: !!summary, hasPayload: !!performancePayload });
   } catch (e) {
-    console.error("[overview] getPortfolioSummary", e);
+    const pageErrorTime = Date.now() - pageStartTime;
+    console.error(`[overview] getPortfolioSummary after ${pageErrorTime}ms`, e);
     const hint = getPostgresDeployHint();
     const detail = formatPostgresConnectionErrorDetail(e);
     return (

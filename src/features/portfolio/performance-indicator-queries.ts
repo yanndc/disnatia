@@ -175,10 +175,13 @@ async function loadQuotesForHoldings(
 export async function getPerformanceIndicatorPayload(options?: {
   accountKeysFilter?: string[];
 }): Promise<PerformanceIndicatorPayload> {
+  const startTime = Date.now();
   await ensureFreshQuotesDuringSession();
   const accountKeySet = options?.accountKeysFilter
     ? new Set(options.accountKeysFilter)
     : null;
+
+  const queryStartTime = Date.now();
   const [
     accountStates,
     holdings,
@@ -298,6 +301,14 @@ export async function getPerformanceIndicatorPayload(options?: {
         },
       }),
     ]);
+
+  const queryEndTime = Date.now();
+  console.log(`[perf] Database queries took ${queryEndTime - queryStartTime}ms`, {
+    accountStatesCount: accountStates.length,
+    holdingsCount: holdings.length,
+    txFlowsCount: txFlows.length,
+    cashLedgerTxsCount: cashLedgerTxs.length,
+  });
 
   const uniquePairs = [
     ...new Map(
@@ -675,6 +686,9 @@ export async function getPerformanceIndicatorPayload(options?: {
     payload,
     refSession,
   );
+
+  const endTime = Date.now();
+  console.log(`[perf] getPerformanceIndicatorPayload completed in ${endTime - startTime}ms total`);
 
   return payload;
 }
