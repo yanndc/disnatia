@@ -175,9 +175,13 @@ async function loadQuotesForHoldings(
 export async function getPerformanceIndicatorPayload(options?: {
   accountKeysFilter?: string[];
   includeCashLedger?: boolean;
+  refreshQuotes?: boolean;
+  persistSnapshots?: boolean;
 }): Promise<PerformanceIndicatorPayload> {
   const startTime = Date.now();
-  await ensureFreshQuotesDuringSession();
+  if (options?.refreshQuotes ?? true) {
+    await ensureFreshQuotesDuringSession();
+  }
   const accountKeySet = options?.accountKeysFilter
     ? new Set(options.accountKeysFilter)
     : null;
@@ -700,10 +704,9 @@ export async function getPerformanceIndicatorPayload(options?: {
     asOfNow: new Date().toISOString(),
   };
 
-  payload.performanceSnapshots = await maybePersistPerformanceSnapshots(
-    payload,
-    refSession,
-  );
+  payload.performanceSnapshots = options?.persistSnapshots === false
+    ? null
+    : await maybePersistPerformanceSnapshots(payload, refSession);
 
   const endTime = Date.now();
   console.log(`[perf] getPerformanceIndicatorPayload completed in ${endTime - startTime}ms total`);

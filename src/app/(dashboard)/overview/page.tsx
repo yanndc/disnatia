@@ -29,7 +29,7 @@ export default async function OverviewPage() {
   try {
     [summary, performancePayload] = await Promise.all([
       getPortfolioSummary(),
-      getPerformanceIndicatorPayload().catch((e) => {
+      getPerformanceIndicatorPayload({ refreshQuotes: false, persistSnapshots: false }).catch((e) => {
         console.error("[overview] getPerformanceIndicatorPayload error", e);
         return null;
       }),
