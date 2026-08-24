@@ -231,7 +231,7 @@ export async function getPerformanceIndicatorPayload(options?: {
       }),
       prisma.portfolioTransactionLine.findMany({
         where: {
-          accountKey: { not: null },
+          accountKey: accountKeySet ? { in: [...accountKeySet], not: null } : { not: null },
           OR: [{ tradeDate: { not: null } }, { settlementDate: { not: null } }],
           txCategory: {
             in: ["CONTRIBUTION", "TRANSFER_IN", "TRANSFER_OUT", "INTERNAL_TRANSFER"],
@@ -253,7 +253,7 @@ export async function getPerformanceIndicatorPayload(options?: {
       }),
       prisma.portfolioTransactionLine.findMany({
         where: {
-          accountKey: { not: null },
+          accountKey: accountKeySet ? { in: [...accountKeySet], not: null } : { not: null },
           OR: [{ tradeDate: { not: null } }, { settlementDate: { not: null } }],
         },
         select: {
