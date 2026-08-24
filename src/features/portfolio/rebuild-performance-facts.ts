@@ -110,7 +110,7 @@ export async function rebuildPerformanceFacts(options?: {
 
   let snapshotRows = 0;
   if (ok) {
-    const payload = await getPerformanceIndicatorPayload();
+    const payload = await getPerformanceIndicatorPayload({ includeCashLedger: true });
     const wrote = await persistPerformanceSnapshots(payload, toDate);
     snapshotRows = wrote.rowsWritten;
     messages.push(

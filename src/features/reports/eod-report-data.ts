@@ -14,7 +14,7 @@ import type { EodReportData } from "./eod-report-types";
 
 export async function buildEodReportData(now = new Date()): Promise<EodReportData> {
   const [payload, summary] = await Promise.all([
-    getPerformanceIndicatorPayload(),
+    getPerformanceIndicatorPayload({ includeCashLedger: true }),
     getPortfolioSummary(),
   ]);
 

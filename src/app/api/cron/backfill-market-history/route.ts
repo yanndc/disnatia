@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
-    await getPerformanceIndicatorPayload().catch((cause) => {
+    await getPerformanceIndicatorPayload({ includeCashLedger: true }).catch((cause) => {
       console.warn("[cron:backfill-market-history] performance snapshots", cause);
     });
     return NextResponse.json(result);

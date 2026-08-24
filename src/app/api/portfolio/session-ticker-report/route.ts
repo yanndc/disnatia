@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       : undefined;
 
     const payloadStartTime = Date.now();
-    let payload = await getPerformanceIndicatorPayload({ accountKeysFilter: accountKeys });
+    let payload = await getPerformanceIndicatorPayload({ accountKeysFilter: accountKeys, includeCashLedger: true });
     const payloadEndTime = Date.now();
     console.log(`[api] getPerformanceIndicatorPayload took ${payloadEndTime - payloadStartTime}ms`);
     const now = parsePayloadClock(payload.asOfNow);

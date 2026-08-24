@@ -26,7 +26,7 @@ export default async function ImportsPage({
     getImportHistory().catch(() => []),
     listExternalAccountsWithLatest().catch(() => []),
     listNonFinancialAssetsWithLatest().catch(() => []),
-    getPerformanceIndicatorPayload().catch(() => null),
+    getPerformanceIndicatorPayload({ includeCashLedger: true }).catch(() => null),
   ]);
 
   const initialExternalAccounts: ExternalAccountDto[] = externalRaw.map((a) => ({

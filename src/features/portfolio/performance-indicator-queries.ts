@@ -174,6 +174,7 @@ async function loadQuotesForHoldings(
 
 export async function getPerformanceIndicatorPayload(options?: {
   accountKeysFilter?: string[];
+  includeCashLedger?: boolean;
 }): Promise<PerformanceIndicatorPayload> {
   const startTime = Date.now();
   await ensureFreshQuotesDuringSession();
@@ -181,6 +182,7 @@ export async function getPerformanceIndicatorPayload(options?: {
     ? new Set(options.accountKeysFilter)
     : null;
 
+  const shouldLoadCashLedger = options?.includeCashLedger ?? false;
   const queryStartTime = Date.now();
   const [
     accountStates,
@@ -254,34 +256,36 @@ export async function getPerformanceIndicatorPayload(options?: {
           importId: true,
         },
       }),
-      prisma.portfolioTransactionLine.findMany({
-        where: {
-          accountKey: accountKeySet ? { in: [...accountKeySet], not: null } : { not: null },
-          OR: [{ tradeDate: { not: null } }, { settlementDate: { not: null } }],
-          txCategory: {
-            in: [
-              "CONTRIBUTION",
-              "TRANSFER_IN",
-              "TRANSFER_OUT",
-              "INTERNAL_TRANSFER",
-              "DIVIDEND",
-              "SELL",
-              "BUY",
-              "FEE",
-              "INTEREST",
-              "WITHHOLDING_TAX",
-            ],
-          },
-        },
-        select: {
-          accountKey: true,
-          tradeDate: true,
-          settlementDate: true,
-          txCategory: true,
-          amount: true,
-          currency: true,
-        },
-      }),
+      shouldLoadCashLedger
+        ? prisma.portfolioTransactionLine.findMany({
+            where: {
+              accountKey: accountKeySet ? { in: [...accountKeySet], not: null } : { not: null },
+              OR: [{ tradeDate: { not: null } }, { settlementDate: { not: null } }],
+              txCategory: {
+                in: [
+                  "CONTRIBUTION",
+                  "TRANSFER_IN",
+                  "TRANSFER_OUT",
+                  "INTERNAL_TRANSFER",
+                  "DIVIDEND",
+                  "SELL",
+                  "BUY",
+                  "FEE",
+                  "INTEREST",
+                  "WITHHOLDING_TAX",
+                ],
+              },
+            },
+            select: {
+              accountKey: true,
+              tradeDate: true,
+              settlementDate: true,
+              txCategory: true,
+              amount: true,
+              currency: true,
+            },
+          })
+        : Promise.resolve([]),
       buildOwnerDimensionResolver(),
       prisma.portfolioAccountOwner.findMany({
         select: {
