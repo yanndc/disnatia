@@ -194,7 +194,7 @@ export async function getPerformanceIndicatorPayload(options?: {
   ] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
-        where: accountKeySet ? { accountKey: { in: [...accountKeySet] } } : undefined,
+        ...(accountKeySet ? { where: { accountKey: { in: [...accountKeySet] } } } : {}),
         orderBy: [{ owner: "asc" }, { accountType: "asc" }],
       }),
       loadHoldingsForDashboard(accountKeySet ? [...accountKeySet] : undefined),
