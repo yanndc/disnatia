@@ -139,14 +139,27 @@ export async function recomputeAndPersistSessionGains(
       quantity: true,
     },
   });
-  const holdings = allHoldings.filter((h) => {
+  const sessionHoldings = allHoldings.filter((h) => {
     const date = isoDateFromDbDate(h.holdingDate);
     return date >= fromDate && date <= toDate;
   });
-  if (holdings.length === 0) return { rowsWritten: 0, missingFxDates: [] };
+  if (sessionHoldings.length === 0) return { rowsWritten: 0, missingFxDates: [] };
+
+  const sessionDates = [...new Set(sessionHoldings.map((h) => isoDateFromDbDate(h.holdingDate)))];
+  const calculationRows = sessionDates.flatMap((date) => {
+    const priorDate = previousTradingDayIso(date, 1);
+    const positions = new Map<string, (typeof allHoldings)[number]>();
+    for (const holding of allHoldings) {
+      const holdingDate = isoDateFromDbDate(holding.holdingDate);
+      if (holdingDate !== date && holdingDate !== priorDate) continue;
+      const key = `${holding.accountKey}${POSITION_DATE_KEY_SEP}${holding.ticker.toUpperCase()}${POSITION_DATE_KEY_SEP}${normalizeCurrency(holding.currency)}`;
+      if (holdingDate === date || !positions.has(key)) positions.set(key, holding);
+    }
+    return [...positions.values()].map((holding) => ({ holding, sessionDate: date }));
+  });
 
   const pairSet = new Set<string>();
-  for (const h of holdings) {
+  for (const { holding: h } of calculationRows) {
     pairSet.add(`${h.ticker.toUpperCase()}|${normalizeCurrency(h.currency)}`);
   }
   const pairs = [...pairSet].map((k) => {
@@ -196,9 +209,7 @@ export async function recomputeAndPersistSessionGains(
   const missingFxDates = new Set<string>();
   const byAccountDate = new Map<string, { gainCad: number; priorCad: number }>();
 
-  for (const h of holdings) {
-    const date = isoDateFromDbDate(h.holdingDate);
-    if (date < fromDate || date > toDate) continue;
+  for (const { holding: h, sessionDate: date } of calculationRows) {
     if (!isTradingDayDate(date)) continue;
 
     const seriesKey = `${h.ticker.toUpperCase()}|${normalizeCurrency(h.currency)}`;

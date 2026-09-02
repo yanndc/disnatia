@@ -48,6 +48,31 @@ pnpm dev
 
 L'app sera disponible sur `http://localhost:3001`.
 
+## Vérifier le code
+
+Installer les dépendances avant les vérifications :
+
+```bash
+pnpm install
+```
+
+Le lint et les tests sont deux contrôles distincts :
+
+```bash
+pnpm lint
+pnpm test
+```
+
+Pour exécuter uniquement les tests de performance :
+
+```bash
+pnpm run test:performance
+```
+
+- `pnpm lint` utilise ESLint pour vérifier le style, les règles statiques et certains problèmes de code.
+- `pnpm test` utilise `tsx --test` et les tests natifs `node:test` pour vérifier le comportement.
+- ESLint est maintenu en version 9 : `eslint-plugin-react@7.37.5`, chargé par `eslint-config-next`, n'offre pas encore de support officiel ESLint 10. Une compatibilité ESLint 10 est en préparation chez les auteurs, mais les overrides publiés restent temporaires.
+
 ## Variables d'environnement
 
 **`.env.local`** est **gitignoré** : secrets et URLs Postgres sur ta machine. En mono-base Supabase, l’important est que **la prod Vercel et le dev utilisent les mêmes valeurs**.

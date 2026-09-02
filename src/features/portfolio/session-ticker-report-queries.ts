@@ -417,6 +417,21 @@ async function aggregateFromDailyHoldings(
     options,
   );
 
+  const allPairs = [
+    ...new Map(
+      [...holdings, ...priorHoldings].map((h) => [
+        `${h.ticker.toUpperCase()}|${normalizeCurrency(h.currency)}`,
+        { ticker: h.ticker, currency: h.currency },
+      ]),
+    ).values(),
+  ];
+  await ensureDailyClosesPersistedForPairs(allPairs, [sessionDate, previousTradingDayIso(sessionDate, 1)]);
+  const fromDate = previousTradingDayIso(sessionDate, 12);
+  const toDate = sessionDate > isoDateInToronto(new Date()) ? isoDateInToronto(new Date()) : sessionDate;
+  const loadedCloses = await loadDailyCloseMap(allPairs, fromDate, toDate);
+  const resolvedCloses = { ...dailyCloses };
+  for (const [key, value] of loadedCloses) resolvedCloses[key] = value;
+
   const fxFrom = previousTradingDayIso(sessionDate, 14);
   const rateMap = await loadUsdCadRateMap(fxFrom, sessionDate);
   const sessionFx = usdCadRateOnDate(rateMap, sessionDate) ?? usdToCad;
@@ -429,12 +444,17 @@ async function aggregateFromDailyHoldings(
 
   const buckets = new Map<string, TickerBucket>();
 
-  for (const h of holdings) {
+  const positions = new Map<string, (typeof holdings)[number]>();
+  for (const h of [...priorHoldings, ...holdings]) {
+    positions.set(positionKey(h.accountKey, h.ticker, h.currency), h);
+  }
+
+  for (const h of positions.values()) {
     const ticker = h.ticker.toUpperCase();
     const currency = normalizeCurrency(h.currency);
     const seriesKey = `${ticker}|${currency}`;
     const posKey = positionKey(h.accountKey, ticker, currency);
-    const series = closeSeriesForPair(dailyCloses, ticker, currency);
+    const series = closeSeriesForPair(resolvedCloses, ticker, currency);
     if (series.size === 0) continue;
 
     const endClose = closeOnOrBefore(series, sessionDate);
