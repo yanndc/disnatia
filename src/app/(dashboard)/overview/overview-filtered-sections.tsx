@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CurrencyExposureKpiCard } from "@/features/portfolio/currency-exposure-kpi-card";
+import { DailyPerformanceHistoryCard } from "@/features/portfolio/daily-performance-history-card";
 import { PortfolioCompositionKpiCard } from "@/features/portfolio/portfolio-composition-kpi-card";
 import {
   PERFORMANCE_FILTERS_CHANGED_EVENT,
@@ -336,7 +337,10 @@ export function OverviewFilteredSections({
       </OverviewSection>
 
       <OverviewSection title="Performance" description="Indicateurs de rendement pour le périmètre filtré">
-        <PerformanceIndicatorCard payload={payload} hideFiltersHeader />
+        <div className="space-y-4">
+          <DailyPerformanceHistoryCard payload={payload} accountKeys={activeAccountKeys} />
+          <PerformanceIndicatorCard payload={payload} hideFiltersHeader />
+        </div>
       </OverviewSection>
 
       <OverviewSection title="Marche" description="Fluctuations par séance (scope comptes/portefeuille)">
