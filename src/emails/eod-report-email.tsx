@@ -17,7 +17,7 @@ import type {
   SessionTickerView,
 } from "@/features/portfolio/session-ticker-report-queries";
 import { formatTorontoCalendarDate } from "@/lib/market/equity-session";
-import { formatCurrency, formatCurrencyDetailed } from "@/lib/utils";
+import { formatCurrency, formatCurrencyDetailed, formatPercent } from "@/lib/utils";
 
 const palette = {
   pageBg: "#f0f4f8",
@@ -261,6 +261,35 @@ function SessionTickerBlock({ view }: { view: SessionTickerView }) {
   );
 }
 
+function DailyPerformanceTable({ rows }: { rows: EodReportData["dailyPerformance"] }) {
+  if (rows.length === 0) {
+    return <Text style={styles.emptyHint}>Aucune performance journalière disponible.</Text>;
+  }
+
+  return (
+    <table style={styles.table}>
+      <thead>
+        <tr>
+          <th style={styles.th}>Séance</th>
+          <th style={{ ...styles.th, textAlign: "right" }}>Gain / perte</th>
+          <th style={{ ...styles.th, textAlign: "right" }}>Rendement</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.date}>
+            <td style={styles.td}>{formatSessionDate(row.date)}</td>
+            <td style={gainCellStyle(row.gainCad)}>{formatCurrency(row.gainCad, "CAD")}</td>
+            <td style={gainCellStyle(row.gainPct)}>
+              {row.gainPct === null ? "—" : formatPercent(row.gainPct)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function EodReportEmail({ data }: { data: EodReportData }) {
   const preview = `DisnatIA — ${data.sessionDate} — titres seulement`;
 
@@ -288,6 +317,12 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
 
           <Text style={styles.sectionTitle}>Titres — séance précédente</Text>
           <SessionTickerBlock view={data.previousSession} />
+
+          <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
+
+          <Text style={styles.sectionTitle}>Performance journalière</Text>
+          <Text style={styles.muted}>Les {data.dailyPerformance.length} dernières séances complétées.</Text>
+          <DailyPerformanceTable rows={data.dailyPerformance} />
 
           <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
 

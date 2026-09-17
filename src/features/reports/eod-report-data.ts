@@ -10,7 +10,10 @@ import {
   referenceTradingSessionDay,
   resolveDayPeriodLabels,
 } from "@/lib/market/equity-session";
-import type { EodReportData } from "./eod-report-types";
+import {
+  buildEodDailyPerformanceRows,
+  type EodReportData,
+} from "./eod-report-types";
 
 export async function buildEodReportData(now = new Date()): Promise<EodReportData> {
   const [payload, summary] = await Promise.all([
@@ -50,6 +53,7 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
     disnatTotalValueCad: summary.disnatLiveTotalValue,
     dayPeriod,
     yesterdayPeriod,
+    dailyPerformance: buildEodDailyPerformanceRows(payload.sessionGainsByDate),
     currentSession,
     previousSession,
     quoteCoverage: summary.quoteCoverage,
