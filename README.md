@@ -153,6 +153,7 @@ Envoi automatique d’un courriel HTML après chaque **jour ouvré** (lun–ven,
 ### Comportement
 
 - **Contenu** : valeur totale CAD, P&L jour et dernière séance, tableau par compte, liste des positions, qualité des cotations (aligné dashboard).
+- **Analyse Berta (IA)** : si `OPENAI_API_KEY` est définie, une section « Analyse Berta — tendances et signaux » (GPT-4.1 + mêmes outils que le chat `/insights`) est générée en tête de courriel : tendances qui s'installent et changements à envisager; toute recommandation prescriptive est suivie d'une note « à contre-vérifier ». En cas d'échec ou d'absence de clé, le rapport part sans cette section.
 - **Données** : rafraîchit les cours live + clôtures de séance avant génération du rapport.
 - **Doublon** : un seul envoi par date de séance (`referenceTradingSessionDay`, Toronto) ; second appel → `{ "skipped": true, "reason": "already_sent" }`.
 - **Hors fenêtre / week-end** : `{ "skipped": true, "reason": "hors_fenetre_envoi" }` (normal si tu appelles le cron à la main en dehors des heures).
@@ -162,6 +163,7 @@ Envoi automatique d’un courriel HTML après chaque **jour ouvré** (lun–ven,
 
 - Route : [`src/app/api/cron/eod-report/route.ts`](src/app/api/cron/eod-report/route.ts)
 - Logique envoi : [`src/features/reports/send-eod-report.ts`](src/features/reports/send-eod-report.ts)
+- Analyse IA : [`src/features/reports/eod-berta-analysis.ts`](src/features/reports/eod-berta-analysis.ts) (outils partagés : [`src/features/chat/berta-tools.ts`](src/features/chat/berta-tools.ts))
 - Template courriel : [`src/emails/eod-report-email.tsx`](src/emails/eod-report-email.tsx)
 - Séance / fenêtre horaire : [`src/lib/market/equity-session.ts`](src/lib/market/equity-session.ts) (`shouldSendEodReport`)
 

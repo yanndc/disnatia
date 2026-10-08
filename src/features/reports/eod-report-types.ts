@@ -43,4 +43,6 @@ export type EodReportData = {
   usdToCad: number | null;
   usdToCadDate: string | null;
   appUrl: string | null;
+  /** Analyse IA (Berta) de la séance; null si non générée (clé absente ou échec). */
+  bertaAnalysis: string | null;
 };

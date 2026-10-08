@@ -67,5 +67,6 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
     usdToCad: payload.usdToCad,
     usdToCadDate: payload.usdToCadDate,
     appUrl,
+    bertaAnalysis: null,
   };
 }

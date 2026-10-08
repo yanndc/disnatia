@@ -18,6 +18,7 @@ import {
 } from "@/features/portfolio/session-data-integrity";
 import { buildEodReportData } from "./eod-report-data";
 import { markEodReportSent } from "./eod-report-delivery";
+import { generateEodBertaAnalysis } from "./eod-berta-analysis";
 
 export type RunEodReportResult =
   | { sent: true; sessionDate: string; emailId: string | undefined }
@@ -41,6 +42,7 @@ export async function runEodReportJob(now = new Date()): Promise<RunEodReportRes
   }
 
   const data = await buildEodReportData(now);
+  data.bertaAnalysis = await generateEodBertaAnalysis(data);
   const html = await render(EodReportEmail({ data }));
   const { gainCad, gainPct } = data.dayPeriod;
   const gainStr =

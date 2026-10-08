@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   Body,
   Container,
@@ -126,6 +126,85 @@ function gainCellStyle(value: number | null): CSSProperties {
 
 function formatSessionDate(iso: string): string {
   return formatTorontoCalendarDate(iso);
+}
+
+/** Gras **...** uniquement; le reste du markdown est affiché tel quel. */
+function renderInlineMarkdown(text: string): ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, index) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={index}>{part.slice(2, -2)}</strong>
+    ) : (
+      <span key={index}>{part}</span>
+    ),
+  );
+}
+
+function BertaAnalysisSection({ analysis }: { analysis: string }) {
+  const lines = analysis
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const isDisclaimer = (line: string) => line.includes("contre-vérifier par Yann");
+  const isBullet = (line: string) => /^[-•*]\s+/.test(line);
+  const bulletText = (line: string) => line.replace(/^[-•*]\s+/, "");
+
+  return (
+    <Section
+      style={{
+        backgroundColor: palette.accentBg,
+        border: "1px solid #bfdbfe",
+        borderRadius: "10px",
+        padding: "14px 16px",
+      }}
+    >
+      <Text
+        style={{
+          color: palette.accent,
+          fontSize: "11px",
+          fontWeight: 700,
+          letterSpacing: "0.05em",
+          margin: "0 0 8px",
+          textTransform: "uppercase",
+        }}
+      >
+        Analyse Berta — tendances et signaux
+      </Text>
+      {lines.map((line, index) =>
+        isDisclaimer(line) ? (
+          <Text
+            key={index}
+            style={{
+              color: palette.neutral,
+              fontSize: "12px",
+              fontStyle: "italic",
+              lineHeight: "18px",
+              margin: "10px 0 0",
+            }}
+          >
+            {line}
+          </Text>
+        ) : (
+          <Text
+            key={index}
+            style={{
+              color: palette.text,
+              fontSize: "13px",
+              lineHeight: "20px",
+              margin: "0 0 6px",
+            }}
+          >
+            {isBullet(line) ? (
+              <>• {renderInlineMarkdown(bulletText(line))}</>
+            ) : (
+              renderInlineMarkdown(line)
+            )}
+          </Text>
+        ),
+      )}
+    </Section>
+  );
 }
 
 function TickerTable({
@@ -307,6 +386,13 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
             })} {" "}
             (Toronto)
           </Text>
+
+          {data.bertaAnalysis ? (
+            <>
+              <Hr style={{ borderColor: palette.border, margin: "20px 0" }} />
+              <BertaAnalysisSection analysis={data.bertaAnalysis} />
+            </>
+          ) : null}
 
           <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
 

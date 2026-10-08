@@ -425,10 +425,13 @@ export async function getPortfolioSummary() {
     accountCount: data.accountCount,
   }));
 
+  // Poids de concentration : dénominateur = placements Disnat combinés
+  // (titres + encaisse, tous comptes) — la maison et les comptes externes
+  // ne diluent pas les % vus par Berta.
   const aggregatedRows = buildAggregatedTickerRows(
     enrichedPositions,
     usdToCad,
-    totalValue,
+    disnatLiveTotalValue,
   );
   const topPositions = aggregatedRows.slice(0, 8).map(({ ticker, marketValue }) => ({
     ticker,
@@ -566,8 +569,8 @@ export async function getConcentrationRisk() {
     })),
     note:
       concentrated.length > 0
-        ? "Au moins un titre (somme de tous les comptes) dépasse 10% du portefeuille."
-        : "Aucun titre agrégé ne dépasse 10%.",
+        ? "Au moins un titre (somme de tous les comptes) dépasse 10% des placements Disnat combinés (titres + encaisse)."
+        : "Aucun titre agrégé ne dépasse 10% des placements Disnat combinés.",
   };
 }
 
