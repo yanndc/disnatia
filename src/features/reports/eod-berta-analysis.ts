@@ -41,7 +41,9 @@ function buildEodAnalysisPrompt(data: EodReportData): string {
     `\nConsignes :\n` +
     `- Appelle les outils portefeuille (résumé, top positions, concentration, devises) avant toute affirmation factuelle; fetchLiveMarketQuotes et searchWebSources si utile pour expliquer les mouvements importants.\n` +
     `- Indique clairement si une tendance s'installe (titre, secteur, devise ou portefeuille global), en croisant la séance du jour et les séances récentes.\n` +
-    `- Signale si des changements devraient être envisagés (rééquilibrage, concentration excessive, position à surveiller). Les recommandations concrètes sont permises et souhaitées.\n` +
+    `- SUJETS EXCLUS — n'émet AUCUN conseil ni recommandation sur : (1) la répartition Canada/États-Unis (poids CAD vs USD, exposition géographique, diversification entre marchés, arbitrage devise); (2) le fort poids du S&P 500 détenu via des titres d'index (VFV, VOO, XUS, ZSP, IVV, SPY, etc.) : cette concentration est assumée et n'est jamais un sujet de rééquilibrage ni d'allègement. Ces faits peuvent être mentionnés comme constat, jamais comme conseil.\n` +
+    `- Conseils avisés : avant de recommander quoi que ce soit, appuie-toi sur des experts reconnus (searchWebSources) — par exemple les analystes et chroniqueurs du journal Les Affaires, La Presse Affaires, ou des recherches bancaires — et cite source + auteur. Sans source reconnue, présente l'idée comme observation personnelle, pas comme conseil d'expert.\n` +
+    `- Signale si des changements devraient être envisagés hors sujets exclus (concentration excessive, position à surveiller, secteur en difficulté). Les recommandations concrètes sont permises et souhaitées.\n` +
     `- Si ta réponse contient au moins une recommandation prescriptive (acheter, vendre, rééquilibrer, alléger, renforcer, etc.), termine par cette note exacte sur sa propre ligne : « ${EOD_BERTA_PRESCRIPTIVE_DISCLAIMER} ». Sinon, n'ajoute pas cette note.\n` +
     `- Format : 3 à 6 puces courtes en français (lignes commençant par « - »), chiffres concrets à l'appui. Aucun titre, aucune salutation, aucune introduction.`
   );

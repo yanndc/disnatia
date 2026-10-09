@@ -153,7 +153,7 @@ Envoi automatique d’un courriel HTML après chaque **jour ouvré** (lun–ven,
 ### Comportement
 
 - **Contenu** : valeur totale CAD, P&L jour et dernière séance, tableau par compte, liste des positions, qualité des cotations (aligné dashboard).
-- **Analyse Berta (IA)** : si `OPENAI_API_KEY` est définie, une section « Analyse Berta — tendances et signaux » (GPT-4.1 + mêmes outils que le chat `/insights`) est générée en tête de courriel : tendances qui s'installent et changements à envisager; toute recommandation prescriptive est suivie d'une note « à contre-vérifier ». En cas d'échec ou d'absence de clé, le rapport part sans cette section.
+- **Analyse Berta (IA)** : si `OPENAI_API_KEY` est définie, une section « Analyse Berta — tendances et signaux » (GPT-4.1 + mêmes outils que le chat `/insights`) est générée en tête de courriel : tendances qui s'installent et changements à envisager; toute recommandation prescriptive est suivie d'une note « à contre-vérifier ». Sujets exclus : aucun conseil sur la répartition Canada/États-Unis ni sur le fort poids du S&P 500 détenus via titres d'index (constat permis, conseil interdit). Tout conseil s'appuie sur des experts reconnus (ex. analystes du journal *Les Affaires*) cités via `searchWebSources`. En cas d'échec ou d'absence de clé, le rapport part sans cette section.
 - **Données** : rafraîchit les cours live + clôtures de séance avant génération du rapport.
 - **Doublon** : un seul envoi par date de séance (`referenceTradingSessionDay`, Toronto) ; second appel → `{ "skipped": true, "reason": "already_sent" }`.
 - **Hors fenêtre / week-end** : `{ "skipped": true, "reason": "hors_fenetre_envoi" }` (normal si tu appelles le cron à la main en dehors des heures).
