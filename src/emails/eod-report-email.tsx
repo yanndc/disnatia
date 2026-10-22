@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import type { EodReportData } from "@/features/reports/eod-report-types";
+import { summarizeEodDailyPerformance } from "@/features/reports/eod-report-types";
 import type {
   SessionTickerRow,
   SessionTickerView,
@@ -345,6 +346,15 @@ function DailyPerformanceTable({ rows }: { rows: EodReportData["dailyPerformance
     return <Text style={styles.emptyHint}>Aucune performance journalière disponible.</Text>;
   }
 
+  const total = summarizeEodDailyPerformance(rows);
+  const totalCell: CSSProperties = {
+    ...styles.td,
+    borderBottom: "none",
+    borderTop: `2px solid ${palette.border}`,
+    backgroundColor: palette.neutralBg,
+    fontWeight: 700,
+  };
+
   return (
     <table style={styles.table}>
       <thead>
@@ -365,6 +375,17 @@ function DailyPerformanceTable({ rows }: { rows: EodReportData["dailyPerformance
           </tr>
         ))}
       </tbody>
+      <tfoot>
+        <tr>
+          <td style={totalCell}>Total — {rows.length} séances</td>
+          <td style={{ ...totalCell, color: gainTextColor(total.gainCad), textAlign: "right" }}>
+            {formatCurrency(total.gainCad, "CAD")}
+          </td>
+          <td style={{ ...totalCell, color: gainTextColor(total.gainPct), textAlign: "right" }}>
+            {total.gainPct === null ? "—" : formatPercent(total.gainPct)}
+          </td>
+        </tr>
+      </tfoot>
     </table>
   );
 }
@@ -396,6 +417,14 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
 
           <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
 
+          <Text style={styles.sectionTitle}>Performance journalière</Text>
+          <Text style={styles.muted}>
+            Les {data.dailyPerformance.length} dernières séances complétées, avec le cumul de la période.
+          </Text>
+          <DailyPerformanceTable rows={data.dailyPerformance} />
+
+          <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
+
           <Text style={styles.sectionTitle}>Titres — séance courante</Text>
           <SessionTickerBlock view={data.currentSession} />
 
@@ -403,12 +432,6 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
 
           <Text style={styles.sectionTitle}>Titres — séance précédente</Text>
           <SessionTickerBlock view={data.previousSession} />
-
-          <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
-
-          <Text style={styles.sectionTitle}>Performance journalière</Text>
-          <Text style={styles.muted}>Les {data.dailyPerformance.length} dernières séances complétées.</Text>
-          <DailyPerformanceTable rows={data.dailyPerformance} />
 
           <Hr style={{ borderColor: palette.border, margin: "28px 0 20px" }} />
 

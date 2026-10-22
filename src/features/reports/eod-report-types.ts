@@ -4,10 +4,16 @@ import type {
 } from "@/features/portfolio/performance-indicator-types";
 import type { SessionTickerView } from "@/features/portfolio/session-ticker-report-queries";
 
-export const EOD_DAILY_PERFORMANCE_DAYS = 10;
+export const EOD_DAILY_PERFORMANCE_DAYS = 20;
 
 export type EodDailyPerformanceRow = {
   date: string;
+  gainCad: number;
+  gainPct: number | null;
+};
+
+/** Cumul sur la fenêtre affichée (somme des gains + rendement composé). */
+export type EodDailyPerformanceTotal = {
   gainCad: number;
   gainPct: number | null;
 };
@@ -24,6 +30,20 @@ export function buildEodDailyPerformanceRows(
       gainCad: session.gainCad,
       gainPct: session.priorCad > 0 ? (session.gainCad / session.priorCad) * 100 : null,
     }));
+}
+
+export function summarizeEodDailyPerformance(
+  rows: EodDailyPerformanceRow[],
+): EodDailyPerformanceTotal {
+  if (rows.length === 0) {
+    return { gainCad: 0, gainPct: null };
+  }
+  const gainCad = rows.reduce((sum, row) => sum + row.gainCad, 0);
+  const factor = rows.reduce(
+    (acc, row) => (row.gainPct === null ? acc : acc * (1 + row.gainPct / 100)),
+    1,
+  );
+  return { gainCad, gainPct: (factor - 1) * 100 };
 }
 
 export type EodReportData = {
