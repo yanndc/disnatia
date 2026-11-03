@@ -427,7 +427,7 @@ export async function getPortfolioSummary() {
 
   // Poids de concentration : dénominateur = placements Disnat combinés
   // (titres + encaisse, tous comptes) — la maison et les comptes externes
-  // ne diluent pas les % vus par Berta.
+  // ne diluent pas les % vus par Pinocchio.
   const aggregatedRows = buildAggregatedTickerRows(
     enrichedPositions,
     usdToCad,

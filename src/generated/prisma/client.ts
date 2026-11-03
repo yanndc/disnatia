@@ -122,10 +122,10 @@ export type ChatSession = Prisma.ChatSessionModel
  */
 export type ChatMessage = Prisma.ChatMessageModel
 /**
- * Model BertaAgentRules
- * Règles / instructions utilisateur persistées — prolongent le prompt système de Berta (une ligne par déploiement).
+ * Model PinocchioAgentRules
+ * Règles / instructions utilisateur persistées — prolongent le prompt système de Pinocchio (une ligne par déploiement).
  */
-export type BertaAgentRules = Prisma.BertaAgentRulesModel
+export type PinocchioAgentRules = Prisma.PinocchioAgentRulesModel
 /**
  * Model UsdCadDailyRate
  * *

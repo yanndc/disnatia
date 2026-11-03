@@ -65,7 +65,7 @@ export const ModelName = {
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
-  BertaAgentRules: 'BertaAgentRules',
+  PinocchioAgentRules: 'PinocchioAgentRules',
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
   ExternalAccountSnapshot: 'ExternalAccountSnapshot',
@@ -348,13 +348,13 @@ export const ChatMessageScalarFieldEnum = {
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
-export const BertaAgentRulesScalarFieldEnum = {
+export const PinocchioAgentRulesScalarFieldEnum = {
   id: 'id',
   body: 'body',
   updatedAt: 'updatedAt'
 } as const
 
-export type BertaAgentRulesScalarFieldEnum = (typeof BertaAgentRulesScalarFieldEnum)[keyof typeof BertaAgentRulesScalarFieldEnum]
+export type PinocchioAgentRulesScalarFieldEnum = (typeof PinocchioAgentRulesScalarFieldEnum)[keyof typeof PinocchioAgentRulesScalarFieldEnum]
 
 
 export const UsdCadDailyRateScalarFieldEnum = {

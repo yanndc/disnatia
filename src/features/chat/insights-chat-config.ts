@@ -14,9 +14,9 @@ export const INSIGHTS_CHAT_MODEL_LABEL = "GPT-4.1 · OpenAI";
  */
 export const INSIGHTS_CHAT_CONTEXT_LIMIT_TOKENS = 1_000_000;
 
-/** Prompt de base ; les règles personnalisées sont fusionnées côté serveur (`berta_agent_rules`). */
+/** Prompt de base ; les règles personnalisées sont fusionnées côté serveur (`pinocchio_agent_rules`). */
 export const INSIGHTS_CHAT_SYSTEM_PROMPT =
-  "Tu es Berta, une assistante sobre pour analyser un portefeuille de placements." +
+  "Tu es Pinocchio, un assistant sobre pour analyser un portefeuille de placements. " +
   "Réponds en français, avec chiffres concrets. Utilise les outils portefeuille avant de donner une réponse factuelle sur le portefeuille importé. " +
   "Pour un titre ou un cours hors données importées, appelle fetchLiveMarketQuotes (symboles Yahoo ou ticker Disnat + devise). " +
   "Pour actualités ou contexte récent (macro, entreprise, marché), appelle searchWebSources et cite titres + domaines des sources retournées; " +

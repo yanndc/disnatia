@@ -1,10 +1,10 @@
 import { openai } from "@ai-sdk/openai";
 import { convertToModelMessages, streamText, stepCountIs, type UIMessage } from "ai";
 import {
-  getBertaRulesBody,
-  mergeBertaRulesIntoSystemPrompt,
-} from "@/features/chat/berta-agent-rules";
-import { createBertaTools } from "@/features/chat/berta-tools";
+  getPinocchioRulesBody,
+  mergePinocchioRulesIntoSystemPrompt,
+} from "@/features/chat/pinocchio-agent-rules";
+import { createPinocchioTools } from "@/features/chat/pinocchio-tools";
 import {
   INSIGHTS_CHAT_MODEL_ID,
   INSIGHTS_CHAT_SYSTEM_PROMPT,
@@ -29,15 +29,15 @@ export async function POST(request: Request) {
     await persistMessage(sessionId, "user", extractText(latestUserMessage));
   }
 
-  const customRules = await getBertaRulesBody();
-  const systemPrompt = mergeBertaRulesIntoSystemPrompt(INSIGHTS_CHAT_SYSTEM_PROMPT, customRules);
+  const customRules = await getPinocchioRulesBody();
+  const systemPrompt = mergePinocchioRulesIntoSystemPrompt(INSIGHTS_CHAT_SYSTEM_PROMPT, customRules);
 
   const result = streamText({
     model: openai(INSIGHTS_CHAT_MODEL_ID),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     stopWhen: stepCountIs(12),
-    tools: createBertaTools(),
+    tools: createPinocchioTools(),
     onFinish: async (event) => {
       await persistMessage(sessionId, "assistant", event.text, {
         toolCalls: event.toolCalls.map((toolCall) => toolCall.toolName),
@@ -61,7 +61,7 @@ async function ensureChatSession(preferredId?: string) {
   const session = await prisma.chatSession.create({
     data: {
       id: preferredId,
-      title: "Berta — portefeuille",
+      title: "Pinocchio — portefeuille",
     },
   });
 

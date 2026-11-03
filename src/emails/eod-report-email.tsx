@@ -142,7 +142,7 @@ function renderInlineMarkdown(text: string): ReactNode {
   );
 }
 
-function BertaAnalysisSection({ analysis }: { analysis: string }) {
+function PinocchioAnalysisSection({ analysis }: { analysis: string }) {
   const lines = analysis
     .split("\n")
     .map((line) => line.trim())
@@ -170,7 +170,7 @@ function BertaAnalysisSection({ analysis }: { analysis: string }) {
           textTransform: "uppercase",
         }}
       >
-        Analyse Berta — tendances et signaux
+        Analyse Pinocchio — tendances et signaux
       </Text>
       {lines.map((line, index) =>
         isDisclaimer(line) ? (
@@ -408,10 +408,10 @@ export function EodReportEmail({ data }: { data: EodReportData }) {
             (Toronto)
           </Text>
 
-          {data.bertaAnalysis ? (
+          {data.pinocchioAnalysis ? (
             <>
               <Hr style={{ borderColor: palette.border, margin: "20px 0" }} />
-              <BertaAnalysisSection analysis={data.bertaAnalysis} />
+              <PinocchioAnalysisSection analysis={data.pinocchioAnalysis} />
             </>
           ) : null}
 

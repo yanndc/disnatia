@@ -21,5 +21,5 @@ export const dashboardNavigation: DashboardNavItem[] = [
   { href: "/revenus", label: "Revenus de placement", icon: "trending-up" },
   { href: "/transactions", label: "Transactions", icon: "arrow-left-right" },
   { href: "/imports", label: "Administration", icon: "file-up" },
-  { href: "/insights", label: "Discuter avec Berta", icon: "sparkles" },
+  { href: "/insights", label: "Discuter avec Pinocchio", icon: "sparkles" },
 ];

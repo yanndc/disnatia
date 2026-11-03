@@ -326,13 +326,13 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-/// Règles / instructions utilisateur persistées — prolongent le prompt système de Berta (une ligne par déploiement).
-model BertaAgentRules {
+/// Règles / instructions utilisateur persistées — prolongent le prompt système de Pinocchio (une ligne par déploiement).
+model PinocchioAgentRules {
   id        String   @id @default("default")
   body      String   @default("")
   updatedAt DateTime @updatedAt
 
-  @@map("berta_agent_rules")
+  @@map("pinocchio_agent_rules")
 }
 
 enum TxCategory {

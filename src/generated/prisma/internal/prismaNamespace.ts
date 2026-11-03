@@ -411,7 +411,7 @@ export const ModelName = {
   PortfolioTransactionLine: 'PortfolioTransactionLine',
   ChatSession: 'ChatSession',
   ChatMessage: 'ChatMessage',
-  BertaAgentRules: 'BertaAgentRules',
+  PinocchioAgentRules: 'PinocchioAgentRules',
   UsdCadDailyRate: 'UsdCadDailyRate',
   ExternalPortfolioAccount: 'ExternalPortfolioAccount',
   ExternalAccountSnapshot: 'ExternalAccountSnapshot',
@@ -439,7 +439,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "bertaAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "eodReportDelivery"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "pinocchioAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1479,77 +1479,77 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    BertaAgentRules: {
-      payload: Prisma.$BertaAgentRulesPayload<ExtArgs>
-      fields: Prisma.BertaAgentRulesFieldRefs
+    PinocchioAgentRules: {
+      payload: Prisma.$PinocchioAgentRulesPayload<ExtArgs>
+      fields: Prisma.PinocchioAgentRulesFieldRefs
       operations: {
         findUnique: {
-          args: Prisma.BertaAgentRulesFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload> | null
+          args: Prisma.PinocchioAgentRulesFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload> | null
         }
         findUniqueOrThrow: {
-          args: Prisma.BertaAgentRulesFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
+          args: Prisma.PinocchioAgentRulesFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>
         }
         findFirst: {
-          args: Prisma.BertaAgentRulesFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload> | null
+          args: Prisma.PinocchioAgentRulesFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload> | null
         }
         findFirstOrThrow: {
-          args: Prisma.BertaAgentRulesFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
+          args: Prisma.PinocchioAgentRulesFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>
         }
         findMany: {
-          args: Prisma.BertaAgentRulesFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>[]
+          args: Prisma.PinocchioAgentRulesFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>[]
         }
         create: {
-          args: Prisma.BertaAgentRulesCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
+          args: Prisma.PinocchioAgentRulesCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>
         }
         createMany: {
-          args: Prisma.BertaAgentRulesCreateManyArgs<ExtArgs>
+          args: Prisma.PinocchioAgentRulesCreateManyArgs<ExtArgs>
           result: BatchPayload
         }
         createManyAndReturn: {
-          args: Prisma.BertaAgentRulesCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>[]
+          args: Prisma.PinocchioAgentRulesCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>[]
         }
         delete: {
-          args: Prisma.BertaAgentRulesDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
+          args: Prisma.PinocchioAgentRulesDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>
         }
         update: {
-          args: Prisma.BertaAgentRulesUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
+          args: Prisma.PinocchioAgentRulesUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>
         }
         deleteMany: {
-          args: Prisma.BertaAgentRulesDeleteManyArgs<ExtArgs>
+          args: Prisma.PinocchioAgentRulesDeleteManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateMany: {
-          args: Prisma.BertaAgentRulesUpdateManyArgs<ExtArgs>
+          args: Prisma.PinocchioAgentRulesUpdateManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateManyAndReturn: {
-          args: Prisma.BertaAgentRulesUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>[]
+          args: Prisma.PinocchioAgentRulesUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>[]
         }
         upsert: {
-          args: Prisma.BertaAgentRulesUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$BertaAgentRulesPayload>
+          args: Prisma.PinocchioAgentRulesUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PinocchioAgentRulesPayload>
         }
         aggregate: {
-          args: Prisma.BertaAgentRulesAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateBertaAgentRules>
+          args: Prisma.PinocchioAgentRulesAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePinocchioAgentRules>
         }
         groupBy: {
-          args: Prisma.BertaAgentRulesGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.BertaAgentRulesGroupByOutputType>[]
+          args: Prisma.PinocchioAgentRulesGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PinocchioAgentRulesGroupByOutputType>[]
         }
         count: {
-          args: Prisma.BertaAgentRulesCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.BertaAgentRulesCountAggregateOutputType> | number
+          args: Prisma.PinocchioAgentRulesCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PinocchioAgentRulesCountAggregateOutputType> | number
         }
       }
     }
@@ -2732,13 +2732,13 @@ export const ChatMessageScalarFieldEnum = {
 export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
 
 
-export const BertaAgentRulesScalarFieldEnum = {
+export const PinocchioAgentRulesScalarFieldEnum = {
   id: 'id',
   body: 'body',
   updatedAt: 'updatedAt'
 } as const
 
-export type BertaAgentRulesScalarFieldEnum = (typeof BertaAgentRulesScalarFieldEnum)[keyof typeof BertaAgentRulesScalarFieldEnum]
+export type PinocchioAgentRulesScalarFieldEnum = (typeof PinocchioAgentRulesScalarFieldEnum)[keyof typeof PinocchioAgentRulesScalarFieldEnum]
 
 
 export const UsdCadDailyRateScalarFieldEnum = {
@@ -3300,7 +3300,7 @@ export type GlobalOmitConfig = {
   portfolioTransactionLine?: Prisma.PortfolioTransactionLineOmit
   chatSession?: Prisma.ChatSessionOmit
   chatMessage?: Prisma.ChatMessageOmit
-  bertaAgentRules?: Prisma.BertaAgentRulesOmit
+  pinocchioAgentRules?: Prisma.PinocchioAgentRulesOmit
   usdCadDailyRate?: Prisma.UsdCadDailyRateOmit
   externalPortfolioAccount?: Prisma.ExternalPortfolioAccountOmit
   externalAccountSnapshot?: Prisma.ExternalAccountSnapshotOmit

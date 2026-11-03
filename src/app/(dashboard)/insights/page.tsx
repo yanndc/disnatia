@@ -1,4 +1,4 @@
-import { BertaWorkspace } from "@/features/chat/berta-workspace";
+import { PinocchioWorkspace } from "@/features/chat/pinocchio-workspace";
 import {
   loadPortfolioInsightsMessages,
   PORTFOLIO_INSIGHTS_CHAT_SESSION_ID,
@@ -11,13 +11,13 @@ export default async function InsightsPage() {
     <div className="space-y-6">
       <section>
         <p className="text-sm text-slate-500">Analyse assistée</p>
-        <h2 className="text-2xl font-semibold text-slate-950">Discuter avec Berta</h2>
+        <h2 className="text-2xl font-semibold text-slate-950">Discuter avec Pinocchio</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Berta s&apos;appuie sur les fonctions métier du portefeuille ; tu peux fixer des règles
+          Pinocchio s&apos;appuie sur les fonctions métier du portefeuille ; tu peux fixer des règles
           permanentes (onglet « Règles » en mobile, panneau de droite sur grand écran).
         </p>
       </section>
-      <BertaWorkspace
+      <PinocchioWorkspace
         sessionId={PORTFOLIO_INSIGHTS_CHAT_SESSION_ID}
         initialMessages={initialMessages}
       />
