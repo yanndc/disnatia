@@ -1,8 +1,3 @@
-import {
-  startOfYear,
-  subMonths,
-  subYears,
-} from "date-fns";
 import type {
   PerformanceAccountRef,
   PerformanceFilterState,
@@ -13,16 +8,17 @@ import type {
   PerformanceSessionGain,
 } from "./performance-indicator-types";
 import {
+  addCalendarDays,
   isoDateInToronto,
   isBeforeTodaySessionOpen,
   isEquityMarketSessionOpen,
   latestAllowedFirstSessionDate,
-  previousTradingDay,
+  parseIsoCalendarDate,
   previousTradingDayIso,
+  priorReferenceSessionDateIso,
   referenceTradingSessionDay,
   referenceTradingSessionDayIso,
   resolveDayPeriodLabels,
-  yesterdayTradingSessionDay,
 } from "@/lib/market/equity-session";
 import { portfolioOwnersMatch } from "@/lib/portfolio/sanitize-portfolio-owner";
 import {
@@ -71,34 +67,51 @@ function isoDate(d: Date): string {
   return isoDateInToronto(d);
 }
 
+/**
+ * Parse une date ISO. Les dates calendrier (`YYYY-MM-DD`) sont ancrées à midi UTC :
+ * les reconvertir en date Toronto ne doit jamais décaler d'un jour selon le fuseau
+ * du process (Vercel = UTC, navigateur = America/Toronto).
+ */
 function parseIsoDate(s: string): Date {
   const raw = s.trim();
   if (raw.includes("T")) {
     const parsed = new Date(raw);
     if (!Number.isNaN(parsed.getTime())) return parsed;
   }
-
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (match) {
-    const y = Number(match[1]);
-    const m = Number(match[2]);
-    const d = Number(match[3]);
-    const parsed = new Date(y, m - 1, d);
-    if (
-      !Number.isNaN(parsed.getTime()) &&
-      parsed.getFullYear() === y &&
-      parsed.getMonth() === m - 1 &&
-      parsed.getDate() === d
-    ) {
-      return parsed;
-    }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return parseIsoCalendarDate(raw);
   }
-
   return new Date();
 }
 
+/** Date JS → ISO calendrier (composantes UTC). */
+function isoFromUtcDate(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Décale une date calendrier ISO de N mois (clamp de fin de mois : 31 mai → 28/29 févr.). */
+function shiftCalendarMonthsIso(iso: string, months: number): string {
+  const base = parseIsoCalendarDate(iso);
+  const dayOfMonth = base.getUTCDate();
+  const target = new Date(
+    Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + months, 1, 12),
+  );
+  const lastDayOfTargetMonth = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0, 12),
+  ).getUTCDate();
+  target.setUTCDate(Math.min(dayOfMonth, lastDayOfTargetMonth));
+  return isoFromUtcDate(target);
+}
+
+function shiftCalendarYearsIso(iso: string, years: number): string {
+  return shiftCalendarMonthsIso(iso, years * 12);
+}
+
 function baselineBeforePeriodStart(startIso: string): string {
-  return isoDate(previousTradingDay(parseIsoDate(startIso), 1));
+  return previousTradingDayIso(startIso, 1);
 }
 
 function currentCadTotal(
@@ -165,43 +178,47 @@ export function resolveActiveAccountKeys(
   return keys;
 }
 
+/**
+ * Bornes de période — **calcul 100 % calendrier** (chaînes ISO + arithmétique UTC).
+ * Aucune conversion via le fuseau du process : les mêmes entrées doivent produire les
+ * mêmes bornes sur Vercel (UTC), dans un navigateur (America/Toronto) et dans les tests.
+ */
 export function resolvePeriodBounds(
   periodId: PerformancePeriodId,
   now: Date,
   _selectedYear: number,
   earliestSnapshotDate: string | null,
 ): { start: string | null; end: string; baselineLookup: string | null } {
-  const refDay = referenceTradingSessionDay(now);
-  const end = isoDate(refDay);
+  const end = referenceTradingSessionDayIso(now);
 
   switch (periodId) {
     case "day": {
-      const baseline = isoDate(previousTradingDay(refDay, 1));
+      const baseline = previousTradingDayIso(end, 1);
       return { start: end, end, baselineLookup: baseline };
     }
     case "yesterday": {
-      const sessionEnd = isoDate(yesterdayTradingSessionDay(now));
-      const baseline = isoDate(previousTradingDay(parseIsoDate(sessionEnd), 1));
+      const sessionEnd = priorReferenceSessionDateIso(now);
+      const baseline = previousTradingDayIso(sessionEnd, 1);
       return { start: sessionEnd, end: sessionEnd, baselineLookup: baseline };
     }
     case "month": {
-      const start = previousTradingDayIso(isoDate(refDay), 20);
+      const start = previousTradingDayIso(end, 20);
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "month3": {
-      const start = isoDate(subMonths(refDay, 3));
+      const start = shiftCalendarMonthsIso(end, -3);
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "year": {
-      const start = isoDate(subYears(refDay, 1));
+      const start = shiftCalendarYearsIso(end, -1);
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "year3": {
-      const start = isoDate(subYears(refDay, 3));
+      const start = shiftCalendarYearsIso(end, -3);
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "ytd": {
-      const start = isoDate(startOfYear(refDay));
+      const start = `${end.slice(0, 4)}-01-01`;
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "all":
@@ -580,7 +597,17 @@ function disnatTitresMaterialKeys(
   });
 }
 
-/** Valeur titres agrégée (CAD) au plus tard à `targetDate`, par compte. */
+/**
+ * Valeur titres agrégée (CAD) au plus tard à `targetDate`, par compte.
+ *
+ * - Un compte peut détenir des titres dans **plusieurs devises** : on agrège d'abord par
+ *   (compte, date) puis on retient la date la plus récente, sinon une des poches de
+ *   devises serait silencieusement ignorée.
+ * - Base **marché uniquement** : `historyPoints` n'inclut pas l'encaisse (on ajoute le
+ *   ledger si fiable), et les snapshots d'import utilisent `marketValueNative` (jamais
+ *   `totalValueNative` qui mélangerait titres + encaisse dans une base titres).
+ * - L'historique projeté prime sur un import le même jour (comportement historique).
+ */
 export function titresCadAtOrBefore(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -589,58 +616,81 @@ export function titresCadAtOrBefore(
 ): { valueCad: number; asOf: string; accountsWithData: number } | null {
   const includeCash = options?.includeCash ?? true;
   const keys = new Set(accountKeys);
-  const byAccount = new Map<string, { asOf: string; valueCad: number }>();
   const minAsOf = minAcceptableHistoryAsOf(targetDate);
+
+  const historyByAccountDate = new Map<string, Map<string, number>>();
+  const snapshotByAccountDate = new Map<string, Map<string, number>>();
+
+  const addValue = (
+    buckets: Map<string, Map<string, number>>,
+    accountKey: string,
+    asOf: string,
+    valueCad: number,
+  ) => {
+    const perDate = buckets.get(accountKey) ?? new Map<string, number>();
+    perDate.set(asOf, (perDate.get(asOf) ?? 0) + valueCad);
+    buckets.set(accountKey, perDate);
+  };
 
   for (const pt of payload.historyPoints ?? []) {
     if (!keys.has(pt.accountKey)) continue;
     if (pt.asOf > targetDate || pt.asOf < minAsOf) continue;
-    const titresCad = historyPointCad(
-      pt.totalValueNative,
-      pt.currency,
-      usdCadRateForDate(payload, pt.asOf),
+    addValue(
+      historyByAccountDate,
+      pt.accountKey,
+      pt.asOf,
+      historyPointCad(
+        pt.totalValueNative,
+        pt.currency,
+        usdCadRateForDate(payload, pt.asOf),
+      ),
     );
-    // historyPoints = valeur titres projetée seulement (pas de cash) : on ajoute l'encaisse
-    // du ledger (si fiable) pour ne pas compter à tort une conversion encaisse→titres comme
-    // un gain de performance. Les snapshots (ci-dessous), eux, incluent déjà le cash.
-    // `includeCash: false` permet aux appels internes qui comparent explicitement à des
-    // valeurs marché-seulement (ex. plancher d'import) de rester apples-to-apples.
-    const valueCad = includeCash
-      ? cashAdjustedTitresCad(pt.accountKey, payload, titresCad, pt.asOf)
-      : titresCad;
-    const cur = byAccount.get(pt.accountKey);
-    if (!cur || pt.asOf > cur.asOf) {
-      byAccount.set(pt.accountKey, { asOf: pt.asOf, valueCad });
-    }
   }
 
   for (const pt of payload.snapshots ?? []) {
     if (!keys.has(pt.accountKey)) continue;
     if (pt.asOf > targetDate || pt.asOf < minAsOf) continue;
-    const valueCad = historyPointCad(
-      pt.totalValueNative,
-      pt.currency,
-      usdCadRateForDate(payload, pt.asOf),
+    const native = pt.marketValueNative ?? pt.totalValueNative;
+    addValue(
+      snapshotByAccountDate,
+      pt.accountKey,
+      pt.asOf,
+      historyPointCad(native, pt.currency, usdCadRateForDate(payload, pt.asOf)),
     );
-    const cur = byAccount.get(pt.accountKey);
-    if (!cur || pt.asOf > cur.asOf) {
-      byAccount.set(pt.accountKey, { asOf: pt.asOf, valueCad });
-    }
   }
 
-  if (byAccount.size === 0) return null;
+  const accountsWithData = new Set([
+    ...historyByAccountDate.keys(),
+    ...snapshotByAccountDate.keys(),
+  ]);
+  if (accountsWithData.size === 0) return null;
 
   let total = 0;
   let coverageAsOf = targetDate;
-  for (const row of byAccount.values()) {
-    total += row.valueCad;
-    if (row.asOf < coverageAsOf) coverageAsOf = row.asOf;
+  for (const accountKey of accountsWithData) {
+    const history = historyByAccountDate.get(accountKey);
+    const snapshot = snapshotByAccountDate.get(accountKey);
+    const dates = new Set<string>([
+      ...(history?.keys() ?? []),
+      ...(snapshot?.keys() ?? []),
+    ]);
+    const latestDate = [...dates].toSorted().at(-1);
+    if (!latestDate) continue;
+
+    let valueCad = history?.get(latestDate) ?? snapshot?.get(latestDate) ?? 0;
+    // L'encaisse vient du ledger (une seule fois par compte, pas par devise).
+    if (includeCash) {
+      valueCad = cashAdjustedTitresCad(accountKey, payload, valueCad, latestDate);
+    }
+
+    total += valueCad;
+    if (latestDate < coverageAsOf) coverageAsOf = latestDate;
   }
 
   return {
     valueCad: total,
     asOf: coverageAsOf,
-    accountsWithData: byAccount.size,
+    accountsWithData: accountsWithData.size,
   };
 }
 
@@ -781,7 +831,10 @@ function accountBmvTitresCad(
 
 /**
  * Si le 1er import de la période montre un portefeuille nettement plus élevé que le BMV titres
- * projeté (pas d'import au pic de début), Disnat utilise la valeur importée comme base $.
+ * projeté (import manquant au début de période), la valeur importée sert de base $.
+ * Le seuil est **neutre des apports** : on compare l'import au BMV projeté *augmenté des
+ * cotisations/transferts reçus depuis la borne*, sinon toute période avec cotisations
+ * déclenche le plancher et les apports sont comptés deux fois (régression AAJ).
  */
 const IMPORT_BMV_FLOOR_RATIO = 1.2;
 
@@ -790,25 +843,19 @@ function firstImportMarketCadInPeriod(
   payload: PerformanceIndicatorPayload,
   periodStart: string,
   periodEnd: string,
-): { valueCad: number; totalValueCad: number; asOf: string } | null {
-  let best: { asOf: string; valueCad: number; totalValueCad: number } | null = null;
+): { valueCad: number; asOf: string } | null {
+  let best: { asOf: string; valueCad: number } | null = null;
   for (const pt of payload.snapshots ?? []) {
     if (pt.accountKey !== accountKey) continue;
     if (pt.asOf < periodStart || pt.asOf > periodEnd) continue;
     const native = pt.marketValueNative ?? pt.totalValueNative;
-    const valueCad = historyPointCad(native, pt.currency, usdCadRateForDate(payload, pt.asOf));
-    // Le snapshot d'import connaît le vrai total (titres + cash réel), plus fiable que le
-    // ledger cash reconstruit : on le garde à disposition pour l'utiliser comme BMV quand le
-    // plancher se déclenche (cf. resolveBmvCadForPeriodGain), tout en comparant le seuil de
-    // déclenchement sur la valeur marché seule (`valueCad`) pour rester cohérent avec
-    // `historyCadMarketOnly`.
-    const totalValueCad = historyPointCad(
-      pt.totalValueNative,
+    const valueCad = historyPointCad(
+      native,
       pt.currency,
       usdCadRateForDate(payload, pt.asOf),
     );
     if (!best || pt.asOf < best.asOf) {
-      best = { asOf: pt.asOf, valueCad, totalValueCad };
+      best = { asOf: pt.asOf, valueCad };
     }
   }
   return best;
@@ -843,11 +890,9 @@ function resolveBmvCadForPeriodGain(
     (pt) => pt.accountKey === accountKey && pt.asOf <= baselineLookup,
   );
 
-  // Le plancher d'import compare une valeur marché-seulement (`importHit`, tirée de
-  // `marketValueNative`) : le seuil de déclenchement doit rester lui aussi marché-seulement
-  // (sans l'ajustement d'encaisse), sinon l'ajout du cash au ledger change artificiellement
-  // si ce plancher se déclenche ou non — ce qui a causé une régression sur le calcul $ AAJ
-  // (voir performance-contributions-disnat.test.ts).
+  // Seuil marché-seulement (comme `importHit`) et **hors apports** : sans ça, un portefeuille
+  // qui reçoit des cotisations dans la période paraît « nettement plus élevé » et le BMV est
+  // remplacé à tort (cf. performance-contributions-disnat.test.ts, AAJ 5KFZEZ2).
   const historyCadMarketOnly =
     (titresCadFullCoverageAtOrBefore([accountKey], payload, baselineLookup, {
       includeCash: false,
@@ -862,11 +907,19 @@ function resolveBmvCadForPeriodGain(
     !hasSnapAtBaseline &&
     importHit &&
     importHit.asOf > baselineLookup &&
-    importHit.valueCad > historyCadMarketOnly * IMPORT_BMV_FLOOR_RATIO
+    importHit.valueCad >
+      (historyCadMarketOnly +
+        netExternalFlowsCad(
+          payload.cashFlows,
+          [accountKey],
+          addCalendarDays(baselineLookup, 1),
+          importHit.asOf,
+        )) *
+        IMPORT_BMV_FLOOR_RATIO
   ) {
-    // Le snapshot connaît le vrai total (titres + cash réel à l'import) : on l'utilise plutôt
-    // que la valeur marché seule pour rester cohérent avec un EMV désormais cash-inclusif.
-    return importHit.totalValueCad;
+    // Base marché uniquement : l'EMV utilisé pour le gain est lui aussi marché uniquement,
+    // donc on n'injecte pas l'encaisse du snapshot dans une base titres.
+    return importHit.valueCad;
   }
 
   return anchorCad;
@@ -1004,7 +1057,7 @@ function accountLegacyTitresGainCad(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
   bounds: { start: string; end: string; baselineLookup: string | null },
-): number | null {
+): { gainCad: number; baselineCad: number } | null {
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
   const bmv = accountBmvTitresCad(accountKey, payload, bounds.start, lookup);
@@ -1025,10 +1078,17 @@ function accountLegacyTitresGainCad(
     bounds.end,
     lookup,
   );
-  return emvCad - bmvCadForGain - sumFlows;
+  return {
+    gainCad: emvCad - bmvCadForGain - sumFlows,
+    baselineCad: bmvCadForGain + sumFlows,
+  };
 }
 
-/** Gain $ affiché = Σ par compte (EMV − BMV − flux) pour rester cohérent avec le %. */
+/**
+ * Gain $ affiché = Σ par compte (EMV − BMV − flux), additif et aligné sur le tableau Disnat.
+ * `baselineCad` (Σ BMV + apports) permet de recalculer un % sur **la même base** que le $
+ * quand la méthode de rendement résolue produit un résultat incohérent (signe opposé).
+ */
 function sumPerAccountDisplayGainCad(
   materialKeys: string[],
   payload: PerformanceIndicatorPayload,
@@ -1036,12 +1096,14 @@ function sumPerAccountDisplayGainCad(
   periodId: PerformancePeriodId,
 ): {
   gainCad: number | null;
+  baselineCad: number | null;
   accountsWithBaseline: number;
   incomplete: boolean;
 } {
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
   let total = 0;
+  let totalBaseline = 0;
   let count = 0;
   let incomplete = false;
 
@@ -1055,12 +1117,13 @@ function sumPerAccountDisplayGainCad(
 
     const dollars = accountLegacyTitresGainCad(key, payload, bounds);
 
-    if (dollars == null || !Number.isFinite(dollars)) {
+    if (dollars == null || !Number.isFinite(dollars.gainCad)) {
       incomplete = true;
       continue;
     }
 
-    total += dollars;
+    total += dollars.gainCad;
+    totalBaseline += dollars.baselineCad;
     count++;
 
     const bmv = accountBmvTitresCad(key, payload, bounds.start, lookup);
@@ -1076,6 +1139,7 @@ function sumPerAccountDisplayGainCad(
 
   return {
     gainCad: count > 0 ? total : null,
+    baselineCad: count > 0 && totalBaseline > 0 ? totalBaseline : null,
     accountsWithBaseline: count,
     incomplete,
   };
@@ -1247,7 +1311,7 @@ function dayPeriodFromTitresDelta(
   payload: PerformanceIndicatorPayload,
   sessionEnd: string,
 ): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> | null {
-  const priorDay = isoDate(previousTradingDay(parseIsoDate(sessionEnd), 1));
+  const priorDay = previousTradingDayIso(sessionEnd, 1);
   const calc = computeTitresPeriodGain(accountKeys, payload, {
     start: sessionEnd,
     end: sessionEnd,
@@ -1548,6 +1612,33 @@ function computeSessionChainPeriod(
     periodId,
   });
 
+  // Cohérence $ / % : le $ affiché est Σ(EMV − BMV − apports) par compte (additif, aligné
+  // Disnat) et le % Dietz partage le **même numérateur**. Quand les deux divergent de signe
+  // (plancher BMV, choix de BMV par compte…), on recalcule le % sur la base du $.
+  // On ne touche pas au TWR : un $ positif avec un % négatif y est légitime (grosse
+  // cotisation dans un mois baissier).
+  let gainPct = ret.gainPct;
+  let annualized = ret.annualized;
+  let baselineCad = ret.baselineCad ?? titresCalc.baselineCad;
+  const signMismatch =
+    ret.algorithm === "modified-dietz" &&
+    gainCad != null &&
+    gainPct != null &&
+    Math.abs(gainCad) >= 1 &&
+    Math.abs(gainPct) >= 0.01 &&
+    Math.sign(gainCad) !== Math.sign(gainPct);
+  if (signMismatch) {
+    const coherentBase =
+      displayGain.baselineCad != null && displayGain.baselineCad > 0
+        ? displayGain.baselineCad
+        : titresCalc.baselineCad;
+    if (coherentBase != null && coherentBase > 0) {
+      gainPct = (gainCad / coherentBase) * 100;
+      annualized = false;
+      baselineCad = coherentBase;
+    }
+  }
+
   const incomplete =
     displayGain.gainCad != null
       ? displayGain.incomplete
@@ -1565,9 +1656,9 @@ function computeSessionChainPeriod(
   return {
     usable: true,
     gainCad,
-    gainPct: ret.gainPct,
+    gainPct,
     currentCad,
-    baselineCad: ret.baselineCad ?? titresCalc.baselineCad,
+    baselineCad,
     baselineDate:
       titresCalc.baselineDate ??
       baselineHit?.asOf ??
@@ -1580,7 +1671,7 @@ function computeSessionChainPeriod(
           ? materialKeys.length
           : 0,
     incomplete,
-    annualized: ret.annualized,
+    annualized,
     note: joinNotes(
       Math.abs(netFlowsCad) >= 0.01 ? formatFlowAdjustmentNote(netFlowsCad) : null,
       incomplete

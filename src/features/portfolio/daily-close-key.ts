@@ -27,3 +27,13 @@ export function isoDateFromDbDate(d: Date): string {
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/**
+ * Colonnes Prisma `DateTime` (timestamp **sans** fuseau) issues des exports Disnat :
+ * la date métier est portée par les composantes **UTC** (minuit UTC ou minuit local
+ * ingéré en UTC selon l'import). Utiliser `isoDateInToronto` décalait d'un jour les
+ * valeurs stockées à minuit UTC, ce qui cassait la déduplication des réimports.
+ */
+export function isoDateFromDbTimestamp(d: Date): string {
+  return isoDateFromDbDate(d);
+}

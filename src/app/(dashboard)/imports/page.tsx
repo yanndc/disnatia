@@ -26,7 +26,8 @@ export default async function ImportsPage({
     getImportHistory().catch(() => []),
     listExternalAccountsWithLatest().catch(() => []),
     listNonFinancialAssetsWithLatest().catch(() => []),
-    getPerformanceIndicatorPayload({ includeCashLedger: true }).catch(() => null),
+    // Même base que l'overview et le rapport EOD : indicateurs marché-seulement.
+    getPerformanceIndicatorPayload({ includeCashLedger: false }).catch(() => null),
   ]);
 
   const initialExternalAccounts: ExternalAccountDto[] = externalRaw.map((a) => ({

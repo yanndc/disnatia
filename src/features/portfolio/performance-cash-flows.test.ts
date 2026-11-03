@@ -103,6 +103,37 @@ describe("buildPerformanceCashFlowsFromTxRows", () => {
     assert.equal(ytd, 2800);
   });
 
+  test("déduplique minuit UTC vs minuit local (même date métier)", () => {
+    // Deux imports stockent la même cotisation à 00:00 UTC et 04:00 UTC : sans conversion
+    // UTC, `isoDateInToronto` donnait J-1 / J et la dédup exacte échouait (400 $ comptés 2×).
+    const flows = buildPerformanceCashFlowsFromTxRows(
+      [
+        {
+          accountKey: "ACC|CAD",
+          tradeDate: new Date("2026-04-30T00:00:00Z"),
+          settlementDate: null,
+          txCategory: "CONTRIBUTION",
+          amount: 250,
+          currency: "CAD",
+          fingerprint: "fp-midnight-utc",
+        },
+        {
+          accountKey: "ACC|CAD",
+          tradeDate: null,
+          settlementDate: new Date("2026-04-30T04:00:00Z"),
+          txCategory: "CONTRIBUTION",
+          amount: 250,
+          currency: "CAD",
+          fingerprint: "fp-midnight-local",
+        },
+      ],
+      null,
+    );
+
+    assert.equal(flows.length, 1);
+    assert.equal(flows[0]!.tradeDate, "2026-04-30");
+  });
+
   test("déduplique les réimportations identiques", () => {
     const row = {
       accountKey: "ACC|CAD",

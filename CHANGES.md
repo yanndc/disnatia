@@ -1,3 +1,46 @@
+# Corrections — indicateurs de performance (2026-11-03)
+
+## Problèmes corrigés
+
+### 1. AAJ : base (BMV) remplacée à tort par un import de milieu de période
+**Symptôme :** `5KFZEZ2|CAD` affichait **−8 759 $ / +16,18 %** au 2026‑06‑12 (Disnat : −165 $).
+**Cause :** le « plancher BMV d'import » comparait le 1er import de la période au BMV projeté **sans neutraliser les cotisations** ; au‑delà de +20 % il remplaçait la base du 31 déc. (14 764 $) par l'import du 5 mai (26 457 $, encaisse incluse), puis les apports (10 701 $) étaient **encore** soustraits.
+**Correctif :** seuil comparé à `BMV projeté + apports depuis la borne`, et base retournée en **valeur marché** (plus d'encaisse injectée dans une base titres). Résultat : **+3 333 $ / +18,56 %**, de même signe.
+
+### 2. Résultats dépendants du fuseau (Vercel UTC ≠ navigateur Toronto)
+**Symptôme :** mêmes données → AAJ **−8 759 $** dans le navigateur, **+2 828 $** sous `TZ=UTC` ; `ytd.start` = 2025‑12‑31, `baselineLookup` = 2025‑12‑29, `month/month3/year` décalés d'un jour.
+**Cause :** `parseIsoDate` construisait des dates **locales** puis `isoDate()` les convertissait en Toronto.
+**Correctif :** bornes calculées **100 % en chaînes ISO + arithmétique UTC** (`shiftCalendarMonthsIso`, `shiftCalendarYearsIso`, `previousTradingDayIso`, `priorReferenceSessionDateIso`) ; `parseIsoDate` ancre les dates calendrier à midi UTC.
+**Fichiers :** `performance-indicator-logic.ts`, nouveau test `performance-period-bounds-tz.test.ts` (vérifie `TZ=UTC` vs `TZ=America/Toronto`).
+
+### 3. Flux décalés d'un jour → cotisations comptées deux fois
+**Symptôme :** 400 $ comptés 2× (11 101 $ au lieu de 10 701 $) ; dates de flux à J‑1.
+**Cause :** `tradeDate`/`settlementDate` (timestamp sans fuseau) convertis avec `isoDateInToronto` (minuit UTC → 20 h la veille à Toronto).
+**Correctif :** `isoDateFromDbTimestamp()` (composantes UTC) dans `performance-cash-flows.ts` et `performance-cash-ledger.ts` → la déduplication des réimports redevient exacte.
+
+### 4. Bases « titres seuls » et « titres + encaisse » mélangées
+- Les snapshots d'import utilisent désormais **`marketValueNative`** (jamais `totalValueNative`) dans `titresCadAtOrBefore`.
+- Politique unique **marché‑only** : l'overview (`includeCashLedger: false` explicite) et le rapport EOD (qui chargeait le ledger) sont alignés.
+
+### 5. Comptes multi‑devises : une poche ignorée
+`titresCadAtOrBefore` agrège maintenant par **(compte, date)** avant de retenir la date la plus récente (l'historique projeté prime toujours sur un import le même jour).
+
+### 6. $ et % incohérents (signes opposés)
+Garde‑fou : quand la méthode résolue est **Modified Dietz** (même numérateur que le $ affiché) et que les signes divergent, le % est recalculé sur la base du $ (`Σ BMV + apports`). Le TWR n'est pas touché (un $ positif avec un % négatif y est légitime lors d'une grosse cotisation dans un marché baissier).
+
+## Validation
+- `npm run test` : **109/109** · `npm run test:performance` : **81/81** (inclut les tests DB vs Disnat, auparavant 16/17).
+- Non‑régression ajoutée : `plancher BMV neutre des apports` (cas réel 5KFZEZ2), invariant `$ ≈ % × base`, dédup minuit UTC vs minuit local, invariance fuseau.
+- `PERFORMANCE_CALC_VERSION` → **11** (les snapshots v10 ne sont plus lus).
+
+## Reste à faire (hors périmètre)
+- `selectedYear` est toujours un filtre mort (paramètre `_selectedYear` non utilisé).
+- « Total » plafonne à ~4 ans d'historique (`now − 4 ans`) alors que le libellé dit « depuis le début ».
+- 3 ans / Total affichent un % **annualisé** (suffixe « /an ») vs 1 an cumulé.
+- Séance ouverte sans cotation : pas de repli sur la chaîne de séances persistée.
+
+---
+
 # Changements de maintenance - 2026-08-24
 
 ## Problèmes résolus

@@ -29,7 +29,13 @@ export default async function OverviewPage() {
   try {
     [summary, performancePayload] = await Promise.all([
       getPortfolioSummary(),
-      getPerformanceIndicatorPayload({ refreshQuotes: false, persistSnapshots: false }).catch((e) => {
+      getPerformanceIndicatorPayload({
+        refreshQuotes: false,
+        persistSnapshots: false,
+        // Politique unique : indicateurs marché-seulement (l'encaisse reconstruite par le
+        // ledger n'est pas chargée) — identique au rapport EOD.
+        includeCashLedger: false,
+      }).catch((e) => {
         console.error("[overview] getPerformanceIndicatorPayload error", e);
         return null;
       }),

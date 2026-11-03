@@ -20,6 +20,12 @@ const DISNAT_YTD_DOLLARS = {
   "5L3APY0|CAD": 315.52,
 } as const;
 
+/** AAJ attendu après correction du plancher BMV « neutre des apports » (audit 2026-11). */
+const EXPECTED_YTD_DOLLARS: Record<string, number> = {
+  // Avant : −8 759 $ (BMV remplacé par l'import du 5 mai). Après : ≈ +3 333 $.
+  "5KFZEZ2|CAD": 3_333,
+};
+
 /** Avant correction : Σ session_gains YTD sans déduction des cotisations. */
 const SESSION_CHAIN_YTD_WITHOUT_FLOWS = {
   "5KFZEZ2|CAD": 4318,
@@ -79,9 +85,26 @@ describe("Cotisations — chargement et gain $ vs Disnat", { skip: !hasDb }, () 
       assert.equal(r.gainCad, titres.gainCad, `${key} gain $ incohérent avec Δ titres − flux`);
 
       const withoutFlows = SESSION_CHAIN_YTD_WITHOUT_FLOWS[key];
+      assert.notEqual(
+        Math.round(r.gainCad!),
+        withoutFlows,
+        `${key} : gain $ identique à Σ séances sans flux (${withoutFlows})`,
+      );
+      assert.equal(
+        Math.sign(r.gainCad!),
+        Math.sign(r.gainPct!),
+        `${key} : $ et % doivent être de même signe (${Math.round(r.gainCad!)} $ vs ${r.gainPct?.toFixed(2)} %)`,
+      );
       assert.ok(
-        Math.abs(r.gainCad! - withoutFlows) > 1000,
-        `${key} : gain $=${Math.round(r.gainCad!)} encore proche de Σ séances (${withoutFlows})`,
+        r.baselineCad != null && r.baselineCad > 0,
+        `${key} : base du % indisponible`,
+      );
+      assert.ok(
+        Math.abs((r.gainPct! / 100) * r.baselineCad! - r.gainCad!) <=
+          Math.max(1, Math.abs(r.gainCad!) * 0.01),
+        `${key} : $=${Math.round(r.gainCad!)} incohérent avec %×base=${Math.round(
+          (r.gainPct! / 100) * r.baselineCad!,
+        )}`,
       );
     }
   });
@@ -111,6 +134,14 @@ describe("Cotisations — chargement et gain $ vs Disnat", { skip: !hasDb }, () 
         delta < oldDelta,
         `${accountKey} : pas plus proche de Disnat (avant Δ=${Math.round(oldDelta)}, maintenant Δ=${Math.round(delta)})`,
       );
+
+      const expected = EXPECTED_YTD_DOLLARS[accountKey];
+      if (expected != null) {
+        assert.ok(
+          Math.abs(r.gainCad - expected) <= 600,
+          `${accountKey} : AAJ hors plage attendue (${Math.round(r.gainCad)} $, attendu ≈ ${expected} $)`,
+        );
+      }
     }
   });
 });

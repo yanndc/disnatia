@@ -110,7 +110,8 @@ export async function rebuildPerformanceFacts(options?: {
 
   let snapshotRows = 0;
   if (ok) {
-    const payload = await getPerformanceIndicatorPayload({ includeCashLedger: true });
+    // Snapshots persistés avec la même base que l'UI/le rapport (marché uniquement).
+    const payload = await getPerformanceIndicatorPayload({ includeCashLedger: false });
     const wrote = await persistPerformanceSnapshots(payload, toDate);
     snapshotRows = wrote.rowsWritten;
     messages.push(

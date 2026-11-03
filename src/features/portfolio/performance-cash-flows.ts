@@ -1,4 +1,4 @@
-import { isoDateInToronto } from "@/lib/market/equity-session";
+import { isoDateFromDbTimestamp } from "./daily-close-key";
 import type { PerformanceCashFlow } from "./performance-indicator-types";
 import { daysBetweenIso } from "./performance-money-weighted";
 
@@ -126,7 +126,7 @@ export function buildPerformanceCashFlowsFromTxRows(
     if (!isDense) {
       const exactKey = [
         tx.accountKey,
-        isoDateInToronto(effective),
+        isoDateFromDbTimestamp(effective),
         tx.txCategory,
         Math.round(amount * 100),
       ].join("|");
@@ -136,7 +136,7 @@ export function buildPerformanceCashFlowsFromTxRows(
 
     out.push({
       accountKey: tx.accountKey,
-      tradeDate: isoDateInToronto(effective),
+      tradeDate: isoDateFromDbTimestamp(effective),
       txCategory: tx.txCategory as PerformanceCashFlow["txCategory"],
       amountCad: toCad(amount, tx.currency ?? "CAD", usdToCad),
     });

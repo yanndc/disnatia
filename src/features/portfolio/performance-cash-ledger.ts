@@ -1,4 +1,4 @@
-import { isoDateInToronto } from "@/lib/market/equity-session";
+import { isoDateFromDbTimestamp } from "./daily-close-key";
 import { resolveFlowEffectiveDate } from "./performance-cash-flows";
 
 const CASH_LEDGER_CATEGORIES = new Set([
@@ -50,7 +50,7 @@ export function buildAccountCashLedgers(
     const amount = tx.amount;
     if (amount === null || !Number.isFinite(amount)) continue;
 
-    const date = isoDateInToronto(effective);
+    const date = isoDateFromDbTimestamp(effective);
     const delta = toCad(amount, tx.currency ?? "CAD", usdToCad);
     const dates = byAccount.get(tx.accountKey) ?? new Map<string, number>();
     dates.set(date, (dates.get(date) ?? 0) + delta);

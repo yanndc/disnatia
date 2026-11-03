@@ -1262,3 +1262,182 @@ describe("gain $ — aligné période (EMV − BMV − flux)", () => {
     assert.equal(ytd.gainCad, 0);
   });
 });
+
+describe("plancher BMV d'import — neutre des apports", () => {
+  const ACCOUNT = "5KFZEZ2|CAD";
+
+  function ytdFixture(overrides: Partial<PerformanceIndicatorPayload> = {}) {
+    return mockPayload({
+      accounts: [
+        {
+          accountKey: ACCOUNT,
+          label: "CELI",
+          owner: "Alice",
+          accountType: "CELI",
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      currentByAccount: {
+        [ACCOUNT]: {
+          totalCad: 28_798.73,
+          positionsCad: 28_798.73,
+          cashCad: 0,
+          dayGainCad: 0,
+          dayPriorCad: 28_798.73,
+        },
+      },
+      historyPoints: [
+        {
+          accountKey: ACCOUNT,
+          asOf: "2025-12-31",
+          totalValueNative: 14_764.48,
+          currency: "CAD",
+        },
+        {
+          accountKey: ACCOUNT,
+          asOf: "2026-06-12",
+          totalValueNative: 28_798.73,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        [ACCOUNT]: [
+          { date: "2026-01-02", gainCad: 100, priorCad: 14_764.48 },
+          { date: "2026-06-11", gainCad: 150, priorCad: 28_650 },
+        ],
+      },
+      sessionGainsByDate: [
+        { date: "2026-01-02", gainCad: 100, priorCad: 14_764.48 },
+        { date: "2026-06-11", gainCad: 150, priorCad: 28_650 },
+      ],
+      cashFlows: [
+        { accountKey: ACCOUNT, tradeDate: "2026-04-06", txCategory: "CONTRIBUTION", amountCad: 2_000 },
+        { accountKey: ACCOUNT, tradeDate: "2026-04-24", txCategory: "CONTRIBUTION", amountCad: 7_100.78 },
+        { accountKey: ACCOUNT, tradeDate: "2026-04-30", txCategory: "CONTRIBUTION", amountCad: 400 },
+        { accountKey: ACCOUNT, tradeDate: "2026-05-14", txCategory: "CONTRIBUTION", amountCad: 400 },
+        { accountKey: ACCOUNT, tradeDate: "2026-05-28", txCategory: "CONTRIBUTION", amountCad: 400 },
+        { accountKey: ACCOUNT, tradeDate: "2026-06-11", txCategory: "CONTRIBUTION", amountCad: 400 },
+      ],
+      asOfNow: "2026-06-12T15:00:00",
+      ...overrides,
+    });
+  }
+
+  const filters = {
+    preset: "custom" as const,
+    owner: null,
+    includedAccountKeys: [ACCOUNT],
+    excludedAccountKeys: [],
+    selectedYear: 2026,
+  };
+
+  test("un import plus élevé à cause des cotisations ne remplace pas le BMV du 31 déc.", () => {
+    const payload = ytdFixture({
+      // Import du 5 mai : valeur marché 18 953,94 $ (26 456,85 $ encaisse incluse).
+      snapshots: [
+        {
+          accountKey: ACCOUNT,
+          asOf: "2026-05-05",
+          totalValueNative: 26_456.85,
+          marketValueNative: 18_953.94,
+          currency: "CAD",
+        },
+      ],
+    });
+
+    const ytd = computePeriodResult(payload, filters, "ytd");
+
+    // 28 798,73 − 14 764,48 (BMV 31 déc.) − 10 700,78 (apports) = 3 333,47 $
+    assert.ok(
+      Math.abs((ytd.gainCad ?? 0) - 3_333.47) < 1,
+      `gain AAJ attendu ≈ +3 333 $, obtenu ${ytd.gainCad}`,
+    );
+    assert.ok((ytd.gainPct ?? 0) > 0, "le % doit rester positif (même signe que le $)");
+    assert.equal(
+      Math.sign(ytd.gainCad ?? 0),
+      Math.sign(ytd.gainPct ?? 0),
+      "$ et % doivent être de même signe",
+    );
+  });
+
+  test("un import nettement plus élevé sans apports reste utilisé comme base (plancher conservé)", () => {
+    const payload = ytdFixture({
+      historyPoints: [
+        {
+          accountKey: ACCOUNT,
+          asOf: "2025-12-31",
+          totalValueNative: 1_000,
+          currency: "CAD",
+        },
+        {
+          accountKey: ACCOUNT,
+          asOf: "2026-06-12",
+          totalValueNative: 11_000,
+          currency: "CAD",
+        },
+      ],
+      sessionGainsByAccount: {
+        [ACCOUNT]: [{ date: "2026-01-02", gainCad: 5, priorCad: 1_000 }],
+      },
+      sessionGainsByDate: [{ date: "2026-01-02", gainCad: 5, priorCad: 1_000 }],
+      snapshots: [
+        {
+          accountKey: ACCOUNT,
+          asOf: "2026-05-05",
+          totalValueNative: 10_000,
+          marketValueNative: 10_000,
+          currency: "CAD",
+        },
+      ],
+      cashFlows: [],
+    });
+
+    const ytd = computePeriodResult(payload, filters, "ytd");
+    // BMV = import du 5 mai (10 000) → gain = 11 000 − 10 000 = 1 000 $
+    assert.ok(
+      Math.abs((ytd.gainCad ?? 0) - 1_000) < 1,
+      `plancher attendu (BMV = import), obtenu ${ytd.gainCad}`,
+    );
+    assert.equal(
+      Math.sign(ytd.gainCad ?? 0),
+      Math.sign(ytd.gainPct ?? 0),
+      "$ et % doivent être de même signe",
+    );
+  });
+
+  test("invariant : $ ≈ % × base sur les périodes non annualisées", () => {
+    const payload = ytdFixture({
+      snapshots: [
+        {
+          accountKey: ACCOUNT,
+          asOf: "2026-05-05",
+          totalValueNative: 26_456.85,
+          marketValueNative: 18_953.94,
+          currency: "CAD",
+        },
+      ],
+    });
+
+    // `month3` est volontairement exclu : avec une seule séance dans la fenêtre, la méthode
+    // résolue est « session-single » (1 jour) et le $ couvre la période → écart légitime,
+    // signalé par `incomplete`.
+    for (const periodId of ["ytd", "year"] as const) {
+      const r = computePeriodResult(payload, filters, periodId);
+      if (r.gainCad == null || r.gainPct == null || r.baselineCad == null) continue;
+      if (r.annualized) continue;
+      const fromPct = (r.gainPct / 100) * r.baselineCad;
+      const tolerance = Math.max(1, Math.abs(r.gainCad) * 0.01);
+      assert.ok(
+        Math.abs(fromPct - r.gainCad) <= tolerance,
+        `${periodId} : $=${r.gainCad} incohérent avec %×base=${fromPct} (base ${r.baselineCad})`,
+      );
+      assert.equal(
+        Math.sign(r.gainCad),
+        Math.sign(r.gainPct),
+        `${periodId} : $ et % de signes opposés`,
+      );
+    }
+  });
+});
+

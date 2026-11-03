@@ -16,8 +16,11 @@ import {
 } from "./eod-report-types";
 
 export async function buildEodReportData(now = new Date()): Promise<EodReportData> {
+  // Base « marché uniquement », identique à l'écran Vue d'ensemble : charger le ledger
+  // d'encaisse reconstruit faisait diverger le rapport des indicateurs affichés (titres +
+  // encaisse d'un côté, titres seuls de l'autre).
   const [payload, summary] = await Promise.all([
-    getPerformanceIndicatorPayload({ includeCashLedger: true }),
+    getPerformanceIndicatorPayload(),
     getPortfolioSummary(),
   ]);
 
@@ -67,6 +70,6 @@ export async function buildEodReportData(now = new Date()): Promise<EodReportDat
     usdToCad: payload.usdToCad,
     usdToCadDate: payload.usdToCadDate,
     appUrl,
-    bertaAnalysis: null,
+    pinocchioAnalysis: null,
   };
 }
