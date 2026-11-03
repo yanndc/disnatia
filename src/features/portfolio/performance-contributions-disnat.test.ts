@@ -81,7 +81,7 @@ describe("Cotisations — chargement et gain $ vs Disnat", { skip: !hasDb }, () 
     const bounds = resolvePeriodBounds("ytd", new Date(AS_OF), 2026, null);
 
     for (const key of Object.keys(DISNAT_YTD_DOLLARS)) {
-      const titres = computeTitresPeriodGain([key], payload, bounds, "ytd");
+      const titres = computeTitresPeriodGain([key], payload, bounds);
       assert.ok(titres.usable && titres.gainCad != null, `${key} titres gain`);
 
       const r = computePeriodResult(

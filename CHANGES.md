@@ -39,6 +39,14 @@ Garde‑fou : quand la méthode résolue est **Modified Dietz** (même numérate
 
 Effet : le % « 1 mois » de Yann passe de ~6,3 % à **2,91 %** car les clôtures réelles de mai-juin (SPY 759 → 725 → 755, AMZN 253 → 238) remplacent des prix reportés (stale). Les gains de séance (Σ +7,7 k$ sur ~230 k$ de capital) confirment ~+3 % : la **capture Disnat 6,51 %** utilisée comme référence précède le backfill → tolérance stricte portée de 2 à **4 pts** (documentée dans `disnat-returns-benchmark.fixture.ts`). Le reste (mois 3, AAJ, 3 ans, total) est inchangé.
 
+## Petits correctifs (2026-11-03, `calcVersion 12`)
+
+1. **AAJ piloté par `selectedYear`** — le filtre d'année n'est plus mort : `resolvePeriodBounds("ytd", …)` calcule du 1er janvier de l'année choisie au 31 décembre (tronqué à la séance de référence pour l'année courante). Test : `selectedYear pilote l'AAJ d'une année passée`.
+2. **« Total » depuis la première séance** — l'historique titres/FX n'est plus chargé sur une fenêtre glissante de 4 ans mais depuis la première séance persistée (−20 j pour le BMV) : plus de rendement « Total » tronqué silencieusement (8 166 points d'historique, départ 2022-03-23).
+3. **Libellé « annualisé »** — les encadrés 3 ans / Total affichent « annualisé » + une infobulle (l'encadré actif le faisait déjà) pour éviter de comparer un cumulé (1 an) et un taux annualisé.
+4. **Repli séance** — si la séance est ouverte **sans cotation exploitable**, on retombe sur le P&L de séance persisté (`session-chain`, marqué partiel + note « Cotations indisponibles ») au lieu d'afficher « — ».
+5. **Nettoyage** — suppression du code mort (`resolveEndTitresCad`, `dayPeriodFromTitresDelta`, `accountDisnatYtdGainCad`, `resolveAccountReferenceTitresCad`, `resolveDisnatYtdHistCad`, `currentPositionsCadInGainScope`, `latestImportTitres*`), import et variable inutilisés ; paramètre `periodId` retiré de `computeTitresPeriodGain`. **0 warning eslint** sur les fichiers performance.
+
 ## Reste à faire (hors périmètre)
 - `selectedYear` est toujours un filtre mort (paramètre `_selectedYear` non utilisé).
 - « Total » plafonne à ~4 ans d'historique (`now − 4 ans`) alors que le libellé dit « depuis le début ».

@@ -1291,8 +1291,20 @@ export function PerformanceIndicatorCard({
                     >
                       {formatGain(row.gainCad, true)}
                     </p>
-                    <p className={`text-xs tabular-nums ${signedGainClass(row.gainPct)}`}>
+                    <p
+                      className={`text-xs tabular-nums ${signedGainClass(row.gainPct)}`}
+                      title={
+                        row.annualized
+                          ? "Taux annualisé (période > 1 an) — comparer 1 an (cumulé) et 3 ans (annualisé) n'est pas direct"
+                          : undefined
+                      }
+                    >
                       {formatGainPct(row.gainPct, row.annualized)}
+                      {row.annualized ? (
+                        <span className="ml-1 text-[10px] font-normal uppercase tracking-wide text-slate-400">
+                          annualisé
+                        </span>
+                      ) : null}
                     </p>
                     {row.incomplete && row.gainCad !== null ? (
                       <span

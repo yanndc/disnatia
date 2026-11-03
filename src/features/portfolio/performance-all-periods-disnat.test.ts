@@ -64,7 +64,7 @@ describe("Performance — toutes périodes vs Disnat", { skip: !hasDb }, () => {
       );
       assert.ok(r.gainCad != null, `${accountKey} ytd gainCad null`);
 
-      const titres = computeTitresPeriodGain([accountKey], payload, bounds, "ytd");
+      const titres = computeTitresPeriodGain([accountKey], payload, bounds);
       assert.ok(titres.usable && titres.gainCad != null, `${accountKey} titres gainCad null`);
       assert.equal(
         r.gainCad,

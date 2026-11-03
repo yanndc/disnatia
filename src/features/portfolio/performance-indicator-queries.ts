@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db/prisma";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
 import { loadUsdCadRateMap } from "@/lib/fx/usd-cad-rate-map";
 import { logRecoverableServerIssue } from "@/lib/logging/recoverable-server-log";
-import { sanitizePortfolioOwner } from "@/lib/portfolio/sanitize-portfolio-owner";
 import { buildOwnerDimensionResolver } from "@/lib/portfolio/owner-dimension-resolver";
 import { formatAccountNumber, normalizeCurrency } from "@/lib/utils";
 import { loadHoldingsForDashboard } from "./holdings-display-query";
@@ -552,21 +551,35 @@ export async function getPerformanceIndicatorPayload(options?: {
   const disnatAccountKeys = accounts.filter((a) => !a.isExternal).map((a) => a.accountKey);
   const now = new Date();
   const sessionGainTo = isoDate(now);
+  /** Fenêtre de repli si aucune séance n'est encore persistée. */
   const defaultSessionGainFrom = isoDate(subYears(now, 4));
 
-  const [historyPoints, dailyTotalsCad, earliestSessionGainRow, usdCadRateMap] =
-    await Promise.all([
-      loadPerformanceAccountHistory(defaultSessionGainFrom),
-      loadPerformanceDailyTotalsCad(usdToCad),
-      disnatAccountKeys.length > 0
-        ? prisma.portfolioDailyAccountSessionGain.findFirst({
-            where: { accountKey: { in: disnatAccountKeys } },
-            orderBy: { sessionDate: "asc" },
-            select: { sessionDate: true },
-          })
-        : Promise.resolve(null),
-      loadUsdCadRateMap(defaultSessionGainFrom, sessionGainTo),
-    ]);
+  // « Depuis le début » doit couvrir depuis la **première séance réellement enregistrée**,
+  // pas une fenêtre glissante de 4 ans (au-delà, BMV/EMV étaient tronqués et le Total
+  // affichait un rendement partiel sans le dire).
+  const earliestSessionGainRow =
+    disnatAccountKeys.length > 0
+      ? await prisma.portfolioDailyAccountSessionGain.findFirst({
+          where: { accountKey: { in: disnatAccountKeys } },
+          orderBy: { sessionDate: "asc" },
+          select: { sessionDate: true },
+        })
+      : null;
+  const earliestTrackedFrom = earliestSessionGainRow
+    ? isoDateInToronto(
+        subDays(parseIsoDateLocal(isoDateFromDbDate(earliestSessionGainRow.sessionDate)), 20),
+      )
+    : defaultSessionGainFrom;
+  const historyFrom =
+    earliestTrackedFrom < defaultSessionGainFrom
+      ? earliestTrackedFrom
+      : defaultSessionGainFrom;
+
+  const [historyPoints, dailyTotalsCad, usdCadRateMap] = await Promise.all([
+    loadPerformanceAccountHistory(historyFrom),
+    loadPerformanceDailyTotalsCad(usdToCad),
+    loadUsdCadRateMap(historyFrom, sessionGainTo),
+  ]);
   const usdCadRateByDate = Object.fromEntries(usdCadRateMap);
 
   const sessionGainFrom = earliestSessionGainRow
@@ -649,7 +662,7 @@ export async function getPerformanceIndicatorPayload(options?: {
       securityName: h.securityName ?? null,
     }));
 
-  const { sessionEnd, sessionStart } = yesterdayCloseDates(new Date());
+  const { sessionEnd } = yesterdayCloseDates(new Date());
   const closeTo = isoDate(new Date());
 
   const closeHistoryPairs = [

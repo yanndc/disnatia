@@ -97,4 +97,19 @@ describe("resolvePeriodBounds — invariance fuseau", () => {
     const bounds = resolvePeriodBounds("year", leap, 2024, null);
     assert.equal(bounds.start, "2023-02-28");
   });
+
+  test("selectedYear pilote l'AAJ d'une année passée (filtre plus mort)", () => {
+    const now = new Date("2026-06-12T15:00:00");
+    assert.deepEqual(resolvePeriodBounds("ytd", now, 2025, null), {
+      start: "2025-01-01",
+      end: "2025-12-31",
+      baselineLookup: "2024-12-31",
+    });
+    // Année courante : bornes tronquées à la séance de référence.
+    assert.deepEqual(resolvePeriodBounds("ytd", now, 2026, null), {
+      start: "2026-01-01",
+      end: "2026-06-12",
+      baselineLookup: "2025-12-31",
+    });
+  });
 });

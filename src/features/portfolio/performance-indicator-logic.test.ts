@@ -302,6 +302,44 @@ describe("computePeriodResult", () => {
     assert.notEqual(prec.gainCad, 1_500);
   });
 
+  test("séance ouverte sans cotation : repli sur la chaîne de séances persistée", () => {
+    const payload = mockPayload({
+      asOfNow: "2026-06-12T15:00:00", // vendredi, séance ouverte, cotations du jour
+      quotesAsOf: "2026-06-12T15:00:00",
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 100_000,
+          positionsCad: 100_000,
+          cashCad: 0,
+          // Aucune cotation exploitable pour la séance en cours.
+          dayGainCad: null,
+          dayPriorCad: null,
+        },
+      },
+      sessionGainsByAccount: {
+        "ACC|CAD": [{ date: "2026-06-12", gainCad: 500, priorCad: 99_500 }],
+      },
+      sessionGainsByDate: [{ date: "2026-06-12", gainCad: 500, priorCad: 99_500 }],
+    });
+
+    const day = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "day",
+    );
+
+    assert.equal(day.method, "session-chain");
+    assert.equal(day.gainCad, 500);
+    assert.equal(day.incomplete, true, "un repli non live doit rester signalé");
+    assert.match(day.note ?? "", /Cotations indisponibles/i);
+  });
+
   test("Jour : n'utilise pas des cotations live d'un autre jour (simulation d'audit historique)", () => {
     // Reproduit le scénario du bug de conciliation : `asOfNow` est forcé à une date
     // passée pendant les heures de marché, mais `quotesAsOf` (cotations réellement
@@ -953,7 +991,7 @@ describe("computePeriodResult", () => {
     };
     const ytd = computePeriodResult(payload, filters, "ytd");
     const bounds = resolvePeriodBounds("ytd", new Date(payload.asOfNow), 2026, null);
-    const titres = computeTitresPeriodGain(["ACC|CAD"], payload, bounds, "ytd");
+    const titres = computeTitresPeriodGain(["ACC|CAD"], payload, bounds);
 
     assert.ok(titres.usable && titres.gainCad != null);
     assert.equal(ytd.gainCad, titres.gainCad);

@@ -182,11 +182,14 @@ export function resolveActiveAccountKeys(
  * Bornes de période — **calcul 100 % calendrier** (chaînes ISO + arithmétique UTC).
  * Aucune conversion via le fuseau du process : les mêmes entrées doivent produire les
  * mêmes bornes sur Vercel (UTC), dans un navigateur (America/Toronto) et dans les tests.
+ *
+ * `selectedYear` pilote l'« année à date » : on peut consulter l'AAJ d'une année passée
+ * (bornes 1er janv. → 31 déc. de cette année, tronquées à la séance de référence).
  */
 export function resolvePeriodBounds(
   periodId: PerformancePeriodId,
   now: Date,
-  _selectedYear: number,
+  selectedYear: number,
   earliestSnapshotDate: string | null,
 ): { start: string | null; end: string; baselineLookup: string | null } {
   const end = referenceTradingSessionDayIso(now);
@@ -218,8 +221,17 @@ export function resolvePeriodBounds(
       return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "ytd": {
-      const start = `${end.slice(0, 4)}-01-01`;
-      return { start, end, baselineLookup: baselineBeforePeriodStart(start) };
+      // `selectedYear` rend le sélecteur d'année fonctionnel : l'AAJ se calcule sur
+      // l'année choisie (tronquée à la séance de référence si c'est l'année courante).
+      const currentYear = Number(end.slice(0, 4));
+      const year =
+        Number.isFinite(selectedYear) && selectedYear >= 1900
+          ? selectedYear
+          : currentYear;
+      const start = `${year}-01-01`;
+      const yearEnd = `${year}-12-31`;
+      const periodEnd = end > yearEnd ? yearEnd : end;
+      return { start, end: periodEnd, baselineLookup: baselineBeforePeriodStart(start) };
     }
     case "all":
       return {
@@ -317,14 +329,16 @@ function computeDayPeriod(
     };
   }
 
-  if (canUseLiveValuesForAsOf(payload) && isEquityMarketSessionOpen(now)) {
+  const liveQuotesUsable =
+    canUseLiveValuesForAsOf(payload) && isEquityMarketSessionOpen(now);
+
+  if (liveQuotesUsable) {
     let gain = 0;
     let prior = 0;
     let hasGain = false;
     let hasPrior = false;
     let incomplete = false;
     let currentCad = 0;
-    let disnatWithTitres = 0;
     let disnatWithDay = 0;
 
     for (const key of accountKeys) {
@@ -342,7 +356,6 @@ function computeDayPeriod(
       } else if (cur.positionsCad > 0) {
         incomplete = true;
       }
-      if (cur.positionsCad > 0) disnatWithTitres++;
       if (cur.dayPriorCad !== null && cur.dayPriorCad > 0) {
         hasPrior = true;
         prior += cur.dayPriorCad;
@@ -371,30 +384,38 @@ function computeDayPeriod(
           : null,
       };
     }
-  } else {
-    const refSession = aggregateSessionGainsForAccounts(payload, accountKeys).find(
-      (g) => g.date === refDay,
-    );
-    if (refSession) {
-      return {
-        gainCad: refSession.gainCad,
-        gainPct:
-          refSession.priorCad > 0
-            ? (refSession.gainCad / refSession.priorCad) * 100
-            : null,
-        currentCad: currentCadTotal(accountKeys, payload),
-        baselineCad: refSession.priorCad > 0 ? refSession.priorCad : null,
-        baselineDate: refDay,
-        periodStart: refDay,
-        periodEnd: refDay,
-        method: "session-chain",
-        accountsIncluded: accountKeys.length,
-        accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
-        incomplete: false,
-        annualized: false,
-        note: null,
-      };
-    }
+  }
+
+  // Repli : chaîne de séances persistée. Vaut pour une séance fermée **et** pour une séance
+  // ouverte sans cotation exploitable (Yahoo indisponible, lignes sans prix…), sinon on
+  // afficherait « — » alors que le P&L de séance existe en base.
+  const refSession = aggregateSessionGainsForAccounts(payload, accountKeys).find(
+    (g) => g.date === refDay,
+  );
+  if (refSession) {
+    return {
+      gainCad: refSession.gainCad,
+      gainPct:
+        refSession.priorCad > 0
+          ? (refSession.gainCad / refSession.priorCad) * 100
+          : null,
+      currentCad: currentCadTotal(accountKeys, payload),
+      baselineCad: refSession.priorCad > 0 ? refSession.priorCad : null,
+      baselineDate: refDay,
+      periodStart: refDay,
+      periodEnd: refDay,
+      method: "session-chain",
+      accountsIncluded: accountKeys.length,
+      accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
+      incomplete: liveQuotesUsable,
+      annualized: false,
+      note: liveQuotesUsable
+        ? joinNotes(
+            "Cotations indisponibles : P&L de séance persisté utilisé.",
+            payload.sessionDataHealth.ok ? null : sessionHealthNote,
+          )
+        : null,
+    };
   }
 
   return {
@@ -454,17 +475,6 @@ function disnatAccountKeysInScope(
   return accountKeys.filter(
     (k) => payload.accounts.find((a) => a.accountKey === k && !a.isExternal),
   );
-}
-
-function currentPositionsCadInGainScope(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-  anchorDate: string,
-): number {
-  return disnatAccountKeysInScope(accountKeys, payload).reduce((s, k) => {
-    const positionsCad = payload.currentByAccount[k]?.positionsCad ?? 0;
-    return s + cashAdjustedTitresCad(k, payload, positionsCad, anchorDate);
-  }, 0);
 }
 
 /** Taux USD→CAD à une date donnée, avec repli sur le taux courant si absent de la carte historique. */
@@ -759,29 +769,6 @@ function titresCadAtPeriodEnd(
   return titresCadFullCoverageAtOrBefore(accountKeys, payload, endDate);
 }
 
-function resolveEndTitresCad(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): number | null {
-  const now = sessionClockForBounds(payload.asOfNow);
-  const today = isoDateInToronto(now);
-  const refDay = referenceTradingSessionDayIso(now);
-
-  // Avant l'ouverture : pas de clôture « live » pour une séance passée (évite doublon Séance/Préc.)
-  if (canUseLiveValuesForAsOf(payload) && !isBeforeTodaySessionOpen(now)) {
-    const useLiveEnd =
-      endDate === refDay &&
-      (isEquityMarketSessionOpen(now) || endDate === today);
-    if (useLiveEnd) {
-      const live = currentPositionsCadInGainScope(accountKeys, payload, endDate);
-      if (live > 0) return live;
-    }
-  }
-
-  return titresCadAtOrBefore(accountKeys, payload, endDate)?.valueCad ?? null;
-}
-
 /**
  * BMV titres au début de période : prior de la 1re séance (Disnat), sinon historique projeté.
  */
@@ -959,99 +946,6 @@ function resolveAccountEmvTitresCad(
   return live > 0 ? cashAdjustedTitresCad(accountKey, payload, live, endDate) : null;
 }
 
-/** Valeur titres native (devise du compte) au plus tard à `endDate`. */
-function latestImportTitresNativeAtOrBefore(
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): { asOf: string; native: number } | null {
-  let best: { asOf: string; native: number } | null = null;
-  for (const pt of payload.snapshots ?? []) {
-    if (pt.accountKey !== accountKey || pt.asOf > endDate) continue;
-    const native = pt.marketValueNative ?? pt.totalValueNative;
-    if (!best || pt.asOf > best.asOf) {
-      best = { asOf: pt.asOf, native };
-    }
-  }
-  return best;
-}
-
-function nativeToDisplayCad(
-  native: number,
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  dateIso: string,
-): number {
-  const acc = payload.accounts.find((a) => a.accountKey === accountKey);
-  const rate = usdCadRateForDate(payload, dateIso);
-  if (acc?.currency.toUpperCase().includes("USD") && rate) {
-    return native * rate;
-  }
-  return native;
-}
-
-/** Dernier import Disnat (valeur titres) au plus tard à `endDate`. */
-function latestImportTitresCadAtOrBefore(
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): number | null {
-  const hit = latestImportTitresNativeAtOrBefore(accountKey, payload, endDate);
-  if (hit == null) return null;
-  return nativeToDisplayCad(hit.native, accountKey, payload, hit.asOf);
-}
-
-/**
- * Valeur titres de référence à la fin de période : cours live (séance courante)
- * ou dernier import Disnat, sinon historique projeté.
- */
-function resolveAccountReferenceTitresCad(
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): number | null {
-  const now = sessionClockForBounds(payload.asOfNow);
-  const refDay = referenceTradingSessionDayIso(now);
-  const live = payload.currentByAccount[accountKey]?.positionsCad;
-
-  if (canUseLiveValuesForAsOf(payload) && endDate >= refDay && live != null && live > 0) {
-    return cashAdjustedTitresCad(accountKey, payload, live, endDate);
-  }
-
-  return (
-    latestImportTitresCadAtOrBefore(accountKey, payload, endDate) ??
-    resolveAccountEmvTitresCad(accountKey, payload, endDate)
-  );
-}
-
-/**
- * Historique « projeté » pour le gain $ AAJ : en séance, si l'historique du jour
- * est quasi-live, ancrage sur le dernier import (clôture précédente).
- */
-function resolveDisnatYtdHistCad(
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): number | null {
-  const sameDayHist = resolveAccountEmvTitresCad(accountKey, payload, endDate);
-  return sameDayHist;
-}
-
-/**
- * Gain $ Disnat (tableau portefeuille, colonne AAJ) = valeur titres de référence
- * − historique projeté à la fin de période. Le % reste TWR/Dietz sur les séances.
- */
-function accountDisnatYtdGainCad(
-  accountKey: string,
-  payload: PerformanceIndicatorPayload,
-  endDate: string,
-): number | null {
-  const refCad = resolveAccountReferenceTitresCad(accountKey, payload, endDate);
-  const histCad = resolveDisnatYtdHistCad(accountKey, payload, endDate);
-  if (refCad == null || histCad == null) return null;
-  return refCad - histCad;
-}
-
 /** Gain $ titres classique = EMV − BMV − flux (séance, mois, total, etc.). */
 function accountLegacyTitresGainCad(
   accountKey: string,
@@ -1213,7 +1107,6 @@ export function computeTitresPeriodGain(
   accountKeys: string[],
   payload: PerformanceIndicatorPayload,
   bounds: { start: string | null; end: string; baselineLookup: string | null },
-  periodId?: PerformancePeriodId,
 ): {
   usable: boolean;
   gainCad: number | null;
@@ -1303,38 +1196,6 @@ export function computeTitresPeriodGain(
     baselineDate: lookup,
     accountsWithBaseline,
     incomplete,
-  };
-}
-
-function dayPeriodFromTitresDelta(
-  accountKeys: string[],
-  payload: PerformanceIndicatorPayload,
-  sessionEnd: string,
-): Omit<PerformancePeriodResult, "periodId" | "label" | "shortLabel"> | null {
-  const priorDay = previousTradingDayIso(sessionEnd, 1);
-  const calc = computeTitresPeriodGain(accountKeys, payload, {
-    start: sessionEnd,
-    end: sessionEnd,
-    baselineLookup: priorDay,
-  });
-  if (!calc.usable || calc.gainCad === null) return null;
-
-  return {
-    gainCad: calc.gainCad,
-    gainPct: calc.gainPct,
-    currentCad: currentCadTotal(accountKeys, payload),
-    baselineCad: calc.baselineCad,
-    baselineDate: priorDay,
-    periodStart: sessionEnd,
-    periodEnd: sessionEnd,
-    method: "session-chain",
-    accountsIncluded: accountKeys.length,
-    accountsWithBaseline: calc.accountsWithBaseline,
-    incomplete: calc.incomplete,
-    annualized: false,
-    note: formatFlowAdjustmentNote(
-      netExternalFlowsCad(payload.cashFlows, accountKeys, sessionEnd, sessionEnd),
-    ),
   };
 }
 
@@ -1530,7 +1391,7 @@ function computeSessionChainPeriod(
     sessionGainCad += liveToday;
   }
 
-  const titresCalc = computeTitresPeriodGain(accountKeys, payload, bounds, periodId);
+  const titresCalc = computeTitresPeriodGain(accountKeys, payload, bounds);
 
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start!);
