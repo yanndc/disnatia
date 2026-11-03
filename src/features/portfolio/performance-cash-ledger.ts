@@ -80,6 +80,13 @@ export function buildAccountCashLedgers(
  * Si le ledger démarre à/avant le début de l'historique titres (ou n'a aucune donnée), il est
  * considéré fiable — un solde constant (delta nul) n'a de toute façon aucun effet sur un calcul
  * de delta BMV/EMV.
+ *
+ * Trois garde-fous supplémentaires (audit 2026-11) :
+ * - **solde négatif** : une encaisse négative = financement initial non importé → fiable = false
+ *   (les comptes Disnat suivis ici ne sont pas sur marge) ;
+ * - **péremption** : plus d'écriture cash depuis longtemps alors que les titres ont continué ;
+ * - **écart avec l'encaisse réelle** du dernier import (`total − market`, seule mesure
+ *   indépendante disponible) : au-delà de la tolérance, le ledger est rejeté.
  */
 const CASH_LEDGER_GAP_TOLERANCE_DAYS = 45;
 
@@ -93,14 +100,26 @@ const CASH_LEDGER_GAP_TOLERANCE_DAYS = 45;
  */
 const CASH_LEDGER_STALENESS_TOLERANCE_DAYS = 90;
 
+/** En dessous de ce solde (négatif), l'encaisse reconstruite est jugée impossible. */
+const CASH_LEDGER_MIN_PLAUSIBLE_CAD = -1;
+
+/** Tolérance (en $ ou 50 % de l'encaisse réelle) sur l'écart ledger ↔ encaisse importée. */
+const CASH_LEDGER_IMPORT_TOLERANCE_MIN_CAD = 100;
+const CASH_LEDGER_IMPORT_TOLERANCE_RATIO = 0.5;
+
 export function cashLedgerReliableForAccount(
   accountKey: string,
   ledgers: Record<string, AccountCashLedgerPoint[]>,
   earliestTitresAsOf: string | null,
   latestTitresAsOf: string | null = null,
+  /** Encaisse réelle observée dans un import (total − valeur marché), pour contrôle. */
+  expectedCash?: { asOf: string; cad: number } | null,
 ): boolean {
   const series = ledgers[accountKey];
   if (!series || series.length === 0) return true;
+
+  const minBalance = Math.min(...series.map((p) => p.balanceCad));
+  if (minBalance < CASH_LEDGER_MIN_PLAUSIBLE_CAD) return false;
 
   if (earliestTitresAsOf) {
     const earliestMs = Date.parse(earliestTitresAsOf);
@@ -119,6 +138,15 @@ export function cashLedgerReliableForAccount(
         CASH_LEDGER_STALENESS_TOLERANCE_DAYS * 24 * 60 * 60 * 1000;
       if (latestMs - ledgerEndMs > staleToleranceMs) return false;
     }
+  }
+
+  if (expectedCash && Number.isFinite(expectedCash.cad)) {
+    const balanceAtImport = cashCadAtOrBefore([accountKey], ledgers, expectedCash.asOf);
+    const tolerance = Math.max(
+      CASH_LEDGER_IMPORT_TOLERANCE_MIN_CAD,
+      Math.abs(expectedCash.cad) * CASH_LEDGER_IMPORT_TOLERANCE_RATIO,
+    );
+    if (Math.abs(balanceAtImport - expectedCash.cad) > tolerance) return false;
   }
 
   return true;

@@ -47,6 +47,24 @@ Effet : le % « 1 mois » de Yann passe de ~6,3 % à **2,91 %** car les clôture
 4. **Repli séance** — si la séance est ouverte **sans cotation exploitable**, on retombe sur le P&L de séance persisté (`session-chain`, marqué partiel + note « Cotations indisponibles ») au lieu d'afficher « — ».
 5. **Nettoyage** — suppression du code mort (`resolveEndTitresCad`, `dayPeriodFromTitresDelta`, `accountDisnatYtdGainCad`, `resolveAccountReferenceTitresCad`, `resolveDisnatYtdHistCad`, `currentPositionsCadInGainScope`, `latestImportTitres*`), import et variable inutilisés ; paramètre `periodId` retiré de `computeTitresPeriodGain`. **0 warning eslint** sur les fichiers performance.
 
+## Encaisse (audit 2026-11-03) — décision : base marché maintenue + fiabilité durcie
+
+Mesure du ledger reconstruit vs **encaisse réelle** du dernier import (`total − market`) : il est
+inutilisable en l'état — ex. `5KFZEZ2|CAD` **18 265 $** reconstruits pour **83 $** réels,
+`5KFZEY4` 88 vs 36, `5KFZEU3` 539 vs 216, et deux comptes à solde **négatif** (−4 328, −5 411)
+qui passaient les anciens seuils.
+
+Décisions :
+- **Pas d'activation de l'encaisse dans les indicateurs** (on reste sur la valeur des titres : le
+  % Dietz/TWR reste la référence, le $ peut s'écarter de Δencaisse près).
+- **Heuristique de fiabilité durcie** (`cashLedgerReliableForAccount`) : rejet si solde négatif,
+  si écart > max(100 $, 50 %) avec l'encaisse réelle du dernier import, en plus des contrôles de
+  gap (45 j) et de péremption (90 j). Résultat sur les données actuelles : **2 comptes sur 11**
+  restent « fiables » (soldes de 0 et 14 $) → aucun impact si on active un jour.
+- **Limite rendue visible** : mention sous la matrice des périodes (« indicateurs calculés sur la
+  valeur des titres ; l'encaisse n'est pas comptée ») + tooltip sur le % annualisé.
+- 6 tests ajoutés sur les garde-fous du ledger.
+
 ## Reste à faire (hors périmètre)
 - `selectedYear` est toujours un filtre mort (paramètre `_selectedYear` non utilisé).
 - « Total » plafonne à ~4 ans d'historique (`now − 4 ans`) alors que le libellé dit « depuis le début ».

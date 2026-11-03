@@ -529,6 +529,34 @@ function titresAsOfBoundsForAccount(
   return { earliest: sorted[0]!, latest: sorted[sorted.length - 1]! };
 }
 
+/**
+ * Encaisse réelle observée dans le dernier import Disnat du compte
+ * (`totalValueNative − marketValueNative`, convertie en CAD), utilisée comme contrôle
+ * indépendant du ledger reconstruit.
+ */
+function expectedCashFromLatestImport(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+): { asOf: string; cad: number } | null {
+  let best: { asOf: string; cad: number } | null = null;
+  for (const pt of payload.snapshots ?? []) {
+    if (pt.accountKey !== accountKey) continue;
+    if (pt.marketValueNative == null) continue;
+    if (!best || pt.asOf > best.asOf) {
+      const cashNative = pt.totalValueNative - pt.marketValueNative;
+      best = {
+        asOf: pt.asOf,
+        cad: historyPointCad(
+          cashNative,
+          pt.currency,
+          usdCadRateForDate(payload, pt.asOf),
+        ),
+      };
+    }
+  }
+  return best;
+}
+
 /** Mémoïse la fiabilité du ledger cash par compte pour un payload donné (évite un rescan). */
 const cashLedgerReliabilityCache = new WeakMap<
   PerformanceIndicatorPayload,
@@ -553,6 +581,7 @@ function isCashLedgerReliable(
     payload.accountCashLedgers,
     earliest,
     latest,
+    expectedCashFromLatestImport(accountKey, payload),
   );
   cache.set(accountKey, reliable);
   return reliable;

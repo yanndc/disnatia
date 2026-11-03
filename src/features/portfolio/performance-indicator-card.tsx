@@ -1316,6 +1316,13 @@ export function PerformanceIndicatorCard({
                 );
               })}
             </div>
+
+            <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
+              Indicateurs calculés sur la <strong className="font-medium text-slate-500">valeur des titres</strong> :
+              l&apos;encaisse n&apos;est pas comptée dans la valeur de début/fin de période. Un apport
+              encaissé mais pas encore investi est donc exclu du gain $ (le % Dietz/TWR reste la
+              référence de performance).
+            </p>
           </div>
 
           {/* Bandeau périodes (navigation rapide) */}
