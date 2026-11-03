@@ -1477,5 +1477,92 @@ describe("plancher BMV d'import — neutre des apports", () => {
       );
     }
   });
+
+describe("BMV — comptes ouverts après le début de période", () => {
+  test("la 1re séance a prior 0 : le compte reste inclus via son premier point connu", () => {
+    const payload = mockPayload({
+      accounts: [
+        {
+          accountKey: "ACC|CAD",
+          label: "Récent",
+          owner: "Alice",
+          accountType: "CELI",
+          currency: "CAD",
+          isExternal: false,
+        },
+        {
+          accountKey: "OLD|CAD",
+          label: "Ancien",
+          owner: "Alice",
+          accountType: "REER",
+          currency: "CAD",
+          isExternal: false,
+        },
+      ],
+      currentByAccount: {
+        "ACC|CAD": {
+          totalCad: 12_000,
+          positionsCad: 12_000,
+          cashCad: 0,
+          dayGainCad: 0,
+          dayPriorCad: 12_000,
+        },
+        "OLD|CAD": {
+          totalCad: 5_000,
+          positionsCad: 5_000,
+          cashCad: 0,
+          dayGainCad: 0,
+          dayPriorCad: 5_000,
+        },
+      },
+      historyPoints: [
+        { accountKey: "OLD|CAD", asOf: "2022-03-23", totalValueNative: 5_000, currency: "CAD" },
+        { accountKey: "ACC|CAD", asOf: "2024-03-11", totalValueNative: 10_000, currency: "CAD" },
+        { accountKey: "ACC|CAD", asOf: "2026-06-12", totalValueNative: 12_000, currency: "CAD" },
+        { accountKey: "OLD|CAD", asOf: "2026-06-12", totalValueNative: 5_000, currency: "CAD" },
+      ],
+      sessionGainsByAccount: {
+        // 1re séance du compte récent : rien détenu la veille (priorCad = 0).
+        "ACC|CAD": [
+          { date: "2024-03-11", gainCad: 0, priorCad: 0 },
+          { date: "2024-03-12", gainCad: 100, priorCad: 10_000 },
+          { date: "2026-06-11", gainCad: 100, priorCad: 11_900 },
+        ],
+        "OLD|CAD": [{ date: "2022-03-24", gainCad: 10, priorCad: 5_000 }],
+      },
+      sessionGainsByDate: [
+        { date: "2022-03-24", gainCad: 10, priorCad: 5_000 },
+        { date: "2024-03-11", gainCad: 0, priorCad: 0 },
+        { date: "2024-03-12", gainCad: 100, priorCad: 10_000 },
+        { date: "2026-06-11", gainCad: 100, priorCad: 11_900 },
+      ],
+      cashFlows: [],
+      asOfNow: "2026-06-12T15:00:00",
+    });
+
+    const all = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "all",
+    );
+
+    // Avant correction : ACC|CAD avait un BMV null (prior 0 sur la 1re séance) et
+    // disparaissait du total → un seul compte compté.
+    assert.equal(all.accountsWithBaseline, 2);
+    assert.ok(all.gainCad != null);
+    // 12 000 − 10 000 (1er point du compte) + (5 000 − 5 000) = +2 000 $
+    assert.ok(
+      Math.abs((all.gainCad ?? 0) - 2_000) < 1,
+      `gain Total attendu ≈ 2 000 $, obtenu ${all.gainCad}`,
+    );
+  });
+});
+
 });
 

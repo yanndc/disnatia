@@ -8,5 +8,7 @@
  * agrégation multi-devises par compte, dates de flux issues de composantes UTC.
  * v12 (2026-11-03) : AAJ piloté par `selectedYear`, repli chaîne de séances quand la
  * séance est ouverte sans cotation, historique « Total » depuis la première séance.
+ * v13 (2026-11-03) : BMV = 1re séance **couverte** (prior > 0) puis premier point connu du
+ * compte — les comptes ouverts après la borne étaient exclus du $ (Total < 3 ans).
  */
-export const PERFORMANCE_CALC_VERSION = 12;
+export const PERFORMANCE_CALC_VERSION = 13;

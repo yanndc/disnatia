@@ -65,6 +65,42 @@ Décisions :
   valeur des titres ; l'encaisse n'est pas comptée ») + tooltip sur le % annualisé.
 - 6 tests ajoutés sur les garde-fous du ledger.
 
+## BMV des comptes ouverts après la borne + séance dans l'en-tête (`calcVersion 13`)
+
+### Bug corrigé : « 3 ans = 115,6 k$ mais Total = 74,2 k$ »
+
+**Cause** : `accountBmvTitresCad` prenait la **1ʳᵉ séance** du compte à partir du début de période.
+Or cette séance a presque toujours `priorCad = 0` (rien n'était détenu la veille) ; combinée à
+l'absence de point d'historique avant la borne (compte ouvert plus tard), elle renvoyait `null`
+→ **le compte entier disparaissait du gain $** (silencieusement, avec seulement un point orange).
+
+Sur les données réelles : seuls **3 comptes sur 12** comptaient en « 3 ans » et **2** en « Total »
+(5KFZEY4, −32 k$, était dans l'un et pas dans l'autre → Total < 3 ans).
+
+**Correctif** :
+- BMV = prior de la **1ʳᵉ séance couverte** (`priorCad > 0`) ;
+- sinon historique à la borne ;
+- sinon **premier point connu du compte dans la période** (`earliestAccountTitresPointInRange`),
+  borné par `[periodStart, periodEnd]` pour ne jamais prendre un point hors période.
+
+**Résultat** : 8 comptes inclus (tous les comptes actifs), **3 ans = 79 710 $**, **Total = 73 884 $**
+(les deux avec les mêmes comptes, Total ≤ 3 ans car les 3 dernières années ont surperformé).
+Le chiffre « 3 ans » baisse donc (il était gonflé par l'exclusion des comptes perdants).
+
+### En-tête : séance en cours ($ et %)
+
+Nouvelle pastille en tête de la page Vue d'ensemble : libellé de séance (`Aujourd'hui` /
+`Dernière séance`), **gain $ et %**, couleur selon le signe, infobulle avec la note
+(« Cotations indisponibles… » le cas échéant). Même calcul que l'encadré « Séance »
+(`computePeriodResult(…, "day")`), sur tout le portefeuille.
+
+### Nettoyage
+
+- `react-hooks/purity` : les 3 `Date.now()` du rendu serveur (mesures de perf debug) sont
+  supprimés → `eslint` **sans erreur** sur `overview/page.tsx` ; variable `quoteCoverageLabel`
+  inutilisée retirée.
+- Test unitaire ajouté : compte dont la 1ʳᵉ séance a `prior 0` → inclus via son premier point.
+
 ## Reste à faire (hors périmètre)
 - `selectedYear` est toujours un filtre mort (paramètre `_selectedYear` non utilisé).
 - « Total » plafonne à ~4 ans d'historique (`now − 4 ans`) alors que le libellé dit « depuis le début ».

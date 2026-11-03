@@ -5,7 +5,13 @@ import { getPortfolioSummary } from "@/features/portfolio/queries";
 import { formatPostgresConnectionErrorDetail } from "@/lib/db/postgres-error-for-dev";
 import { getPostgresDeployHint } from "@/lib/db/postgres-deploy-hint";
 import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-queries";
+import {
+  computePeriodResult,
+  defaultPerformanceFilters,
+} from "@/features/portfolio/performance-indicator-logic";
+import type { PerformancePeriodResult } from "@/features/portfolio/performance-indicator-types";
 import { MarketIndicesTicker } from "@/features/market/market-indices-ticker";
+import { formatCurrency, formatPercent } from "@/lib/utils";
 import { OverviewFilteredSections } from "./overview-filtered-sections";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +27,6 @@ function formatDateTimeInDisplayTimeZone(value: Date) {
 }
 
 export default async function OverviewPage() {
-  const pageStartTime = Date.now();
   let summary: Awaited<ReturnType<typeof getPortfolioSummary>>;
   let performancePayload: Awaited<
     ReturnType<typeof getPerformanceIndicatorPayload>
@@ -40,11 +45,8 @@ export default async function OverviewPage() {
         return null;
       }),
     ]);
-    const pageLoadTime = Date.now() - pageStartTime;
-    console.log(`[overview] Page loaded in ${pageLoadTime}ms`, { hasSummary: !!summary, hasPayload: !!performancePayload });
   } catch (e) {
-    const pageErrorTime = Date.now() - pageStartTime;
-    console.error(`[overview] getPortfolioSummary after ${pageErrorTime}ms`, e);
+    console.error("[overview] getPortfolioSummary", e);
     const hint = getPostgresDeployHint();
     const detail = formatPostgresConnectionErrorDetail(e);
     return (
@@ -98,10 +100,6 @@ export default async function OverviewPage() {
   const quotesLabel = summary.quotesAsOf
     ? formatDateTimeInDisplayTimeZone(summary.quotesAsOf)
     : "Cours non actualisés";
-  const quoteCoverageLabel =
-    summary.quoteCoverage.total > 0
-      ? `${summary.quoteCoverage.matched}/${summary.quoteCoverage.total} tickers couverts`
-      : "Aucun cours disponible";
   const driftIsHigh = summary.driftVsDisnatPct !== null && Math.abs(summary.driftVsDisnatPct) > 5;
   const hasFxRate = summary.usdToCadRate !== null && summary.usdToCadRateDate;
   const dataHealthTone = driftIsHigh || !hasFxRate ? "warning" : "ok";
@@ -110,6 +108,19 @@ export default async function OverviewPage() {
     : hasFxRate
       ? "Donnees stables"
       : "Conversion manquante";
+
+  /**
+   * Séance en cours dans l'en-tête : même calcul que l'encadré « Séance » (live si la
+   * séance est ouverte, sinon dernière séance persistée), sur tout le portefeuille.
+   */
+  const sessionResult =
+    performancePayload && performancePayload.accounts.length > 0
+      ? computePeriodResult(
+          performancePayload,
+          defaultPerformanceFilters(performancePayload),
+          "day",
+        )
+      : null;
 
   return (
     <div className="space-y-8">
@@ -120,6 +131,7 @@ export default async function OverviewPage() {
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(5,150,105,0.06),transparent_30%)]" />
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-700">
+              {sessionResult ? <SessionGainPill result={sessionResult} /> : null}
               <HeaderPill label="Référence" value={referenceLabel} />
               <HeaderPill label="Dernier import" value={importLabel} />
               <HeaderPill label="Cours" value={quotesLabel} />
@@ -152,6 +164,41 @@ export default async function OverviewPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/**
+ * Pastille « séance » de l'en-tête : gain $ et % de la séance en cours (ou de la dernière
+ * séance si le marché est fermé), avec la couleur du signe.
+ */
+function SessionGainPill({ result }: { result: PerformancePeriodResult }) {
+  const gain = result.gainCad;
+  const pct = result.gainPct;
+  const tone = gain === null ? "neutral" : gain > 0 ? "up" : gain < 0 ? "down" : "neutral";
+  const className =
+    tone === "up"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : tone === "down"
+        ? "bg-rose-50 text-rose-700 ring-rose-200"
+        : "bg-slate-100 text-slate-600 ring-slate-200";
+  const gainLabel =
+    gain === null ? "—" : `${gain > 0 ? "+" : ""}${formatCurrency(gain, "CAD")}`;
+  const pctLabel =
+    pct === null ? "" : ` (${pct > 0 ? "+" : ""}${formatPercent(pct)})`;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ring-1 ${className}`}
+      title={result.note ?? undefined}
+    >
+      <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">
+        {result.label}
+      </span>
+      <span className="font-semibold tabular-nums">
+        {gainLabel}
+        {pctLabel}
+      </span>
+    </span>
   );
 }
 

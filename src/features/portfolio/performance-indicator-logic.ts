@@ -798,48 +798,104 @@ function titresCadAtPeriodEnd(
   return titresCadFullCoverageAtOrBefore(accountKeys, payload, endDate);
 }
 
+/** Plus ancien point de valeur titres **du compte** dans `[fromIso, toIso]` (base marché). */
+function earliestAccountTitresPointInRange(
+  accountKey: string,
+  payload: PerformanceIndicatorPayload,
+  fromIso: string,
+  toIso: string,
+): { valueCad: number; asOf: string } | null {
+  let best: { valueCad: number; asOf: string } | null = null;
+  const consider = (asOf: string, valueCad: number) => {
+    if (asOf < fromIso || asOf > toIso) return;
+    if (!best || asOf < best.asOf) best = { valueCad, asOf };
+  };
+  for (const pt of payload.historyPoints ?? []) {
+    if (pt.accountKey !== accountKey) continue;
+    consider(
+      pt.asOf,
+      cashAdjustedTitresCad(
+        accountKey,
+        payload,
+        historyPointCad(
+          pt.totalValueNative,
+          pt.currency,
+          usdCadRateForDate(payload, pt.asOf),
+        ),
+        pt.asOf,
+      ),
+    );
+  }
+  for (const pt of payload.snapshots ?? []) {
+    if (pt.accountKey !== accountKey) continue;
+    const native = pt.marketValueNative ?? pt.totalValueNative;
+    consider(
+      pt.asOf,
+      historyPointCad(native, pt.currency, usdCadRateForDate(payload, pt.asOf)),
+    );
+  }
+  return best;
+}
+
 /**
- * BMV titres au début de période : prior de la 1re séance (Disnat), sinon historique projeté.
+ * BMV titres au début de période : prior de la 1re séance **couverte** (Disnat),
+ * sinon historique projeté, sinon **premier point connu du compte** dans la période.
+ *
+ * Le 3e repli est indispensable pour « 3 ans » / « Total » : un compte ouvert après le
+ * début de la période a une 1re séance avec `priorCad = 0` (jour d'ouverture) et aucun
+ * point d'historique avant la borne → sans ce repli son BMV était `null` et **le compte
+ * entier disparaissait du gain** (Total < 3 ans, ex. 74 208 $ vs 115 621 $).
  */
 function accountBmvTitresCad(
   accountKey: string,
   payload: PerformanceIndicatorPayload,
   periodStart: string,
   baselineLookup: string,
+  periodEnd: string,
 ): { valueCad: number; asOf: string } | null {
-  const firstSession = (payload.sessionGainsByAccount?.[accountKey] ?? []).find(
-    (s) => s.date >= periodStart,
+  const sessions = payload.sessionGainsByAccount?.[accountKey] ?? [];
+  // Attention : la 1re séance d'un compte a souvent `priorCad = 0` (rien détenu la veille).
+  const firstCoveredSession = sessions.find(
+    (s) => s.date >= periodStart && s.priorCad > 0,
   );
   const latestAllowed = latestAllowedFirstSessionDate(periodStart);
   const historyHit = titresCadAtOrBefore([accountKey], payload, baselineLookup);
 
   if (
-    firstSession &&
-    firstSession.priorCad > 0 &&
-    firstSession.date <= latestAllowed
+    firstCoveredSession &&
+    firstCoveredSession.date <= latestAllowed
   ) {
     return {
       valueCad: cashAdjustedTitresCad(
         accountKey,
         payload,
-        firstSession.priorCad,
-        firstSession.date,
+        firstCoveredSession.priorCad,
+        firstCoveredSession.date,
       ),
-      asOf: firstSession.date,
+      asOf: firstCoveredSession.date,
     };
   }
   if (historyHit) {
     return { valueCad: historyHit.valueCad, asOf: historyHit.asOf };
   }
-  if (firstSession && firstSession.priorCad > 0) {
+  // Compte suivi seulement à partir d'une date postérieure au début de période :
+  // on prend son premier point connu **dans** la période (pas de BMV inventé).
+  const firstPoint = earliestAccountTitresPointInRange(
+    accountKey,
+    payload,
+    periodStart,
+    periodEnd,
+  );
+  if (firstPoint) return firstPoint;
+  if (firstCoveredSession) {
     return {
       valueCad: cashAdjustedTitresCad(
         accountKey,
         payload,
-        firstSession.priorCad,
-        firstSession.date,
+        firstCoveredSession.priorCad,
+        firstCoveredSession.date,
       ),
-      asOf: firstSession.date,
+      asOf: firstCoveredSession.date,
     };
   }
   return null;
@@ -947,12 +1003,19 @@ function aggregateBmvTitresCad(
   payload: PerformanceIndicatorPayload,
   periodStart: string,
   baselineLookup: string,
+  periodEnd: string,
 ): { valueCad: number; asOf: string } | null {
   if (accountKeys.length === 0) return null;
   let total = 0;
   let asOf = baselineLookup;
   for (const key of accountKeys) {
-    const hit = accountBmvTitresCad(key, payload, periodStart, baselineLookup);
+    const hit = accountBmvTitresCad(
+      key,
+      payload,
+      periodStart,
+      baselineLookup,
+      periodEnd,
+    );
     if (!hit) return null;
     total += hit.valueCad;
     if (hit.asOf < asOf) asOf = hit.asOf;
@@ -983,7 +1046,13 @@ function accountLegacyTitresGainCad(
 ): { gainCad: number; baselineCad: number } | null {
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
-  const bmv = accountBmvTitresCad(accountKey, payload, bounds.start, lookup);
+  const bmv = accountBmvTitresCad(
+    accountKey,
+    payload,
+    bounds.start,
+    lookup,
+    bounds.end,
+  );
   const emvCad = resolveAccountEmvTitresCad(accountKey, payload, bounds.end);
   if (!bmv || emvCad == null) return null;
 
@@ -1049,7 +1118,13 @@ function sumPerAccountDisplayGainCad(
     totalBaseline += dollars.baselineCad;
     count++;
 
-    const bmv = accountBmvTitresCad(key, payload, bounds.start, lookup);
+    const bmv = accountBmvTitresCad(
+      key,
+      payload,
+      bounds.start,
+      lookup,
+      bounds.end,
+    );
     // En 3 ans / total, l'absence de sessions sur un compte ne rend pas
     // forcément le résultat partiel si les bornes titres sont complètes.
     if (sessions.length === 0 && periodId !== "year3" && periodId !== "all") {
@@ -1082,7 +1157,13 @@ function computeAccountTitresPeriodGain(
 } {
   const lookup =
     bounds.baselineLookup ?? baselineBeforePeriodStart(bounds.start);
-  const bmv = accountBmvTitresCad(accountKey, payload, bounds.start, lookup);
+  const bmv = accountBmvTitresCad(
+    accountKey,
+    payload,
+    bounds.start,
+    lookup,
+    bounds.end,
+  );
   const emvCad = resolveAccountEmvTitresCad(accountKey, payload, bounds.end);
 
   if (!bmv || emvCad == null) {
@@ -1436,6 +1517,7 @@ function computeSessionChainPeriod(
       payload,
       bounds.start!,
       lookup,
+      bounds.end,
     ) ?? titresCadFullCoverageAtOrBefore(materialKeys, payload, lookup);
   const endHit = titresCadAtPeriodEnd(materialKeys, payload, bounds.end);
   const boundaryCoverageComplete = baselineHit != null && endHit != null;
