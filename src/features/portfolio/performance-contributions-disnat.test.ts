@@ -15,6 +15,18 @@ import { netExternalFlowsCad } from "./performance-cash-flows";
 const hasDb = Boolean(process.env.DATABASE_URL);
 const AS_OF = "2026-06-12T15:00:00";
 
+/**
+ * Ancres $ « AAJ » capturées dans Disnat (juin 2026).
+ *
+ * ⚠️ Fiabilité inégale — audit 2026-11 :
+ * - `5KFZEZ2|CAD` : ancre cohérente avec le % Disnat, utilisée comme cible de non-régression.
+ * - `5L3APY0|CAD` : l'ancre (315,52 $) est **incohérente avec le % Disnat** de ce titulaire
+ *   (13,72 % YTD sur ~45 k$ ≈ +6 k$). Vérifié dans la base : flux dédupliqués = 8 931 $
+ *   exacts, BMV/EMV = holdings × clôtures exactes (42 217,98 $ → 58 461,02 $, import à
+ *   ±358 $). L'écart résiduel vient de la base « titres seuls » (l'encaisse aux bornes n'est
+ *   pas comptée : cotisations encaissées puis investies) — le % Dietz reste la référence.
+ *   → Ne pas utiliser comme cible absolue, seulement pour les invariants internes.
+ */
 const DISNAT_YTD_DOLLARS = {
   "5KFZEZ2|CAD": -165.19,
   "5L3APY0|CAD": 315.52,

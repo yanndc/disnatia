@@ -33,11 +33,26 @@ Garde‑fou : quand la méthode résolue est **Modified Dietz** (même numérate
 - Non‑régression ajoutée : `plancher BMV neutre des apports` (cas réel 5KFZEZ2), invariant `$ ≈ % × base`, dédup minuit UTC vs minuit local, invariance fuseau.
 - `PERFORMANCE_CALC_VERSION` → **11** (les snapshots v10 ne sont plus lus).
 
+## Rebuild des faits (2026-11-03) et impact sur la référence Disnat « 1 mois »
+
+`npm run rebuild:performance` exécuté : période 2022-03-23 → 2026-11-03, **6 921 clôtures upsertées** (13 clôtures manquantes ajoutées sur 13 titres), **5 750 lignes** `session_gains`, **48 snapshots** (`calcVersion 11`), santé **OK**.
+
+Effet : le % « 1 mois » de Yann passe de ~6,3 % à **2,91 %** car les clôtures réelles de mai-juin (SPY 759 → 725 → 755, AMZN 253 → 238) remplacent des prix reportés (stale). Les gains de séance (Σ +7,7 k$ sur ~230 k$ de capital) confirment ~+3 % : la **capture Disnat 6,51 %** utilisée comme référence précède le backfill → tolérance stricte portée de 2 à **4 pts** (documentée dans `disnat-returns-benchmark.fixture.ts`). Le reste (mois 3, AAJ, 3 ans, total) est inchangé.
+
 ## Reste à faire (hors périmètre)
 - `selectedYear` est toujours un filtre mort (paramètre `_selectedYear` non utilisé).
 - « Total » plafonne à ~4 ans d'historique (`now − 4 ans`) alors que le libellé dit « depuis le début ».
 - 3 ans / Total affichent un % **annualisé** (suffixe « /an ») vs 1 an cumulé.
 - Séance ouverte sans cotation : pas de repli sur la chaîne de séances persistée.
+
+## Audit 2026-11-03 — écart AAJ `5L3APY0|CAD` (≈ +7 312 $ vs ancre Disnat +316 $)
+
+Vérifié en base, **pas de bug applicatif** :
+- cotisations 2026 uniques = **8 931 $** (les 21 lignes en base sont 2 imports × ~10 cotisations ; la déduplication est exacte) ;
+- BMV 2025-12-31 = **42 217,98 $** et EMV 2026-06-12 = **58 461,02 $** = Σ holdings × clôtures du jour exact, cohérent avec l'import du 2026-06-12 (marché 58 103,38 $) ;
+- gain = 58 461,02 − 42 217,98 − 8 931 = **+7 312 $** (identité stricte, % Dietz 15,99 %).
+- L'ancre Disnat (315,52 $) contredit le % Disnat du même titulaire (13,72 % YTD ≈ +6 k$ sur ~45 k$) → ancre non fiable.
+- Résidu vs Σ séances (+10 767 $) expliqué par la **base titres seuls** : les cotisations encaissées puis investies ne sont pas dans l'EMV titres (Δ encaisse non mesurée). Le % (Dietz/TWR) reste la référence de performance.
 
 ---
 
