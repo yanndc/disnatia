@@ -101,6 +101,20 @@ Nouvelle pastille en tête de la page Vue d'ensemble : libellé de séance (`Auj
   inutilisée retirée.
 - Test unitaire ajouté : compte dont la 1ʳᵉ séance a `prior 0` → inclus via son premier point.
 
+### Point orange ≠ ajustement des apports
+
+Le point orange signalait `incomplete` (couverture), mais son infobulle affichait la note
+« Ajusté des entrées de capitaux (~X $) » — d'où la confusion : les apports sont une
+**information normale** (toutes les périodes avec cotisations), pas une alerte.
+
+- Nouveau champ **calculé** `incompleteReason` (non persisté) : raison réelle de l'alerte
+  (ex. « Historique de 6 compte(s) plus récent que le début de la période… », « Séances
+  incomplètes… », « Cotations indisponibles… », « Couverture partielle : N compte(s)… »).
+- Le point orange et le bandeau « Données partielles » utilisent `incompleteReason` ;
+  la note d'apports reste dans `note`, affichée séparément (infobulle de l'encadré + bandeau
+  gris sous le grand chiffre).
+- Tests ajoutés : la raison ne doit jamais mentionner les apports.
+
 ## Reste à faire (hors périmètre)
 - `selectedYear` est toujours un filtre mort (paramètre `_selectedYear` non utilisé).
 - « Total » plafonne à ~4 ans d'historique (`now − 4 ans`) alors que le libellé dit « depuis le début ».

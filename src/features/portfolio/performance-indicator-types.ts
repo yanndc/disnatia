@@ -161,9 +161,15 @@ export type PerformancePeriodResult = {
   accountsIncluded: number;
   accountsWithBaseline: number;
   incomplete: boolean;
+  /**
+   * Raison de `incomplete` (couverture partielle, séances manquantes, repli non live…).
+   * Champ **calculé** (non persisté par les snapshots) : sert d'infobulle au point d'alerte.
+   */
+  incompleteReason?: string | null;
+  /** Note informative (ex. « Ajusté des entrées de capitaux (~X $) ») — pas une alerte. */
+  note: string | null;
   /** true si gainPct est un taux annualisé (périodes > ~1 an). */
   annualized: boolean;
-  note: string | null;
 };
 
 export type PerformanceFilterState = {

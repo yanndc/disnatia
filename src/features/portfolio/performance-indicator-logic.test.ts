@@ -923,7 +923,12 @@ describe("computePeriodResult", () => {
       "ytd",
     );
     assert.equal(ytd.incomplete, true);
-    assert.match(ytd.note ?? "", /historique de séances incomplet|historique titres incomplet/);
+    // La raison de l'alerte est désormais portée par `incompleteReason` (infobulle du point),
+    // et `note` ne sert plus qu'aux informations normales (apports).
+    assert.match(
+      ytd.incompleteReason ?? "",
+      /séances incomplètes|historique titres incomplet|historique de \d+ compte/i,
+    );
   });
 
   test("invariant AAJ: le $ affiché suit la même base que le calcul titres", () => {
@@ -1564,5 +1569,57 @@ describe("BMV — comptes ouverts après le début de période", () => {
   });
 });
 
+});
+
+
+describe("note informative vs raison d'alerte", () => {
+  test("l'ajustement des apports n'est pas la raison du point orange", () => {
+    const payload = mockPayload({
+      // Pas d'historique au début d'année : la couverture est partielle (point orange)…
+      historyPoints: [],
+      sessionGainsByAccount: {
+        "ACC|CAD": [
+          { date: "2026-03-03", gainCad: 500, priorCad: 80_000 },
+          { date: "2026-05-29", gainCad: 1_000, priorCad: 90_000 },
+        ],
+      },
+      sessionGainsByDate: [
+        { date: "2026-03-03", gainCad: 500, priorCad: 80_000 },
+        { date: "2026-05-29", gainCad: 1_000, priorCad: 90_000 },
+      ],
+      // … et il y a des apports (information normale, pas une alerte).
+      cashFlows: [
+        {
+          accountKey: "ACC|CAD",
+          tradeDate: "2026-04-15",
+          txCategory: "CONTRIBUTION",
+          amountCad: 5_000,
+        },
+      ],
+      asOfNow: "2026-06-02T15:00:00",
+    });
+
+    const ytd = computePeriodResult(
+      payload,
+      {
+        preset: "disnat",
+        owner: null,
+        includedAccountKeys: [],
+        excludedAccountKeys: [],
+        selectedYear: 2026,
+      },
+      "ytd",
+    );
+
+    assert.equal(ytd.incomplete, true);
+    // La note parle des apports…
+    assert.match(ytd.note ?? "", /capitaux/i);
+    // …la raison du point orange parle de couverture, jamais des apports.
+    assert.ok(ytd.incompleteReason != null);
+    assert.ok(
+      !/capitaux/i.test(ytd.incompleteReason ?? ""),
+      `la raison ne doit pas mentionner les apports : ${ytd.incompleteReason}`,
+    );
+  });
 });
 

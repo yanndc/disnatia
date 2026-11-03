@@ -1073,14 +1073,14 @@ export function PerformanceIndicatorCard({
                 ) : null}
               </div>
 
+              {active.incomplete && active.incompleteReason ? (
+                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+                  Données partielles — {active.incompleteReason}
+                </p>
+              ) : null}
+
               {active.note ? (
-                <p
-                  className={`mt-3 rounded-lg px-3 py-2 text-xs ring-1 ${
-                    active.incomplete
-                      ? "bg-amber-50 text-amber-800 ring-amber-200"
-                      : "bg-slate-50 text-slate-600 ring-slate-200"
-                  }`}
-                >
+                <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
                   {active.note}
                 </p>
               ) : null}
@@ -1277,6 +1277,7 @@ export function PerformanceIndicatorCard({
                     key={row.periodId}
                     type="button"
                     onClick={() => updateFilters({ activePeriod: row.periodId })}
+                    title={row.note ?? undefined}
                     className={`group relative overflow-hidden rounded-2xl p-3 text-left ring-1 transition hover:scale-[1.02] ${
                       isActive
                         ? `${signedGainBg(row.gainCad)} ring-2 ring-slate-300`
@@ -1309,7 +1310,10 @@ export function PerformanceIndicatorCard({
                     {row.incomplete && row.gainCad !== null ? (
                       <span
                         className="absolute right-2 top-2 size-1.5 rounded-full bg-amber-400"
-                        title={row.note ?? "Données partielles"}
+                        title={
+                          row.incompleteReason ??
+                          "Données partielles : couverture incomplète sur la période."
+                        }
                       />
                     ) : null}
                   </button>

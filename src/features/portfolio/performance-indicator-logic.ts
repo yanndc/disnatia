@@ -302,6 +302,7 @@ function computeDayPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: false,
+      incompleteReason: null,
       annualized: false,
       note: null,
     };
@@ -324,6 +325,7 @@ function computeDayPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: true,
+      incompleteReason: "P&L jour disponible uniquement sur les titres Disnat avec cotation.",
       annualized: false,
       note: "P&L jour disponible uniquement sur les titres Disnat avec cotation.",
     };
@@ -375,6 +377,12 @@ function computeDayPeriod(
         accountsIncluded: accountKeys.length,
         accountsWithBaseline: disnatWithDay,
         incomplete,
+        incompleteReason: incomplete
+          ? joinNotes(
+              "Cotation absente sur au moins une ligne titre : P&L partiel.",
+              payload.sessionDataHealth.ok ? null : sessionHealthNote,
+            )
+          : null,
         annualized: false,
         note: incomplete
           ? joinNotes(
@@ -408,6 +416,12 @@ function computeDayPeriod(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: disnatAccountKeysInScope(accountKeys, payload).length,
       incomplete: liveQuotesUsable,
+      incompleteReason: liveQuotesUsable
+        ? joinNotes(
+            "Cotations indisponibles : P&L de séance persisté utilisé.",
+            payload.sessionDataHealth.ok ? null : sessionHealthNote,
+          )
+        : null,
       annualized: false,
       note: liveQuotesUsable
         ? joinNotes(
@@ -430,6 +444,7 @@ function computeDayPeriod(
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: 0,
     incomplete: true,
+    incompleteReason: sessionHealthNote,
     annualized: false,
     note: sessionHealthNote,
   };
@@ -1090,6 +1105,8 @@ function sumPerAccountDisplayGainCad(
   gainCad: number | null;
   baselineCad: number | null;
   accountsWithBaseline: number;
+  /** Comptes dont le BMV est postérieur au début de période (historique plus récent). */
+  lateBaselineAccounts: number;
   incomplete: boolean;
 } {
   const lookup =
@@ -1097,6 +1114,7 @@ function sumPerAccountDisplayGainCad(
   let total = 0;
   let totalBaseline = 0;
   let count = 0;
+  let lateBaselineAccounts = 0;
   let incomplete = false;
 
   for (const key of materialKeys) {
@@ -1132,6 +1150,7 @@ function sumPerAccountDisplayGainCad(
     }
     if (bmv && bmv.asOf > latestAllowedFirstSessionDate(bounds.start)) {
       incomplete = true;
+      lateBaselineAccounts++;
     }
   }
 
@@ -1139,6 +1158,7 @@ function sumPerAccountDisplayGainCad(
     gainCad: count > 0 ? total : null,
     baselineCad: count > 0 && totalBaseline > 0 ? totalBaseline : null,
     accountsWithBaseline: count,
+    lateBaselineAccounts,
     incomplete,
   };
 }
@@ -1420,6 +1440,7 @@ function computeSessionChainPeriod(
   baselineDate: string | null;
   accountsWithBaseline: number;
   incomplete: boolean;
+  incompleteReason: string | null;
   annualized: boolean;
   note: string | null;
 } {
@@ -1435,6 +1456,7 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
+      incompleteReason: SESSION_GAINS_UNAVAILABLE_NOTE,
       annualized: false,
       note: SESSION_GAINS_UNAVAILABLE_NOTE,
     };
@@ -1451,6 +1473,7 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
+      incompleteReason: "P&L disponible uniquement sur les comptes Disnat.",
       annualized: false,
       note: "P&L disponible uniquement sur les comptes Disnat.",
     };
@@ -1475,6 +1498,10 @@ function computeSessionChainPeriod(
       baselineDate: null,
       accountsWithBaseline: 0,
       incomplete: true,
+      incompleteReason: joinNotes(
+        "Historique titres indisponible pour cette période.",
+        payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE,
+      ),
       annualized: false,
       note: joinNotes(
         "Historique titres indisponible pour cette période.",
@@ -1643,17 +1670,33 @@ function computeSessionChainPeriod(
           ? materialKeys.length
           : 0,
     incomplete,
+    incompleteReason: incomplete
+      ? joinNotes(
+          displayGain.lateBaselineAccounts > 0
+            ? `Historique de ${displayGain.lateBaselineAccounts} compte(s) plus récent que le début de la période : leur gain est mesuré depuis leur première valeur connue.`
+            : null,
+          displayGain.gainCad != null &&
+            displayGain.accountsWithBaseline > 0 &&
+            displayGain.accountsWithBaseline < materialKeys.length
+            ? `Couverture partielle : ${materialKeys.length - displayGain.accountsWithBaseline} compte(s) sans valeur exploitable sur la période.`
+            : null,
+          sessionsIncomplete
+            ? "Séances incomplètes sur la période (première séance tardive)."
+            : null,
+          boundaryIncomplete
+            ? "Historique titres incomplet aux bornes de la période."
+            : null,
+          payload.sessionDataHealth.ok
+            ? null
+            : (payload.sessionDataHealth.message ?? SESSION_GAINS_UNAVAILABLE_NOTE),
+        ) ?? "Données partielles."
+      : null,
     annualized,
-    note: joinNotes(
-      Math.abs(netFlowsCad) >= 0.01 ? formatFlowAdjustmentNote(netFlowsCad) : null,
-      incomplete
-        ? boundaryIncomplete
-          ? "Rendement % sur chaîne de séances (historique titres incomplet aux bornes)."
-          : sessionsIncomplete
-            ? "P&L partiel : historique de séances incomplet sur la période."
-            : null
+    // `note` = information normale (apports), jamais une alerte de qualité de données.
+    note:
+      Math.abs(netFlowsCad) >= 0.01
+        ? formatFlowAdjustmentNote(netFlowsCad)
         : null,
-    ),
   };
 }
 
@@ -1688,6 +1731,7 @@ function buildChainPeriodResult(
       accountsIncluded: accountKeys.length,
       accountsWithBaseline: 0,
       incomplete: true,
+      incompleteReason: SESSION_GAINS_UNAVAILABLE_NOTE,
       annualized: false,
       note: SESSION_GAINS_UNAVAILABLE_NOTE,
     };
@@ -1733,11 +1777,12 @@ function buildChainPeriodResult(
     accountsIncluded: accountKeys.length,
     accountsWithBaseline: calc.accountsWithBaseline,
     incomplete: calc.incomplete || !payload.sessionDataHealth.ok,
-    annualized: calc.annualized,
-    note: joinNotes(
+    incompleteReason: joinNotes(
       !payload.sessionDataHealth.ok ? sessionHealthNote : null,
-      calc.note,
+      calc.incompleteReason,
     ),
+    annualized: calc.annualized,
+    note: calc.note,
   };
 }
 
