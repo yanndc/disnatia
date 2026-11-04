@@ -202,6 +202,22 @@ export function GuidedImportSession() {
   const missingAccount = usableFiles.filter((item) => !item.accountKey);
   const canImport = usableFiles.length > 0 && missingAccount.length === 0 && !importBusy;
 
+  /** Sélectionne tous les comptes affichés (pour attester en une fois). */
+  function selectAllAccounts() {
+    if (!session) return;
+    setConfirmSelection(session.accounts.map((account) => account.accountKey));
+  }
+
+  /** Ne garde que les comptes en attente de confirmation (sélection d'origine). */
+  function selectAccountsToConfirm() {
+    if (!session) return;
+    setConfirmSelection(
+      session.accounts
+        .filter((account) => account.coverage.requiresConfirmation)
+        .map((account) => account.accountKey),
+    );
+  }
+
   async function confirmAccounts() {
     if (!session || confirmSelection.length === 0) return;
     setConfirmBusy(true);
@@ -534,6 +550,38 @@ export function GuidedImportSession() {
               {confirmMessage}
             </p>
           ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAllAccounts}
+                className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Tout sélectionner
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmSelection([])}
+                disabled={confirmSelection.length === 0}
+                className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Tout désélectionner
+              </button>
+              <button
+                type="button"
+                onClick={selectAccountsToConfirm}
+                className="rounded-md px-2.5 py-1.5 text-[11px] font-medium text-slate-500 hover:bg-slate-100"
+              >
+                À confirmer seulement ({session.summary.toConfirm})
+              </button>
+            </div>
+            <p className="max-w-md text-[11px] leading-snug text-slate-400">
+              La sélection ne sert qu&apos;à l&apos;attestation « rien n&apos;a changé » : elle
+              n&apos;écrit aucun montant et ne change ni l&apos;attribution des fichiers ni les
+              soldes.
+            </p>
+          </div>
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-xs">
