@@ -1,10 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
-import {
-  disnatTickerToYahooSymbol,
-  extractDisnatStemForPositionAggregation,
-} from "@/lib/market/disnat-ticker";
-import { loadUsdCadRateMap, usdCadRateOnDate } from "@/lib/fx/usd-cad-rate-map";
+import { disnatTickerToYahooSymbol } from "@/lib/market/disnat-ticker";
 import {
   fetchYahooChartDailyCloses,
   pickYahooChartRange,
@@ -50,30 +46,6 @@ export type BackfillMarketHistoryResult = {
   message?: string;
 };
 
-/**
- * Une ligne Disnat peut changer de devise de cotation en cours de route (`AMZN` en CAD
- * puis `AMZN-U` en USD) : on aligne la date de début de toutes les paires d'un même
- * titre sur la plus ancienne détention, sinon l'historique de la devise d'origine
- * n'est jamais téléchargé et la position reste sans prix sur la période initiale.
- */
-function alignRangesOnStemStart(
-  ranges: TickerCoverageRange[],
-): TickerCoverageRange[] {
-  const earliestByStem = new Map<string, string>();
-  for (const range of ranges) {
-    const stem = extractDisnatStemForPositionAggregation(range.ticker);
-    const prev = earliestByStem.get(stem);
-    if (!prev || range.fromDate < prev) earliestByStem.set(stem, range.fromDate);
-  }
-  return ranges.map((range) => {
-    const stemStart = earliestByStem.get(
-      extractDisnatStemForPositionAggregation(range.ticker),
-    );
-    if (!stemStart || stemStart >= range.fromDate) return range;
-    return { ...range, fromDate: stemStart };
-  });
-}
-
 async function resolveTickerCoverageRanges(now = new Date()): Promise<TickerCoverageRange[]> {
   const sessionEnd = referenceTradingSessionDayIso(now);
   const grouped = await prisma.portfolioDailyHolding.groupBy({
@@ -84,14 +56,13 @@ async function resolveTickerCoverageRanges(now = new Date()): Promise<TickerCove
   });
 
   if (grouped.length > 0) {
-    const ranges = grouped.map((row) => ({
+    return grouped.map((row) => ({
       ticker: row.ticker.toUpperCase(),
       currency: normalizeCurrency(row.currency),
       yahooSymbol: disnatTickerToYahooSymbol(row.ticker, row.currency),
       fromDate: isoDateFromDbDate(row._min.holdingDate!),
       toDate: sessionEnd,
     }));
-    return alignRangesOnStemStart(ranges);
   }
 
   const [holdings, earliestTx] = await Promise.all([
@@ -360,12 +331,12 @@ export type DailyValueRecomputeStats = {
   upserted: number;
   /** Positions valorisées avec la dernière clôture connue (report borné). */
   carriedForwardPositions: number;
-  /** Positions valorisées via la paire sœur (autre devise) + taux USD/CAD. */
-  crossCurrencyFilledPositions: number;
   /** Positions non valorisables (aucun prix trouvé) — avant, ignorées en silence. */
   unpricedPositions: number;
   /** Exemples de positions restées sans prix (borné). */
   unpricedSamples: { ticker: string; currency: string; date: string }[];
+  /** Lignes de valeurs journalières supprimées car hors séance (week-end / férié). */
+  prunedOffSessionRows: number;
 };
 
 type PairCloseSeries = { date: string; close: number }[];
@@ -414,19 +385,22 @@ function exactCloseOn(
 }
 
 /**
- * Recalcule `portfolio_daily_values` sur une plage ISO.
+ * Calcule les valeurs de position par date/devise (sans écrire en base).
  *
- * Trois garde-fous (avant, une position sans clôture était ignorée en silence,
- * ce qui sous-évaluait la valeur du jour et faussait les rendements) :
+ * Avant, une position sans clôture était ignorée en silence : la valeur du jour
+ * était sous-évaluée et les rendements faussés. Désormais :
  * 1. clôture exacte du jour ;
- * 2. sinon paire sœur (même titre, autre devise) × taux USD/CAD du jour ;
- * 3. sinon report de la dernière clôture connue (max `MAX_CLOSE_CARRY_FORWARD_DAYS`).
+ * 2. sinon report de la dernière clôture connue (max `MAX_CLOSE_CARRY_FORWARD_DAYS`) ;
+ * 3. sinon position comptée comme « sans prix » (jamais remplacée par une autre
+ *    devise : un CDR côté CAD n'a pas la même valeur qu'un titre US).
  */
-export async function recomputeDailyPortfolioValuesDetailed(
+export async function computeDailyPositionValues(
   fromDate: string,
   toDate: string,
-  options?: { dryRun?: boolean },
-): Promise<DailyValueRecomputeStats> {
+): Promise<{
+  values: Map<string, { cad: number; usd: number }>;
+  stats: DailyValueRecomputeStats;
+}> {
   const from = parseIsoDateLocal(fromDate);
   const to = parseIsoDateLocal(toDate);
   const lookbackIso = subtractCalendarDays(
@@ -454,7 +428,6 @@ export async function recomputeDailyPortfolioValuesDetailed(
   ]);
 
   const seriesByPair = new Map<string, PairCloseSeries>();
-  const pairsByStem = new Map<string, Map<string, string>>();
   for (const p of prices) {
     const key = pairKeyOf(p.ticker, p.currency);
     let series = seriesByPair.get(key);
@@ -463,31 +436,17 @@ export async function recomputeDailyPortfolioValuesDetailed(
       seriesByPair.set(key, series);
     }
     series.push({ date: isoDateFromDbDate(p.priceDate), close: p.closePrice });
-
-    const stem = extractDisnatStemForPositionAggregation(p.ticker);
-    let currencies = pairsByStem.get(stem);
-    if (!currencies) {
-      currencies = new Map<string, string>();
-      pairsByStem.set(stem, currencies);
-    }
-    currencies.set(normalizeCurrency(p.currency), key);
   }
   for (const series of seriesByPair.values()) {
     series.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
 
-  let rateMapPromise: Promise<Map<string, number>> | null = null;
-  function getRateMap(): Promise<Map<string, number>> {
-    rateMapPromise ??= loadUsdCadRateMap(lookbackIso, toDate);
-    return rateMapPromise;
-  }
-
   const stats: DailyValueRecomputeStats = {
     upserted: 0,
     carriedForwardPositions: 0,
-    crossCurrencyFilledPositions: 0,
     unpricedPositions: 0,
     unpricedSamples: [],
+    prunedOffSessionRows: 0,
   };
   const byDateCurrency = new Map<string, { cad: number; usd: number }>();
 
@@ -501,22 +460,6 @@ export async function recomputeDailyPortfolioValuesDetailed(
     const pairKey = pairKeyOf(h.ticker, currency);
 
     let close = exactCloseOn(seriesByPair.get(pairKey), dateIso);
-
-    if (close == null) {
-      const stem = extractDisnatStemForPositionAggregation(h.ticker);
-      const siblingCurrency = currency === "USD" ? "CAD" : "USD";
-      const siblingKey = pairsByStem.get(stem)?.get(siblingCurrency);
-      const siblingClose = siblingKey
-        ? exactCloseOn(seriesByPair.get(siblingKey), dateIso)
-        : null;
-      if (siblingClose != null) {
-        const rate = usdCadRateOnDate(await getRateMap(), dateIso);
-        if (rate != null && rate > 0) {
-          close = currency === "USD" ? siblingClose / rate : siblingClose * rate;
-          stats.crossCurrencyFilledPositions += 1;
-        }
-      }
-    }
 
     if (close == null) {
       const previous = lastCloseOnOrBefore(seriesByPair.get(pairKey), dateIso);
@@ -551,7 +494,21 @@ export async function recomputeDailyPortfolioValuesDetailed(
     byDateCurrency.set(dateIso, bucket);
   }
 
-  for (const [dateIso, totals] of byDateCurrency) {
+  return { values: byDateCurrency, stats };
+}
+
+/**
+ * Recalcule `portfolio_daily_values` (écriture idempotente) et renvoie les compteurs.
+ * `dryRun` permet de mesurer l'impact sans écrire.
+ */
+export async function recomputeDailyPortfolioValuesDetailed(
+  fromDate: string,
+  toDate: string,
+  options?: { dryRun?: boolean },
+): Promise<DailyValueRecomputeStats> {
+  const { values, stats } = await computeDailyPositionValues(fromDate, toDate);
+
+  for (const [dateIso, totals] of values) {
     const valueDate = parseIsoDateLocal(dateIso);
     for (const [currency, positionsValue] of [
       ["CAD", totals.cad],
@@ -582,7 +539,44 @@ export async function recomputeDailyPortfolioValuesDetailed(
     }
   }
 
+  if (!options?.dryRun) {
+    stats.prunedOffSessionRows = await pruneOffSessionDailyValues(fromDate, toDate);
+  }
+
   return stats;
+}
+
+/**
+ * Supprime les valeurs journalières restées sur un jour hors séance (week-end / férié
+ * commun). Ces lignes viennent d'anciennes écritures et ne sont jamais rafraîchies :
+ * elles faussaient les moyennes/agrégats par date.
+ */
+async function pruneOffSessionDailyValues(
+  fromDate: string,
+  toDate: string,
+): Promise<number> {
+  const rows = await prisma.portfolioDailyValue.findMany({
+    where: {
+      valueDate: {
+        gte: parseIsoDateLocal(fromDate),
+        lte: parseIsoDateLocal(toDate),
+      },
+    },
+    select: { valueDate: true },
+    distinct: ["valueDate"],
+  });
+
+  const offSessionDates = rows
+    .map((row) => isoDateFromDbDate(row.valueDate))
+    .filter((date) => !isTradingDayIso(date));
+  if (offSessionDates.length === 0) return 0;
+
+  const deleted = await prisma.portfolioDailyValue.deleteMany({
+    where: {
+      valueDate: { in: offSessionDates.map((date) => parseIsoDateLocal(date)) },
+    },
+  });
+  return deleted.count;
 }
 
 /** Recalcule `portfolio_daily_values` et renvoie le nombre de lignes écrites. */

@@ -19,8 +19,13 @@ function summarizeBackfillResult(
   if (result.dailyValuesStats) {
     const stats = result.dailyValuesStats;
     lines.push(
-      `Valorisation : ${stats.crossCurrencyFilledPositions} conversion(s) devise sœur, ${stats.carriedForwardPositions} report(s) de clôture, ${stats.unpricedPositions} position(s) sans prix.`,
+      `Valorisation : ${stats.carriedForwardPositions} position(s) valorisée(s) par report de clôture, ${stats.unpricedPositions} sans prix.`,
     );
+    if (stats.prunedOffSessionRows > 0) {
+      lines.push(
+        `  ${stats.prunedOffSessionRows} ligne(s) de valeurs hors séance nettoyée(s).`,
+      );
+    }
     for (const sample of stats.unpricedSamples.slice(0, 3)) {
       lines.push(
         `  • sans prix : ${sample.ticker}|${sample.currency} @ ${sample.date}`,

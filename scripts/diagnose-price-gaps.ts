@@ -10,7 +10,6 @@
  */
 import { prisma } from "@/lib/db/prisma";
 import { findPriceGaps } from "@/features/portfolio/price-gap-detection";
-import { extractDisnatStemForPositionAggregation } from "@/lib/market/disnat-ticker";
 import { isoDateFromDbDate, parseIsoDateLocal } from "@/features/portfolio/daily-close-key";
 import { MAX_CLOSE_CARRY_FORWARD_DAYS } from "@/features/portfolio/backfill-market-history";
 import { normalizeCurrency } from "@/lib/utils";
@@ -24,25 +23,17 @@ function daysBetween(fromIso: string, toIso: string): number {
 
 /**
  * Pour chaque séance sans clôture, indique si la valorisation peut être sauvée par
- * le report de la dernière clôture connue ou par la paire sœur (autre devise).
+ * le report de la dernière clôture connue (sinon la position reste sans prix).
  */
 async function describeFallbacks(
   gaps: Awaited<ReturnType<typeof findPriceGaps>>,
 ): Promise<void> {
-  const pairKeys = new Set(
-    gaps.pairsWithGaps.map((pair) => `${pair.ticker}|${pair.currency}`),
-  );
-  const stems = new Set(
-    gaps.pairsWithGaps.map((pair) => extractDisnatStemForPositionAggregation(pair.ticker)),
-  );
-
-  const prices = await prisma.portfolioDailyPrice.findMany({
+  const rows = await prisma.portfolioDailyPrice.findMany({
     select: { ticker: true, currency: true, priceDate: true },
   });
 
   const datesByPair = new Map<string, Set<string>>();
-  const pairsByStem = new Map<string, Map<string, string>>();
-  for (const row of prices) {
+  for (const row of rows) {
     const key = `${row.ticker.toUpperCase()}|${normalizeCurrency(row.currency)}`;
     let dates = datesByPair.get(key);
     if (!dates) {
@@ -50,36 +41,22 @@ async function describeFallbacks(
       datesByPair.set(key, dates);
     }
     dates.add(isoDateFromDbDate(row.priceDate));
-
-    const stem = extractDisnatStemForPositionAggregation(row.ticker);
-    let currencies = pairsByStem.get(stem);
-    if (!currencies) {
-      currencies = new Map<string, string>();
-      pairsByStem.set(stem, currencies);
-    }
-    currencies.set(normalizeCurrency(row.currency), key);
   }
 
   for (const pair of gaps.pairsWithGaps) {
-    if (!pairKeys.has(`${pair.ticker}|${pair.currency}`)) continue;
-    const key = `${pair.ticker}|${pair.currency}`;
-    const ownDates = [...(datesByPair.get(key) ?? [])].toSorted();
-    const stem = extractDisnatStemForPositionAggregation(pair.ticker);
-    const siblingCurrency = pair.currency === "USD" ? "CAD" : "USD";
-    const siblingKey = stems.has(stem)
-      ? pairsByStem.get(stem)?.get(siblingCurrency)
-      : undefined;
-    const siblingDates = siblingKey ? (datesByPair.get(siblingKey) ?? new Set()) : new Set<string>();
+    const ownDates = [
+      ...(datesByPair.get(`${pair.ticker}|${pair.currency}`) ?? []),
+    ].toSorted();
 
     let carried = 0;
-    let crossCurrency = 0;
     let unpriced = 0;
     for (const date of pair.missingDates) {
       const previous = ownDates.filter((d) => d < date).at(-1);
-      if (previous && daysBetween(previous, date) <= MAX_CLOSE_CARRY_FORWARD_DAYS) {
+      if (
+        previous &&
+        daysBetween(previous, date) <= MAX_CLOSE_CARRY_FORWARD_DAYS
+      ) {
         carried += 1;
-      } else if (siblingDates.has(date)) {
-        crossCurrency += 1;
       } else {
         unpriced += 1;
       }
@@ -87,7 +64,7 @@ async function describeFallbacks(
 
     console.log(
       `  → ${pair.ticker}|${pair.currency} : ${carried} sauvable(s) par report, ` +
-        `${crossCurrency} par paire sœur, ${unpriced} sans prix` +
+        `${unpriced} sans aucun prix` +
         ` (échantillon ${pair.missingDates.length} date(s))`,
     );
   }
