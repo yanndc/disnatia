@@ -467,6 +467,40 @@ export type EnumNonFinancialAssetTypeWithAggregatesFilter<$PrismaModel = never> 
   _max?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel>
 }
 
+export type EnumNewsSourceKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsSourceKind | Prisma.EnumNewsSourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsSourceKindFilter<$PrismaModel> | $Enums.NewsSourceKind
+}
+
+export type EnumNewsCategoryFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsCategory | Prisma.EnumNewsCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsCategoryFilter<$PrismaModel> | $Enums.NewsCategory
+}
+
+export type EnumNewsSourceKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsSourceKind | Prisma.EnumNewsSourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsSourceKindWithAggregatesFilter<$PrismaModel> | $Enums.NewsSourceKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumNewsSourceKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumNewsSourceKindFilter<$PrismaModel>
+}
+
+export type EnumNewsCategoryWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsCategory | Prisma.EnumNewsCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsCategoryWithAggregatesFilter<$PrismaModel> | $Enums.NewsCategory
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumNewsCategoryFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumNewsCategoryFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -866,6 +900,40 @@ export type NestedEnumNonFinancialAssetTypeWithAggregatesFilter<$PrismaModel = n
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumNonFinancialAssetTypeFilter<$PrismaModel>
+}
+
+export type NestedEnumNewsSourceKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsSourceKind | Prisma.EnumNewsSourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsSourceKindFilter<$PrismaModel> | $Enums.NewsSourceKind
+}
+
+export type NestedEnumNewsCategoryFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsCategory | Prisma.EnumNewsCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsCategoryFilter<$PrismaModel> | $Enums.NewsCategory
+}
+
+export type NestedEnumNewsSourceKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsSourceKind | Prisma.EnumNewsSourceKindFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsSourceKind[] | Prisma.ListEnumNewsSourceKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsSourceKindWithAggregatesFilter<$PrismaModel> | $Enums.NewsSourceKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumNewsSourceKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumNewsSourceKindFilter<$PrismaModel>
+}
+
+export type NestedEnumNewsCategoryWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.NewsCategory | Prisma.EnumNewsCategoryFieldRefInput<$PrismaModel>
+  in?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  notIn?: $Enums.NewsCategory[] | Prisma.ListEnumNewsCategoryFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumNewsCategoryWithAggregatesFilter<$PrismaModel> | $Enums.NewsCategory
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumNewsCategoryFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumNewsCategoryFilter<$PrismaModel>
 }
 
 

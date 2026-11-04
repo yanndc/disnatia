@@ -23,6 +23,8 @@ import {
   NonFinancialAssetsPanel,
   type NonFinancialAssetDto,
 } from "@/features/imports/non-financial-assets-panel";
+import { NewsSourcesPanel } from "@/features/news/news-sources-panel";
+import type { NewsSourceRow } from "@/features/news/queries";
 import { GuidedImportSession } from "@/features/imports/guided-import-session";
 import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
 import type { PerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-types";
@@ -45,7 +47,14 @@ const importSchema = z.object({
 
 type ImportForm = z.infer<typeof importSchema>;
 
-type ImportsTab = "session" | "external" | "assets" | "disnat" | "reconciliation" | "followup";
+type ImportsTab =
+  | "session"
+  | "external"
+  | "assets"
+  | "disnat"
+  | "reconciliation"
+  | "followup"
+  | "news";
 
 /** Plage d’années civiles couverte par les dates d’opération du fichier (min / max). L’horodatage d’import est affiché à part, sans répéter son année ici. */
 function dataYearsInFileLabel(dataFromIso: string | null, dataToIso: string | null): string {
@@ -69,6 +78,7 @@ export function ImportsClient({
   initialImports,
   initialExternalAccounts,
   initialNonFinancialAssets,
+  initialNewsSources,
 }: {
   initialTab?: ImportsTab;
   initialReconciliationPayload: PerformanceIndicatorPayload | null;
@@ -88,6 +98,7 @@ export function ImportsClient({
   }[];
   initialExternalAccounts: ExternalAccountDto[];
   initialNonFinancialAssets: NonFinancialAssetDto[];
+  initialNewsSources: NewsSourceRow[];
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ParsedDisnatRow[]>([]);
@@ -397,6 +408,7 @@ export function ImportsClient({
             { id: "disnat" as const, label: "Fichier Disnat" },
             { id: "reconciliation" as const, label: "Réconciliation" },
             { id: "followup" as const, label: "Historique et recalcul" },
+            { id: "news" as const, label: "Nouvelles" },
           ] as const
         ).map((t) => (
           <button
@@ -424,6 +436,8 @@ export function ImportsClient({
       {tab === "assets" ? (
         <NonFinancialAssetsPanel initialAssets={initialNonFinancialAssets} />
       ) : null}
+
+      {tab === "news" ? <NewsSourcesPanel initialSources={initialNewsSources} /> : null}
 
       {tab === "disnat" ? (
         <>

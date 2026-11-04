@@ -634,6 +634,123 @@ model NonFinancialAssetOwnerShare {
   @@map("non_financial_asset_owner_shares")
 }
 
+/// ---------------------------------------------------------------------------
+/// Fil de nouvelles d'investissement (RSS/Atom ingéré + scoring portefeuille)
+/// ---------------------------------------------------------------------------
+enum NewsCategory {
+  MARKETS
+  COMPANY
+  ECONOMY
+  REAL_ESTATE
+  PERSONAL_FINANCE
+  OTHER
+}
+
+/// `RSS` = flux éditorial fixe ; `AUTO_TICKER` = flux construit par titre détenu (Yahoo, gabarit `{symbol}`).
+enum NewsSourceKind {
+  RSS
+  AUTO_TICKER
+}
+
+/// Flux déclaré et gérable depuis l'admin (`/imports?tab=news`).
+model NewsSource {
+  id            String          @id @default(cuid())
+  /// Identifiant stable du registre de départ (seed idempotent).
+  slug          String          @unique
+  name          String
+  feedUrl       String
+  homepageUrl   String?
+  kind          NewsSourceKind  @default(RSS)
+  language      String          @default("fr")
+  category      NewsCategory    @default(OTHER)
+  /// Pondération de confiance utilisée dans le score de pertinence (0.2 – 2).
+  weight        Float           @default(1)
+  isActive      Boolean         @default(true)
+  /// Issu du registre de code (réactivé au seed) vs ajouté à la main.
+  isSeed        Boolean         @default(false)
+  lastFetchedAt DateTime?
+  lastStatus    String?
+  lastError     String?
+  lastItemCount Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  items         NewsItem[]
+
+  @@index([isActive])
+  @@map("news_sources")
+}
+
+model NewsItem {
+  id               String          @id @default(cuid())
+  sourceId         String
+  source           NewsSource      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  url              String
+  /// URL sans paramètres de tracking — clé de déduplication multi-flux.
+  canonicalUrl     String          @unique
+  /// sha1(titre normalisé + domaine) — capte les republications sur des URLs différentes.
+  fingerprint      String          @unique
+  title            String
+  excerpt          String?
+  /// Média d'origine quand le flux agrège (ex. « Les Affaires » via Google Actualités).
+  publisher        String?
+  imageUrl         String?
+  author           String?
+  language         String          @default("fr")
+  category         NewsCategory    @default(OTHER)
+  tags             String[]        @default([])
+  publishedAt      DateTime
+  ingestedAt       DateTime        @default(now())
+  /// 0–100, recalculé à chaque passage d'ingestion.
+  relevanceScore   Float           @default(0)
+  /// Exposition du portefeuille touchée par les titres rattachés (snapshot du calcul).
+  portfolioPct     Float?
+  portfolioValueCad Float?
+  readAt           DateTime?
+  savedAt          DateTime?
+  tickers          NewsItemTicker[]
+
+  @@index([publishedAt, relevanceScore])
+  @@index([publishedAt])
+  @@index([category, publishedAt])
+  @@index([sourceId, publishedAt])
+  @@map("news_items")
+}
+
+/// Rattachement article → titre détenu (alimente le score et le badge d'exposition).
+model NewsItemTicker {
+  id          String   @id @default(cuid())
+  newsItemId  String
+  newsItem    NewsItem @relation(fields: [newsItemId], references: [id], onDelete: Cascade)
+  /// Ticker tel que lu dans le portefeuille (ex. « BCE-C »).
+  ticker      String
+  yahooSymbol String?
+  /// TICKER | NAME | ALIAS
+  matchKind   String
+  confidence  Float    @default(1)
+  createdAt   DateTime @default(now())
+
+  @@unique([newsItemId, ticker])
+  @@index([ticker])
+  @@map("news_item_tickers")
+}
+
+/// Journal d'exécution du cron de rafraîchissement (observabilité + idempotence légère).
+model NewsIngestionRun {
+  id            String    @id @default(cuid())
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    @default("RUNNING")
+  sourcesOk     Int       @default(0)
+  sourcesFailed Int       @default(0)
+  itemsSeen     Int       @default(0)
+  itemsCreated  Int       @default(0)
+  itemsUpdated  Int       @default(0)
+  errorSummary  Json?
+
+  @@index([startedAt])
+  @@map("news_ingestion_runs")
+}
+
 /// Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
 model EodReportDelivery {
   sessionDate String   @id

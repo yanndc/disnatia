@@ -210,6 +210,26 @@ export type NonFinancialAssetSnapshot = Prisma.NonFinancialAssetSnapshotModel
  */
 export type NonFinancialAssetOwnerShare = Prisma.NonFinancialAssetOwnerShareModel
 /**
+ * Model NewsSource
+ * Flux déclaré et gérable depuis l'admin (`/imports?tab=news`).
+ */
+export type NewsSource = Prisma.NewsSourceModel
+/**
+ * Model NewsItem
+ * 
+ */
+export type NewsItem = Prisma.NewsItemModel
+/**
+ * Model NewsItemTicker
+ * Rattachement article → titre détenu (alimente le score et le badge d'exposition).
+ */
+export type NewsItemTicker = Prisma.NewsItemTickerModel
+/**
+ * Model NewsIngestionRun
+ * Journal d'exécution du cron de rafraîchissement (observabilité + idempotence légère).
+ */
+export type NewsIngestionRun = Prisma.NewsIngestionRunModel
+/**
  * Model EodReportDelivery
  * Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
  */

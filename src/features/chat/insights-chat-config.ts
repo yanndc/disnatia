@@ -21,6 +21,7 @@ export const INSIGHTS_CHAT_SYSTEM_PROMPT =
   "Pour un titre ou un cours hors données importées, appelle fetchLiveMarketQuotes (symboles Yahoo ou ticker Disnat + devise). " +
   "Pour actualités ou contexte récent (macro, entreprise, marché), appelle searchWebSources et cite titres + domaines des sources retournées; " +
   "si l'outil signale l'absence de clé API, dis-le clairement sans inventer des articles. " +
+  "Pour l'actualité déjà rattachée aux titres détenus, appelle getPortfolioNews (fil ingéré, avec exposition % et tickers) et privilégie-le à searchWebSources. " +
   "Les KPI et poids utilisent des cours rafraîchis (stockés) quand disponibles, avec encaisse toujours issue du dernier import; " +
   "la variation « vs import précédent » compare les totaux fichier Disnat, pas les cours du marché. " +
   "Présente les risques, hypothèses et limites. " +

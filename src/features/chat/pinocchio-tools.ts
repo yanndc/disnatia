@@ -12,6 +12,7 @@ import {
   searchWebForPinocchio,
   type FetchLiveMarketQuotesInput,
 } from "@/features/chat/pinocchio-external-sources";
+import { getPortfolioNewsDigest } from "@/features/news/queries";
 
 /**
  * Outils d'analyse portefeuille de Pinocchio, partagés entre le chat (/api/chat)
@@ -95,6 +96,27 @@ export function createPinocchioTools() {
       }),
       execute: async (input: { query: string; topic?: "general" | "news" | "finance" }) =>
         searchWebForPinocchio(input.query, input.topic ?? "general"),
+    },
+    getPortfolioNews: {
+      description:
+        "Nouvelles ingérées (RSS) déjà rattachées aux titres détenus, triées par pertinence portefeuille. Retourne titre, éditeur, date, URL, catégorie, extrait, exposition % et tickers concernés. À utiliser avant d'affirmer une actualité sur une position; cite l'éditeur et la date. Les articles ne sont pas résumés au-delà de l'extrait.",
+      inputSchema: z.object({
+        sinceHours: z
+          .number()
+          .int()
+          .min(1)
+          .max(720)
+          .optional()
+          .describe("Fenêtre en heures (défaut 72)"),
+        limit: z.number().int().min(1).max(20).optional(),
+        ticker: z
+          .string()
+          .max(12)
+          .optional()
+          .describe("Filtre sur un ticker du portefeuille, ex. BCE ou BCE-C"),
+      }),
+      execute: async (input: { sinceHours?: number; limit?: number; ticker?: string }) =>
+        getPortfolioNewsDigest(input),
     },
   };
 }

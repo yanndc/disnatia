@@ -87,3 +87,23 @@ export const OwnerMappingSource = {
 } as const
 
 export type OwnerMappingSource = (typeof OwnerMappingSource)[keyof typeof OwnerMappingSource]
+
+
+export const NewsCategory = {
+  MARKETS: 'MARKETS',
+  COMPANY: 'COMPANY',
+  ECONOMY: 'ECONOMY',
+  REAL_ESTATE: 'REAL_ESTATE',
+  PERSONAL_FINANCE: 'PERSONAL_FINANCE',
+  OTHER: 'OTHER'
+} as const
+
+export type NewsCategory = (typeof NewsCategory)[keyof typeof NewsCategory]
+
+
+export const NewsSourceKind = {
+  RSS: 'RSS',
+  AUTO_TICKER: 'AUTO_TICKER'
+} as const
+
+export type NewsSourceKind = (typeof NewsSourceKind)[keyof typeof NewsSourceKind]

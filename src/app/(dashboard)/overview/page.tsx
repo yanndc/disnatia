@@ -11,6 +11,7 @@ import {
 } from "@/features/portfolio/performance-indicator-logic";
 import type { PerformancePeriodResult } from "@/features/portfolio/performance-indicator-types";
 import { MarketIndicesTicker } from "@/features/market/market-indices-ticker";
+import { PortfolioNewsHighlights } from "@/features/news/portfolio-news-highlights";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { OverviewFilteredSections } from "./overview-filtered-sections";
 
@@ -125,6 +126,7 @@ export default async function OverviewPage() {
   return (
     <div className="space-y-8">
       <MarketIndicesTicker />
+      <PortfolioNewsHighlights />
 
       <section className="overflow-hidden rounded-4xl border border-slate-200 bg-white text-slate-950 shadow-sm">
         <div className="relative isolate p-6 sm:p-8">

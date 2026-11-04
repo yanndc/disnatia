@@ -199,9 +199,10 @@ Le format Disnat peut varier selon le type d'export. La V1 sépare les lignes de
 
 ## Pages
 
-- `/overview`: KPI, exposition par devise, top positions, variation vs import précédent
+- `/overview`: KPI, exposition par devise, top positions, variation vs import précédent, fil « Nouvelles qui touchent vos positions »
 - `/imports`: upload CSV, preview, validation, sauvegarde, historique
 - `/positions`: table triable et recherchable du dernier import
+- `/nouvelles`: fil de nouvelles d'investissement (RSS) scoré contre le portefeuille
 - `/insights`: chat IA avec outils serveur portefeuille
 
 ## Actifs non-boursiers (patrimoine)
@@ -214,6 +215,21 @@ Disnatia supporte aussi des actifs non-boursiers (ex. maison) via snapshots manu
 - Performance: ces actifs sont exclus des calculs de rendement portefeuille (TWR/Dietz)
 
 Objectif: séparer clairement la lecture “patrimoine retraite” de la lecture “performance des placements”.
+
+## Fil de nouvelles d'investissement
+
+Flux RSS/Atom ingérés en base, **rattachés aux titres réellement détenus** puis scorés : ce n'est pas un lecteur RSS générique.
+
+- **Ingestion** (`src/features/news/`): parseur RSS 2.0 / Atom / RDF sans dépendance (`rss-parser.ts`), normalisation d'URL + empreinte anti-doublon (`normalize.ts`), rattachement ticker / nom de société / alias (`ticker-matcher.ts`), score 0–100 (`relevance.ts`).
+- **Score** : 45 % exposition du titre dans le portefeuille Disnat · 25 % fraîcheur (demi-vie 48 h) · 20 % confiance du rattachement · 5 % poids du flux · 5 % catégorie. Le badge « Touche X % · Y $ » vient de cette exposition.
+- **Pages** : `/nouvelles` (onglets Mes titres / Tout / Sauvegardées, recherche, curseur) et un widget sur `/overview`. Chaque article ouvre la source d'origine dans un nouvel onglet (titre + extrait ≤ 400 caractères, **aucune reproduction de contenu payant**).
+- **Administration** : `/imports?tab=news` — état de santé par flux (dernier passage, erreur, volume 7 j), activation, poids de pertinence, test de flux sans écriture, ajout d'un flux manuel, ingestion immédiate.
+- **Pinocchio** : outil `getPortfolioNews` (fil ingéré rattaché au portefeuille), préféré à la recherche web pour l'actualité des positions.
+- **API** : `GET /api/news`, `PATCH /api/news/[id]/state`, `GET|POST /api/news/sources`, `PATCH|DELETE /api/news/sources/[id]`, `POST /api/news/sources/[id]/test`, `POST /api/news/refresh` (admin), `POST /api/cron/refresh-news` (`CRON_SECRET`).
+- **Cron** : `.github/workflows/news-refresh-cron.yml` (toutes les 30 min, 11 h–23 h UTC, lun–ven) → `POST /api/cron/refresh-news`. Variables déjà utilisées par le rapport EOD : `secrets.CRON_SECRET` + `vars.EOD_REPORT_APP_URL`.
+- **Local** : `pnpm news:refresh` (même tâche), après `pnpm prisma:migrate`.
+
+Les flux du registre (`news-sources.ts`) sont recréés au seed s'ils manquent : on les **désactive** plutôt que de les supprimer. Les flux ajoutés à la main sont supprimables.
 
 ## Limites connues V1
 

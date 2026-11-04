@@ -3,6 +3,7 @@ import {
   FileUp,
   Landmark,
   LayoutDashboard,
+  Newspaper,
   ShieldCheck,
   Sparkles,
   Table2,
@@ -19,5 +20,6 @@ export const dashboardNavIcons: Record<DashboardNavIconName, LucideIcon> = {
   "arrow-left-right": ArrowLeftRight,
   "trending-up": TrendingUp,
   "file-up": FileUp,
+  newspaper: Newspaper,
   sparkles: Sparkles,
 };

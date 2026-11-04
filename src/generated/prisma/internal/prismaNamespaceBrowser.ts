@@ -79,6 +79,10 @@ export const ModelName = {
   NonFinancialAsset: 'NonFinancialAsset',
   NonFinancialAssetSnapshot: 'NonFinancialAssetSnapshot',
   NonFinancialAssetOwnerShare: 'NonFinancialAssetOwnerShare',
+  NewsSource: 'NewsSource',
+  NewsItem: 'NewsItem',
+  NewsItemTicker: 'NewsItemTicker',
+  NewsIngestionRun: 'NewsIngestionRun',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -528,6 +532,84 @@ export const NonFinancialAssetOwnerShareScalarFieldEnum = {
 } as const
 
 export type NonFinancialAssetOwnerShareScalarFieldEnum = (typeof NonFinancialAssetOwnerShareScalarFieldEnum)[keyof typeof NonFinancialAssetOwnerShareScalarFieldEnum]
+
+
+export const NewsSourceScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  name: 'name',
+  feedUrl: 'feedUrl',
+  homepageUrl: 'homepageUrl',
+  kind: 'kind',
+  language: 'language',
+  category: 'category',
+  weight: 'weight',
+  isActive: 'isActive',
+  isSeed: 'isSeed',
+  lastFetchedAt: 'lastFetchedAt',
+  lastStatus: 'lastStatus',
+  lastError: 'lastError',
+  lastItemCount: 'lastItemCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NewsSourceScalarFieldEnum = (typeof NewsSourceScalarFieldEnum)[keyof typeof NewsSourceScalarFieldEnum]
+
+
+export const NewsItemScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  url: 'url',
+  canonicalUrl: 'canonicalUrl',
+  fingerprint: 'fingerprint',
+  title: 'title',
+  excerpt: 'excerpt',
+  publisher: 'publisher',
+  imageUrl: 'imageUrl',
+  author: 'author',
+  language: 'language',
+  category: 'category',
+  tags: 'tags',
+  publishedAt: 'publishedAt',
+  ingestedAt: 'ingestedAt',
+  relevanceScore: 'relevanceScore',
+  portfolioPct: 'portfolioPct',
+  portfolioValueCad: 'portfolioValueCad',
+  readAt: 'readAt',
+  savedAt: 'savedAt'
+} as const
+
+export type NewsItemScalarFieldEnum = (typeof NewsItemScalarFieldEnum)[keyof typeof NewsItemScalarFieldEnum]
+
+
+export const NewsItemTickerScalarFieldEnum = {
+  id: 'id',
+  newsItemId: 'newsItemId',
+  ticker: 'ticker',
+  yahooSymbol: 'yahooSymbol',
+  matchKind: 'matchKind',
+  confidence: 'confidence',
+  createdAt: 'createdAt'
+} as const
+
+export type NewsItemTickerScalarFieldEnum = (typeof NewsItemTickerScalarFieldEnum)[keyof typeof NewsItemTickerScalarFieldEnum]
+
+
+export const NewsIngestionRunScalarFieldEnum = {
+  id: 'id',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  status: 'status',
+  sourcesOk: 'sourcesOk',
+  sourcesFailed: 'sourcesFailed',
+  itemsSeen: 'itemsSeen',
+  itemsCreated: 'itemsCreated',
+  itemsUpdated: 'itemsUpdated',
+  errorSummary: 'errorSummary'
+} as const
+
+export type NewsIngestionRunScalarFieldEnum = (typeof NewsIngestionRunScalarFieldEnum)[keyof typeof NewsIngestionRunScalarFieldEnum]
 
 
 export const EodReportDeliveryScalarFieldEnum = {

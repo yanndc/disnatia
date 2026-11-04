@@ -425,6 +425,10 @@ export const ModelName = {
   NonFinancialAsset: 'NonFinancialAsset',
   NonFinancialAssetSnapshot: 'NonFinancialAssetSnapshot',
   NonFinancialAssetOwnerShare: 'NonFinancialAssetOwnerShare',
+  NewsSource: 'NewsSource',
+  NewsItem: 'NewsItem',
+  NewsItemTicker: 'NewsItemTicker',
+  NewsIngestionRun: 'NewsIngestionRun',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -441,7 +445,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioAccountConfirmation" | "portfolioImportAttributionRule" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "pinocchioAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "eodReportDelivery"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioAccountConfirmation" | "portfolioImportAttributionRule" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "pinocchioAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "newsSource" | "newsItem" | "newsItemTicker" | "newsIngestionRun" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2517,6 +2521,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    NewsSource: {
+      payload: Prisma.$NewsSourcePayload<ExtArgs>
+      fields: Prisma.NewsSourceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NewsSourceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NewsSourceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>
+        }
+        findFirst: {
+          args: Prisma.NewsSourceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NewsSourceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>
+        }
+        findMany: {
+          args: Prisma.NewsSourceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>[]
+        }
+        create: {
+          args: Prisma.NewsSourceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>
+        }
+        createMany: {
+          args: Prisma.NewsSourceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NewsSourceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>[]
+        }
+        delete: {
+          args: Prisma.NewsSourceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>
+        }
+        update: {
+          args: Prisma.NewsSourceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>
+        }
+        deleteMany: {
+          args: Prisma.NewsSourceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NewsSourceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NewsSourceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>[]
+        }
+        upsert: {
+          args: Prisma.NewsSourceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsSourcePayload>
+        }
+        aggregate: {
+          args: Prisma.NewsSourceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNewsSource>
+        }
+        groupBy: {
+          args: Prisma.NewsSourceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsSourceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NewsSourceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsSourceCountAggregateOutputType> | number
+        }
+      }
+    }
+    NewsItem: {
+      payload: Prisma.$NewsItemPayload<ExtArgs>
+      fields: Prisma.NewsItemFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NewsItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NewsItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>
+        }
+        findFirst: {
+          args: Prisma.NewsItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NewsItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>
+        }
+        findMany: {
+          args: Prisma.NewsItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>[]
+        }
+        create: {
+          args: Prisma.NewsItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>
+        }
+        createMany: {
+          args: Prisma.NewsItemCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NewsItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>[]
+        }
+        delete: {
+          args: Prisma.NewsItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>
+        }
+        update: {
+          args: Prisma.NewsItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>
+        }
+        deleteMany: {
+          args: Prisma.NewsItemDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NewsItemUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NewsItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>[]
+        }
+        upsert: {
+          args: Prisma.NewsItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemPayload>
+        }
+        aggregate: {
+          args: Prisma.NewsItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNewsItem>
+        }
+        groupBy: {
+          args: Prisma.NewsItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsItemGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NewsItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsItemCountAggregateOutputType> | number
+        }
+      }
+    }
+    NewsItemTicker: {
+      payload: Prisma.$NewsItemTickerPayload<ExtArgs>
+      fields: Prisma.NewsItemTickerFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NewsItemTickerFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NewsItemTickerFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>
+        }
+        findFirst: {
+          args: Prisma.NewsItemTickerFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NewsItemTickerFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>
+        }
+        findMany: {
+          args: Prisma.NewsItemTickerFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>[]
+        }
+        create: {
+          args: Prisma.NewsItemTickerCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>
+        }
+        createMany: {
+          args: Prisma.NewsItemTickerCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NewsItemTickerCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>[]
+        }
+        delete: {
+          args: Prisma.NewsItemTickerDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>
+        }
+        update: {
+          args: Prisma.NewsItemTickerUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>
+        }
+        deleteMany: {
+          args: Prisma.NewsItemTickerDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NewsItemTickerUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NewsItemTickerUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>[]
+        }
+        upsert: {
+          args: Prisma.NewsItemTickerUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsItemTickerPayload>
+        }
+        aggregate: {
+          args: Prisma.NewsItemTickerAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNewsItemTicker>
+        }
+        groupBy: {
+          args: Prisma.NewsItemTickerGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsItemTickerGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NewsItemTickerCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsItemTickerCountAggregateOutputType> | number
+        }
+      }
+    }
+    NewsIngestionRun: {
+      payload: Prisma.$NewsIngestionRunPayload<ExtArgs>
+      fields: Prisma.NewsIngestionRunFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NewsIngestionRunFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NewsIngestionRunFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>
+        }
+        findFirst: {
+          args: Prisma.NewsIngestionRunFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NewsIngestionRunFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>
+        }
+        findMany: {
+          args: Prisma.NewsIngestionRunFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>[]
+        }
+        create: {
+          args: Prisma.NewsIngestionRunCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>
+        }
+        createMany: {
+          args: Prisma.NewsIngestionRunCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NewsIngestionRunCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>[]
+        }
+        delete: {
+          args: Prisma.NewsIngestionRunDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>
+        }
+        update: {
+          args: Prisma.NewsIngestionRunUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>
+        }
+        deleteMany: {
+          args: Prisma.NewsIngestionRunDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NewsIngestionRunUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NewsIngestionRunUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>[]
+        }
+        upsert: {
+          args: Prisma.NewsIngestionRunUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NewsIngestionRunPayload>
+        }
+        aggregate: {
+          args: Prisma.NewsIngestionRunAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNewsIngestionRun>
+        }
+        groupBy: {
+          args: Prisma.NewsIngestionRunGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsIngestionRunGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NewsIngestionRunCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NewsIngestionRunCountAggregateOutputType> | number
+        }
+      }
+    }
     EodReportDelivery: {
       payload: Prisma.$EodReportDeliveryPayload<ExtArgs>
       fields: Prisma.EodReportDeliveryFieldRefs
@@ -3062,6 +3362,84 @@ export const NonFinancialAssetOwnerShareScalarFieldEnum = {
 export type NonFinancialAssetOwnerShareScalarFieldEnum = (typeof NonFinancialAssetOwnerShareScalarFieldEnum)[keyof typeof NonFinancialAssetOwnerShareScalarFieldEnum]
 
 
+export const NewsSourceScalarFieldEnum = {
+  id: 'id',
+  slug: 'slug',
+  name: 'name',
+  feedUrl: 'feedUrl',
+  homepageUrl: 'homepageUrl',
+  kind: 'kind',
+  language: 'language',
+  category: 'category',
+  weight: 'weight',
+  isActive: 'isActive',
+  isSeed: 'isSeed',
+  lastFetchedAt: 'lastFetchedAt',
+  lastStatus: 'lastStatus',
+  lastError: 'lastError',
+  lastItemCount: 'lastItemCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NewsSourceScalarFieldEnum = (typeof NewsSourceScalarFieldEnum)[keyof typeof NewsSourceScalarFieldEnum]
+
+
+export const NewsItemScalarFieldEnum = {
+  id: 'id',
+  sourceId: 'sourceId',
+  url: 'url',
+  canonicalUrl: 'canonicalUrl',
+  fingerprint: 'fingerprint',
+  title: 'title',
+  excerpt: 'excerpt',
+  publisher: 'publisher',
+  imageUrl: 'imageUrl',
+  author: 'author',
+  language: 'language',
+  category: 'category',
+  tags: 'tags',
+  publishedAt: 'publishedAt',
+  ingestedAt: 'ingestedAt',
+  relevanceScore: 'relevanceScore',
+  portfolioPct: 'portfolioPct',
+  portfolioValueCad: 'portfolioValueCad',
+  readAt: 'readAt',
+  savedAt: 'savedAt'
+} as const
+
+export type NewsItemScalarFieldEnum = (typeof NewsItemScalarFieldEnum)[keyof typeof NewsItemScalarFieldEnum]
+
+
+export const NewsItemTickerScalarFieldEnum = {
+  id: 'id',
+  newsItemId: 'newsItemId',
+  ticker: 'ticker',
+  yahooSymbol: 'yahooSymbol',
+  matchKind: 'matchKind',
+  confidence: 'confidence',
+  createdAt: 'createdAt'
+} as const
+
+export type NewsItemTickerScalarFieldEnum = (typeof NewsItemTickerScalarFieldEnum)[keyof typeof NewsItemTickerScalarFieldEnum]
+
+
+export const NewsIngestionRunScalarFieldEnum = {
+  id: 'id',
+  startedAt: 'startedAt',
+  finishedAt: 'finishedAt',
+  status: 'status',
+  sourcesOk: 'sourcesOk',
+  sourcesFailed: 'sourcesFailed',
+  itemsSeen: 'itemsSeen',
+  itemsCreated: 'itemsCreated',
+  itemsUpdated: 'itemsUpdated',
+  errorSummary: 'errorSummary'
+} as const
+
+export type NewsIngestionRunScalarFieldEnum = (typeof NewsIngestionRunScalarFieldEnum)[keyof typeof NewsIngestionRunScalarFieldEnum]
+
+
 export const EodReportDeliveryScalarFieldEnum = {
   sessionDate: 'sessionDate',
   sentAt: 'sentAt',
@@ -3313,6 +3691,34 @@ export type EnumNonFinancialAssetTypeFieldRefInput<$PrismaModel> = FieldRefInput
 export type ListEnumNonFinancialAssetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NonFinancialAssetType[]'>
     
 
+
+/**
+ * Reference to a field of type 'NewsSourceKind'
+ */
+export type EnumNewsSourceKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NewsSourceKind'>
+    
+
+
+/**
+ * Reference to a field of type 'NewsSourceKind[]'
+ */
+export type ListEnumNewsSourceKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NewsSourceKind[]'>
+    
+
+
+/**
+ * Reference to a field of type 'NewsCategory'
+ */
+export type EnumNewsCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NewsCategory'>
+    
+
+
+/**
+ * Reference to a field of type 'NewsCategory[]'
+ */
+export type ListEnumNewsCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NewsCategory[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -3492,6 +3898,10 @@ export type GlobalOmitConfig = {
   nonFinancialAsset?: Prisma.NonFinancialAssetOmit
   nonFinancialAssetSnapshot?: Prisma.NonFinancialAssetSnapshotOmit
   nonFinancialAssetOwnerShare?: Prisma.NonFinancialAssetOwnerShareOmit
+  newsSource?: Prisma.NewsSourceOmit
+  newsItem?: Prisma.NewsItemOmit
+  newsItemTicker?: Prisma.NewsItemTickerOmit
+  newsIngestionRun?: Prisma.NewsIngestionRunOmit
   eodReportDelivery?: Prisma.EodReportDeliveryOmit
 }
 

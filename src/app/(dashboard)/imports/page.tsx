@@ -5,6 +5,8 @@ import { getPerformanceIndicatorPayload } from "@/features/portfolio/performance
 import { listExternalAccountsWithLatest } from "@/features/portfolio/external-accounts-queries";
 import { listNonFinancialAssetsWithLatest } from "@/features/portfolio/non-financial-assets-queries";
 import { getImportHistory } from "@/features/portfolio/queries";
+import { getNewsSourcesWithStats } from "@/features/news/queries";
+import { ensureNewsSourcesSeeded } from "@/features/news/news-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -20,16 +22,21 @@ export default async function ImportsPage({
     params.tab === "assets" ||
     params.tab === "disnat" ||
     params.tab === "reconciliation" ||
-    params.tab === "followup"
+    params.tab === "followup" ||
+    params.tab === "news"
       ? params.tab
       : undefined;
-  const [imports, externalRaw, nonFinancialRaw, reconciliationPayload] = await Promise.all([
-    getImportHistory().catch(() => []),
-    listExternalAccountsWithLatest().catch(() => []),
-    listNonFinancialAssetsWithLatest().catch(() => []),
-    // Même base que l'overview et le rapport EOD : indicateurs marché-seulement.
-    getPerformanceIndicatorPayload({ includeCashLedger: false }).catch(() => null),
-  ]);
+  const [imports, externalRaw, nonFinancialRaw, reconciliationPayload, newsSources] =
+    await Promise.all([
+      getImportHistory().catch(() => []),
+      listExternalAccountsWithLatest().catch(() => []),
+      listNonFinancialAssetsWithLatest().catch(() => []),
+      // Même base que l'overview et le rapport EOD : indicateurs marché-seulement.
+      getPerformanceIndicatorPayload({ includeCashLedger: false }).catch(() => null),
+      ensureNewsSourcesSeeded()
+        .then(() => getNewsSourcesWithStats())
+        .catch(() => []),
+    ]);
 
   const initialExternalAccounts: ExternalAccountDto[] = externalRaw.map((a) => ({
     id: a.id,
@@ -75,6 +82,7 @@ export default async function ImportsPage({
       initialReconciliationPayload={reconciliationPayload}
       initialExternalAccounts={initialExternalAccounts}
       initialNonFinancialAssets={initialNonFinancialAssets}
+      initialNewsSources={newsSources}
       initialImports={imports.map((item) => ({
         id: item.id,
         sourceFileName: item.sourceFileName,
