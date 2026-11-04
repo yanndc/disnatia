@@ -193,6 +193,14 @@ export function PerformanceReconciliationPanel({
             </div>
           )}
 
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-snug text-slate-500">
+            Les valeurs de l&apos;app suivent la <strong>méthode officielle Disnat</strong> : TRI
+            annualisé sur les mouvements monétaires datés (`docs/`). Le calcul porte sur la{" "}
+            <strong>valeur des titres</strong> : l&apos;encaisse n&apos;est pas reconstituée aux
+            bornes, d&apos;où un écart résiduel attendu de l&apos;ordre de 1 à 2 points sur les
+            périodes courtes (1, 3, 12 mois).
+          </p>
+
           {data.references.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2">
               {data.references.map((reference) => (

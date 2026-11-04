@@ -1,3 +1,28 @@
+# Rendements vs Disnat — méthode officielle (2026-11-04)
+
+## Ce que fait Disnat (docs dans `/docs`)
+Taux « pondéré en fonction de la valeur en dollars » = **TRI (XIRR)** résolu sur les mouvements
+monétaires datés :
+
+`0 = −VMD + Σ(−dépôts)/(1+R)^Pi + Σ(retraits)/(1+R)^Pi + VMF/(1+R)^Pn`, `Pi = jours/365`.
+Annualisé au-delà d'un an, sinon rendement de la période. L'exemple officiel
+(100 000 $ → 164 000 $ avec 3 dépôts de 10 000 $ et un retrait) donne **6,71842 %** : test de
+régression dans `performance-money-weighted.test.ts`.
+
+## Ce qui faussait « depuis le début » / 3 ans
+1. **Mauvaise méthode** : l'app comparait un TWR annualisé au TRI de Disnat.
+2. **Mauvaise valeur de départ** : le BMV du moteur valait **87 427 $** au 23 mars 2022 alors que
+   le compte contenait **1 129 $** (dépôts du 10 et 25 mars, transfert du 21 avril).
+3. **Données** : 289 transactions importées sans `tradeDate` (dont ~143 k$ d'apports) — 90 doublons
+   supprimés, 199 lignes datées (`pnpm backfill:tx-dates`).
+
+Résultat au 30 septembre 2026 : 5KFZE **22,89 %** vs 22,80 % (0,09 pt), 5L3AP **23,57 %** vs 24,70 %.
+
+## Écart résiduel connu
+Le TRI est calculé sur la **valeur des titres** : l'encaisse n'est pas reconstituée aux bornes
+(le ledger d'encaisse donne des soldes historiques incohérents). Écart attendu ≈ 1–2 points sur
+1/3/12 mois ; négligeable sur « depuis le début ».
+
 # Corrections — indicateurs de performance (2026-11-03)
 
 ## Problèmes corrigés
