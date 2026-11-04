@@ -241,6 +241,13 @@ Les flux du registre (`news-sources.ts`) sont recréés au seed s'ils manquent :
 - **Administration → Rendement vs Disnat** : on colle le tableau *Rendement de portefeuille → Rendement par client* (`5KFZE;1,47;1,19;19,99;25,97;15,84;22,80`) avec sa date de référence. L'app recalcule ses TWR **à cette date** et affiche l'écart en points par période (≤ 0,5 pt = OK, ≤ 2 pt = avertissement).
 - Table : `disnat_performance_references` (`clientCode` = préfixe du numéro de compte, ex. `5KFZE`). API : `GET|POST|DELETE /api/performance/references`.
 
+## Conciliation Disnat
+
+Deux contrôles de cohérence, sans ressaisie de montants :
+
+- **Valeur** — carte « Écart vs Disnat » sur `/overview` : valeur recalculée (positions projetées × cours + encaisse) comparée au dernier export portefeuille (`portfolio_account_states`), global et par compte. Seuils : vert ≤ 0,5 %, ambre ≤ 2 %, rouge au-delà. L'import d'un fichier portefeuille (ou la page `portefeuille-ALL-ALL.csv`) remet la référence à jour.
+- **Rendement** — onglet `/imports?tab=returns` : on colle le tableau *Rendement de portefeuille → Rendement par client* (une ligne par client + 6 périodes). Les codes clients sont déduits du préfixe des comptes (`5KFZE`, `5L3AP`). La comparaison recale le TWR de l'app sur la date de référence Disnat, affiche l'écart en points et supprime chaque valeur individuellement. Table `disnat_performance_references`, API `GET|POST|DELETE /api/performance/references`.
+
 ## Limites connues V1
 
 - Pas de comptes utilisateurs multi-tenant ; verrouillage site optionnel via `SITE_ACCESS_PASSWORD` uniquement.
