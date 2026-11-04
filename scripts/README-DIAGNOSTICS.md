@@ -27,6 +27,7 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/diagnose-session-by-owner.ts
 
 ## Scripts disponibles
 
+- `diagnose-price-gaps.ts`: Trous réels holdings ↔ clôtures (calendrier par marché TSX/US) + couverture de valorisation
 - `diagnose-session-vs-import.ts`: Compare P&L live vs écart titres/import (valeurs de marché)
 - `diagnose-session-by-owner.ts`: Répartition du P&L séance par propriétaire
 - Voir `scripts/` pour tous les diagnostics disponibles

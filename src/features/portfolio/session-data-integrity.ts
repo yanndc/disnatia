@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { sendHtmlEmail } from "@/lib/email/resend-client";
 import {
-  referenceTradingSessionDay,
   referenceTradingSessionDayIso,
   isoDateInToronto,
   previousTradingDay,
@@ -11,6 +10,7 @@ import {
   ensureDailyHoldingsUpToDate,
   recomputeDailyPortfolioValues,
 } from "./backfill-market-history";
+import { findTickersHeldWithoutCloseOnSession } from "./price-gap-detection";
 import { recomputeAndPersistSessionGains } from "./performance-session-gains";
 
 export type SessionIntegrityCheck = {
@@ -28,6 +28,9 @@ export type SessionIntegrityCheck = {
     maxPriceDate: string | null;
     maxValueDate: string | null;
     maxSessionGainDate: string | null;
+    /** Titres détenus pour la séance sans aucune clôture ce jour-là. */
+    tickersWithoutCloseCount: number;
+    tickersWithoutClose: { ticker: string; currency: string }[];
   };
 };
 
@@ -46,9 +49,18 @@ export function formatSessionIntegrityForUser(check: SessionIntegrityCheck): str
     `Comptes avec titres (séance) : ${check.metrics.accountsWithHoldingsCount}`,
     `Lignes holdings (séance) : ${check.metrics.holdingsRows}`,
     `Lignes clôtures (séance) : ${check.metrics.pricesRows}`,
+    `Titres détenus sans clôture (séance) : ${check.metrics.tickersWithoutCloseCount}`,
     `Lignes valeurs jour (séance) : ${check.metrics.valuesRows}`,
     `Gains de séance persistés : ${check.metrics.sessionGainRows}`,
   ];
+  if (check.metrics.tickersWithoutCloseCount > 0) {
+    lines.push(
+      `→ ${check.metrics.tickersWithoutClose
+        .slice(0, 8)
+        .map((row) => `${row.ticker}|${row.currency}`)
+        .join(", ")}`,
+    );
+  }
   if (check.metrics.maxHoldingDate) {
     lines.push(`Dernière date holdings : ${check.metrics.maxHoldingDate}`);
   }
@@ -88,6 +100,7 @@ export async function checkSessionDataIntegrity(
     maxPriceRow,
     maxValueRow,
     maxSessionGainRow,
+    tickersWithoutClose,
   ] = await Promise.all([
     prisma.portfolioAccountState.count(),
     prisma.portfolioDailyHolding.groupBy({
@@ -128,6 +141,7 @@ export async function checkSessionDataIntegrity(
       orderBy: { sessionDate: "desc" },
       select: { sessionDate: true },
     }),
+    findTickersHeldWithoutCloseOnSession(expectedSessionDate),
   ]);
 
   const maxHoldingDate = maxHoldingRow?.holdingDate
@@ -198,6 +212,8 @@ export async function checkSessionDataIntegrity(
       maxPriceDate,
       maxValueDate,
       maxSessionGainDate,
+      tickersWithoutCloseCount: tickersWithoutClose.length,
+      tickersWithoutClose,
     },
   };
 }
