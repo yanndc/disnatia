@@ -181,6 +181,8 @@ Deux chemins dans `/imports` :
 
    **Onglet « Page Disnat (coller) »** — pour les exports qui n'ont pas de colonne compte. Dans Disnat : *Détail du compte → Vue d'ensemble → Historique*, choisir la période, puis `Ctrl+S` → « Page web, HTML seul ». On dépose (ou colle) le fichier dans l'onglet : chaque bloc de la page porte son compte (`REER (5KFZEU3)`), donc l'attribution est **exacte** sans export par compte. Les lignes de la grille sont converties en CSV par compte puis envoyées au même pipeline `POST /api/imports` (dédup et projection inchangées). Logique : [`disnat-html.ts`](src/lib/csv/disnat-html.ts), UI [`disnat-html-panel.tsx`](src/features/imports/disnat-html-panel.tsx).
 
+   URL utile (niveau client, tous les comptes) : `https://tmw.secure.vmd.ca/s9web/secure/portfolio/account?clientId=5KFZE` — retirer un éventuel `&accountId=…`. Repli si le lien ne répond pas : *Mes comptes → Vue d'ensemble → Vue d'ensemble* (`…?clientId=ALL&accountId=ALL`, onglet « Vue d'ensemble » déjà sélectionné).
+
 2. **Fichier Disnat** (onglet historique) — dépôt d'un seul fichier, preview, validation, puis `Valider et sauvegarder l'import`.
 
 Le parseur cherche des colonnes courantes comme:

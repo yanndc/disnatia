@@ -106,11 +106,36 @@ export function DisnatHtmlPanel() {
       <Card>
         <CardHeader>
           <CardTitle>Importer la page Disnat (un bloc par compte)</CardTitle>
-          <p className="mt-1 text-xs text-slate-500">
-            Dans Disnat : <strong>Détail du compte → Vue d&apos;ensemble → Historique</strong>, choisis
-            la période, puis <strong>Ctrl+S → « Page web, HTML seul »</strong>. Dépose le fichier
-            ci-dessous (ou colle son contenu). Le numéro de compte est lu dans chaque bloc, donc
-            aucune attribution à faire.
+          <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-slate-500">
+            <li>
+              Ouvre{" "}
+              <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px] text-slate-700">
+                https://tmw.secure.vmd.ca/s9web/secure/portfolio/account?clientId=5KFZE
+              </code>{" "}
+              (niveau client, tous les comptes). Si l&apos;URL contient{" "}
+              <code className="rounded bg-slate-100 px-1 text-[11px]">&amp;accountId=…</code>,
+              supprime ce paramètre.
+            </li>
+            <li>
+              Onglet <strong>Vue d&apos;ensemble → Historique</strong>, choisis la période
+              (ex. 3 mois).
+            </li>
+            <li>
+              <strong>Ctrl+S → « Page web, HTML seul »</strong>, puis dépose le fichier ci-dessous
+              (ou colle son contenu).
+            </li>
+          </ol>
+          <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-snug text-slate-500">
+            <strong>Lien qui ne fonctionne pas ?</strong> Passe par{" "}
+            <em>Mes comptes → Vue d&apos;ensemble → Vue d&apos;ensemble</em> : l&apos;onglet
+            « Vue d&apos;ensemble » est déjà sélectionné et l&apos;URL devient{" "}
+            <code className="rounded bg-white px-1 text-[11px] text-slate-700">
+              https://tmw.secure.vmd.ca/s9web/secure/portfolio/account?clientId=ALL&amp;accountId=ALL
+            </code>
+            .<br />
+            Le numéro de compte est lu dans chaque bloc (<code className="text-[11px]">REER (5KFZEU3)</code>),
+            donc aucune attribution à faire. Les comptes sans transaction sur la période sont
+            simplement ignorés (à attester avec le bouton vert).
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
