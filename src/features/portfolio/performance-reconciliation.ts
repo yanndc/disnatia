@@ -9,6 +9,7 @@ import type {
   PerformancePeriodId,
 } from "@/features/portfolio/performance-indicator-types";
 import { isoDateFromDbTimestamp } from "@/features/portfolio/daily-close-key";
+import { computeMoneyWeightedReturn } from "@/features/portfolio/performance-money-weighted";
 
 /** Périodes publiées par Disnat (onglet « Rendement de portefeuille ») → périodes de l'app. */
 export const DISNAT_PERFORMANCE_PERIODS = [
@@ -137,7 +138,35 @@ export async function loadPerformanceReconciliation(
     const periods: ReconciliationPeriodCell[] = DISNAT_PERFORMANCE_PERIODS.map((definition) => {
       let appPct: number | null = null;
       try {
-        appPct = computePeriodResult(comparisonPayload, filters, definition.appPeriod).gainPct;
+        const result = computePeriodResult(comparisonPayload, filters, definition.appPeriod);
+        const start = result.periodStart;
+        const end = result.periodEnd;
+        if (start && end) {
+          const accountKeySet = new Set(accounts.map((account) => account.accountKey));
+          // Méthode Disnat : TRI sur les mouvements monétaires datés (voir la doc dans /docs).
+          const moneyWeighted = computeMoneyWeightedReturn({
+            startIso: start,
+            startValue: clientValueAt(comparisonPayload, accountKeySet, start),
+            endIso: end,
+            endValue: result.currentCad,
+            flows: comparisonPayload.cashFlows
+              .filter(
+                (flow) =>
+                  accountKeySet.has(flow.accountKey) &&
+                  flow.tradeDate > start &&
+                  flow.tradeDate <= end &&
+                  (flow.txCategory === "CONTRIBUTION" ||
+                    flow.txCategory === "TRANSFER_IN" ||
+                    flow.txCategory === "TRANSFER_OUT"),
+              )
+              .map((flow) => ({
+                date: flow.tradeDate,
+                amount: Math.abs(flow.amountCad),
+                direction: (flow.txCategory === "TRANSFER_OUT" ? "out" : "in") as "in" | "out",
+              })),
+          });
+          appPct = moneyWeighted.gainPct;
+        }
       } catch {
         appPct = null;
       }
@@ -288,6 +317,52 @@ export function clientCodeFromAccountKey(accountKey: string): string {
 }
 
 export type ReconciliationTone = "ok" | "warning" | "error" | "unknown";
+
+/** Valeur CAD du portefeuille client à une date donnée (dernier point connu par compte). */
+function clientValueAt(
+  payload: PerformanceIndicatorPayload,
+  accountKeys: Set<string>,
+  isoDate: string,
+): number {
+  const fallbackFx = payload.usdToCad ?? 1;
+  const lastByAccount = new Map<string, { asOf: string; value: number; currency: string }>();
+
+  for (const point of payload.historyPoints) {
+    if (!accountKeys.has(point.accountKey) || point.asOf > isoDate) continue;
+    const current = lastByAccount.get(point.accountKey);
+    if (!current || point.asOf >= current.asOf) {
+      lastByAccount.set(point.accountKey, {
+        asOf: point.asOf,
+        value: point.marketValueNative ?? point.totalValueNative ?? 0,
+        currency: point.currency,
+      });
+    }
+  }
+
+  let total = 0;
+  for (const row of lastByAccount.values()) {
+    const curve = row.currency.trim().toUpperCase();
+    const fx =
+      curve === "USD" || curve === "US"
+        ? (payload.usdCadRateByDate[row.asOf] ?? fallbackFx)
+        : 1;
+    total += row.value * fx;
+  }
+
+  // Encaisse reconstruite (ledger) à la même date, déjà en CAD.
+  for (const accountKey of accountKeys) {
+    const ledger = payload.accountCashLedgers[accountKey];
+    if (!ledger || ledger.length === 0) continue;
+    let balance = 0;
+    for (const point of ledger) {
+      if (point.date > isoDate) break;
+      balance = point.balanceCad;
+    }
+    total += balance;
+  }
+
+  return total;
+}
 
 export function reconciliationTone(gapPts: number | null): ReconciliationTone {
   if (gapPts === null || !Number.isFinite(gapPts)) return "unknown";
