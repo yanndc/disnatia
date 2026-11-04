@@ -1,1 +1,0 @@
-const mwNumContenantGoogle="GTM-57Z4FG";if(isTestEnvironment())var mwEnvironnementPreviewGoogle="env-125",mwEnvironnementAuthGoogle="7H34AKW_swwqCXc4ghe8eQ";function isTestEnvironment(){return["localhost","dlpriap499.dev.desjardins.com","secure.dev.vmd.ca"].some((n=>window.location.hostname.includes(n)))}
