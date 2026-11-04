@@ -177,6 +177,11 @@ export function PerformanceReconciliationPanel({
                         <td key={cell.period} className="py-2 text-right tabular-nums">
                           <div className={cn("font-medium", TONE_CLASS[cell.tone])}>
                             {formatPct(cell.appPct)}
+                          {cell.method ? (
+                            <span className="ml-1 text-[9px] uppercase tracking-wide text-slate-400">
+                              {cell.method}
+                            </span>
+                          ) : null}
                           </div>
                           <div className="text-[10px] text-slate-400">
                             Disnat {formatPct(cell.disnatPct)}

@@ -18,10 +18,15 @@ régression dans `performance-money-weighted.test.ts`.
 
 Résultat au 30 septembre 2026 : 5KFZE **22,89 %** vs 22,80 % (0,09 pt), 5L3AP **23,57 %** vs 24,70 %.
 
+## Règle appliquée dans l'app
+- **Au-delà d'un an** (3 ans, depuis le début) : **TRI** (méthode officielle Disnat).
+- **Jusqu'à un an** (1/3/12 mois, AAD) : **TWR**, car le TRI est sensible à l'encaisse absente
+  aux bornes ; les deux méthodes coïncident quand les mouvements sont faibles.
+
 ## Écart résiduel connu
-Le TRI est calculé sur la **valeur des titres** : l'encaisse n'est pas reconstituée aux bornes
-(le ledger d'encaisse donne des soldes historiques incohérents). Écart attendu ≈ 1–2 points sur
-1/3/12 mois ; négligeable sur « depuis le début ».
+La valeur de marché aux bornes ne contient que les **titres** (l'encaisse reconstituée par le
+ledger et les snapshots d'import ne sont pas homogènes : testé, ils dégradent le TRI de plusieurs
+points). Écart attendu ≤ 2 points sur les périodes courtes ; négligeable sur « depuis le début ».
 
 # Corrections — indicateurs de performance (2026-11-03)
 

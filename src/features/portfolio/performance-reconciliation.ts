@@ -9,7 +9,10 @@ import type {
   PerformancePeriodId,
 } from "@/features/portfolio/performance-indicator-types";
 import { isoDateFromDbTimestamp } from "@/features/portfolio/daily-close-key";
-import { computeMoneyWeightedReturn } from "@/features/portfolio/performance-money-weighted";
+import {
+  computeMoneyWeightedReturn,
+  daysBetweenIso,
+} from "@/features/portfolio/performance-money-weighted";
 
 /** Périodes publiées par Disnat (onglet « Rendement de portefeuille ») → périodes de l'app. */
 export const DISNAT_PERFORMANCE_PERIODS = [
@@ -46,6 +49,8 @@ export type ReconciliationPeriodCell = {
   disnatPct: number | null;
   gapPts: number | null;
   tone: ReconciliationTone;
+  /** Méthode utilisée pour la valeur app : TRI (méthode Disnat) ou TWR (périodes courtes). */
+  method?: "tri" | "twr";
 };
 
 export type ReconciliationClient = {
@@ -137,38 +142,48 @@ export async function loadPerformanceReconciliation(
 
     const periods: ReconciliationPeriodCell[] = DISNAT_PERFORMANCE_PERIODS.map((definition) => {
       let appPct: number | null = null;
+      let appMethod: "tri" | "twr" | undefined;
       try {
         const result = computePeriodResult(comparisonPayload, filters, definition.appPeriod);
         const start = result.periodStart;
         const end = result.periodEnd;
         if (start && end) {
           const accountKeySet = new Set(accounts.map((account) => account.accountKey));
-          // Méthode Disnat : TRI sur les mouvements monétaires datés (voir la doc dans /docs).
-          const moneyWeighted = computeMoneyWeightedReturn({
-            startIso: start,
-            startValue: clientValueAt(comparisonPayload, accountKeySet, start),
-            endIso: end,
-            endValue: result.currentCad,
-            flows: comparisonPayload.cashFlows
-              .filter(
-                (flow) =>
-                  accountKeySet.has(flow.accountKey) &&
-                  flow.tradeDate > start &&
-                  flow.tradeDate <= end &&
-                  (flow.txCategory === "CONTRIBUTION" ||
-                    flow.txCategory === "TRANSFER_IN" ||
-                    flow.txCategory === "TRANSFER_OUT"),
-              )
-              .map((flow) => ({
-                date: flow.tradeDate,
-                amount: Math.abs(flow.amountCad),
-                direction: (flow.txCategory === "TRANSFER_OUT" ? "out" : "in") as "in" | "out",
-              })),
-          });
-          appPct = moneyWeighted.gainPct;
+          // Périodes courtes : le TRI est sensible à l'encaisse absente aux bornes, on garde le
+          // TWR (identique à Disnat quand les mouvements sont faibles). Au-delà d'un an, on
+          // applique la méthode officielle Disnat (TRI, cf. /docs).
+          if (daysBetweenIso(start, end) <= 366) {
+            appPct = result.gainPct;
+            appMethod = "twr";
+          } else {
+            const moneyWeighted = computeMoneyWeightedReturn({
+              startIso: start,
+              startValue: clientValueAt(comparisonPayload, accountKeySet, start),
+              endIso: end,
+              endValue: result.currentCad,
+              flows: comparisonPayload.cashFlows
+                .filter(
+                  (flow) =>
+                    accountKeySet.has(flow.accountKey) &&
+                    flow.tradeDate > start &&
+                    flow.tradeDate <= end &&
+                    (flow.txCategory === "CONTRIBUTION" ||
+                      flow.txCategory === "TRANSFER_IN" ||
+                      flow.txCategory === "TRANSFER_OUT"),
+                )
+                .map((flow) => ({
+                  date: flow.tradeDate,
+                  amount: Math.abs(flow.amountCad),
+                  direction: (flow.txCategory === "TRANSFER_OUT" ? "out" : "in") as "in" | "out",
+                })),
+            });
+            appPct = moneyWeighted.gainPct;
+            appMethod = "tri";
+          }
         }
       } catch {
         appPct = null;
+        appMethod = undefined;
       }
       const disnatPct = referenceMap.get(`${clientCode}|${definition.id}`) ?? null;
       const gapPts =
@@ -182,6 +197,7 @@ export async function loadPerformanceReconciliation(
         disnatPct,
         gapPts,
         tone: reconciliationTone(gapPts),
+        method: appMethod,
       };
     });
 
@@ -318,7 +334,12 @@ export function clientCodeFromAccountKey(accountKey: string): string {
 
 export type ReconciliationTone = "ok" | "warning" | "error" | "unknown";
 
-/** Valeur CAD du portefeuille client à une date donnée (dernier point connu par compte). */
+/** Valeur CAD du portefeuille client à une date donnée (dernier point connu par compte).
+ *
+ * On s'appuie uniquement sur la reconstruction quotidienne des titres : les snapshots d'import
+ * et le ledger d'encaisse ne sont pas homogènes d'une source à l'autre (testé : ils faussent le
+ * TRI de plusieurs points). L'encaisse manquante aux bornes est l'écart résiduel documenté.
+ */
 function clientValueAt(
   payload: PerformanceIndicatorPayload,
   accountKeys: Set<string>,
@@ -348,19 +369,6 @@ function clientValueAt(
         : 1;
     total += row.value * fx;
   }
-
-  // Encaisse reconstruite (ledger) à la même date, déjà en CAD.
-  for (const accountKey of accountKeys) {
-    const ledger = payload.accountCashLedgers[accountKey];
-    if (!ledger || ledger.length === 0) continue;
-    let balance = 0;
-    for (const point of ledger) {
-      if (point.date > isoDate) break;
-      balance = point.balanceCad;
-    }
-    total += balance;
-  }
-
   return total;
 }
 
