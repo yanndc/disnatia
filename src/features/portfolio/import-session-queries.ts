@@ -13,6 +13,7 @@ import type {
   ImportSessionHolding,
   ImportSessionPayload,
 } from "@/features/portfolio/import-session-types";
+import { sortAccountsLikeDisnat } from "@/features/portfolio/disnat-account-order";
 
 export type {
   ImportSessionAccount,
@@ -137,7 +138,9 @@ export async function buildImportSession(
   return {
     todayIso: isoDateInToronto(now),
     expectedSessionIso: expectedCoverageSessionIso(now),
-    accounts,
+    // Même ordre que l'export Disnat « Vue d'ensemble » : propriétaire (total décroissant)
+    // puis type de compte (Comptant, CRI, REER, CELI, conjoints) et devise.
+    accounts: sortAccountsLikeDisnat(accounts),
     summary: {
       ...summarizeCoverage(accounts.map((account) => account.coverage)),
       transactionCount: transactionBounds._count._all,

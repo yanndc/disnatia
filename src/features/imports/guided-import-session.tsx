@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -29,6 +29,10 @@ import type {
   ImportSessionAccount,
   ImportSessionPayload,
 } from "@/features/portfolio/import-session-types";
+import {
+  groupAccountsByOwnerLikeDisnat,
+  sortAccountsLikeDisnat,
+} from "@/features/portfolio/disnat-account-order";
 import { cn } from "@/lib/utils";
 
 type Step = "accounts" | "files" | "review" | "done";
@@ -79,8 +83,10 @@ function formatMoney(value: number): string {
 }
 
 function accountLabel(account: ImportSessionAccount): string {
-  const parts = [account.owner, account.accountType ?? account.accountName].filter(Boolean);
-  return `${parts.join(" · ") || account.accountName} (${account.currency})`;
+  const type = account.accountType ?? account.accountName;
+  const number = account.accountNumber ? ` ${account.accountNumber}` : "";
+  const owner = account.owner ? `${account.owner} · ` : "";
+  return `${owner}${type}${number} (${account.currency})`;
 }
 
 function toAttributionAccount(account: ImportSessionAccount): AttributionAccount {
@@ -185,6 +191,12 @@ export function GuidedImportSession() {
     for (const account of session?.accounts ?? []) map.set(account.accountKey, account);
     return map;
   }, [session]);
+
+  /** Comptes groupés par propriétaire, dans l'ordre de l'export Disnat. */
+  const accountGroups = useMemo(
+    () => groupAccountsByOwnerLikeDisnat(sortAccountsLikeDisnat(session?.accounts ?? [])),
+    [session],
+  );
 
   const usableFiles = queue.filter((item) => !item.error);
   const missingAccount = usableFiles.filter((item) => !item.accountKey);
@@ -524,11 +536,12 @@ export function GuidedImportSession() {
           ) : null}
 
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-xs">
+            <table className="w-full min-w-[820px] text-left text-xs">
               <thead className="text-slate-400">
                 <tr>
                   <th className="w-8 py-2" />
                   <th className="py-2 font-medium">Compte</th>
+                  <th className="py-2 font-medium">Solde</th>
                   <th className="py-2 font-medium">Dernier import</th>
                   <th className="py-2 font-medium">Dernière opération</th>
                   <th className="py-2 font-medium">Attestation</th>
@@ -536,34 +549,51 @@ export function GuidedImportSession() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {session.accounts.map((account) => {
-                  const checked = confirmSelection.includes(account.accountKey);
-                  return (
-                    <tr key={account.accountKey} className="align-top">
-                      <td className="py-2">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() =>
-                            setConfirmSelection((previous) =>
-                              checked
-                                ? previous.filter((key) => key !== account.accountKey)
-                                : [...previous, account.accountKey],
-                            )
-                          }
-                          className="size-3.5 rounded border-slate-300"
-                          aria-label={`Sélectionner ${account.accountName}`}
-                        />
-                      </td>
-                      <td className="py-2">
-                        <div className="font-medium text-slate-800">
-                          {account.accountType ?? account.accountName}
-                        </div>
-                        <div className="text-slate-400">
-                          {account.owner ?? "—"} · {account.currency} ·{" "}
-                          {formatMoney(account.totalValue)} $
+                {accountGroups.map((group) => (
+                  <Fragment key={group.owner ?? "__sans_proprietaire"}>
+                    <tr className="bg-slate-50/80">
+                      <td colSpan={7} className="px-2 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                          <span>{group.owner ?? "Sans propriétaire"}</span>
+                          <span className="font-medium normal-case tabular-nums text-slate-500">
+                            {formatMoney(group.totalValue)} $
+                          </span>
                         </div>
                       </td>
+                    </tr>
+                    {group.accounts.map((account) => {
+                      const checked = confirmSelection.includes(account.accountKey);
+                      return (
+                        <tr key={account.accountKey} className="align-top">
+                          <td className="py-2">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                setConfirmSelection((previous) =>
+                                  checked
+                                    ? previous.filter((key) => key !== account.accountKey)
+                                    : [...previous, account.accountKey],
+                                )
+                              }
+                              className="size-3.5 rounded border-slate-300"
+                              aria-label={`Sélectionner ${account.accountName}`}
+                            />
+                          </td>
+                          <td className="py-2">
+                            <div className="font-medium text-slate-800">
+                              {account.accountType ?? account.accountName}
+                            </div>
+                            <div className="font-mono text-[10px] text-slate-400">
+                              {account.accountNumber ?? account.accountKey}
+                            </div>
+                          </td>
+                          <td className="py-2 tabular-nums text-slate-600">
+                            <span className="mr-1 text-[10px] uppercase text-slate-400">
+                              {account.currency}
+                            </span>
+                            {formatMoney(account.totalValue)} $
+                          </td>
                       <td className="py-2 text-slate-600">
                         {formatIso(account.snapshotAsOf)}
                       </td>
@@ -588,9 +618,11 @@ export function GuidedImportSession() {
                           </span>
                         ) : null}
                       </td>
-                    </tr>
-                  );
-                })}
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>
