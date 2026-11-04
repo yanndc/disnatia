@@ -19,6 +19,15 @@ type AccountImportResult = {
 
 const MAX_HTML_CHARS = 8_000_000;
 
+/** Échappe une valeur pour l'insérer dans un attribut HTML (href du favori). */
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 /** Import depuis la page Disnat sauvegardée (un bloc par compte, compte lu dans le HTML). */
 export function DisnatHtmlPanel({
   bookmarkletHref,
@@ -32,6 +41,18 @@ export function DisnatHtmlPanel({
   const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState<AccountImportResult[]>([]);
+  const [copied, setCopied] = useState(false);
+
+  async function copyBookmarklet() {
+    if (!bookmarkletHref) return;
+    try {
+      await navigator.clipboard.writeText(bookmarkletHref);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copie le code du favori :", bookmarkletHref);
+    }
+  }
 
   const analyze = useCallback((html: string) => {
     setText(html);
@@ -244,20 +265,33 @@ export function DisnatHtmlPanel({
                 envoie la page à DisnatIA et l&apos;importe — sans fichier ni copier-coller.
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                <a
-                  href={bookmarkletHref}
+                {/* React neutralise les href `javascript:` : on rend l'ancre brute pour que le
+                    glisser-déposer capture bien le script. */}
+                <span
                   draggable
-                  onClick={(event) => event.preventDefault()}
                   className="inline-flex cursor-grab items-center gap-1.5 rounded-md bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                   title="Glisse ce lien dans la barre de favoris"
+                  dangerouslySetInnerHTML={{
+                    __html: `<a href="${escapeHtmlAttr(bookmarkletHref)}" style="color:inherit;text-decoration:none">Envoyer à DisnatIA</a>`,
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() => void copyBookmarklet()}
+                  className="h-9 gap-1.5 text-xs"
                 >
-                  <Upload className="size-3.5" />
-                  Envoyer à DisnatIA
-                </a>
+                  <ClipboardPaste className="size-3.5" />
+                  {copied ? "Copié" : "Copier le code"}
+                </Button>
                 <span className="text-[11px] text-slate-500">
-                  Glisse-le dans ta barre de favoris (ou clic droit → « Ajouter aux favoris »).
+                  Glisse le bouton noir dans ta barre de favoris.
                 </span>
               </div>
+              <p className="text-[11px] text-slate-500">
+                Si le glisser ne marche pas : « Copier le code », puis <kbd>Ctrl+D</kbd> →{" "}
+                <em>Modifier</em> → dans l&apos;URL du favori, tape <code>java</code> puis colle le
+                reste (Chrome supprime <code>javascript:</code> au collage).
+              </p>
               <ol className="list-decimal space-y-1 pl-4 text-[11px] text-slate-500">
                 <li>Disnat → Mes comptes → Historique (la période voulue), puis clique le favori.</li>
                 <li>DisnatIA importe chaque compte et affiche le récapitulatif dans une alerte.</li>
