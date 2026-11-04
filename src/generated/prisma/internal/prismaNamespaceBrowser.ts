@@ -83,6 +83,7 @@ export const ModelName = {
   NewsItem: 'NewsItem',
   NewsItemTicker: 'NewsItemTicker',
   NewsIngestionRun: 'NewsIngestionRun',
+  DisnatPerformanceReference: 'DisnatPerformanceReference',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -610,6 +611,20 @@ export const NewsIngestionRunScalarFieldEnum = {
 } as const
 
 export type NewsIngestionRunScalarFieldEnum = (typeof NewsIngestionRunScalarFieldEnum)[keyof typeof NewsIngestionRunScalarFieldEnum]
+
+
+export const DisnatPerformanceReferenceScalarFieldEnum = {
+  id: 'id',
+  clientCode: 'clientCode',
+  period: 'period',
+  valuePct: 'valuePct',
+  referenceDate: 'referenceDate',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DisnatPerformanceReferenceScalarFieldEnum = (typeof DisnatPerformanceReferenceScalarFieldEnum)[keyof typeof DisnatPerformanceReferenceScalarFieldEnum]
 
 
 export const EodReportDeliveryScalarFieldEnum = {

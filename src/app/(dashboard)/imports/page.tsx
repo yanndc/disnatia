@@ -7,6 +7,7 @@ import { listNonFinancialAssetsWithLatest } from "@/features/portfolio/non-finan
 import { getImportHistory } from "@/features/portfolio/queries";
 import { getNewsSourcesWithStats } from "@/features/news/queries";
 import { ensureNewsSourcesSeeded } from "@/features/news/news-sources";
+import { loadPerformanceReconciliation } from "@/features/portfolio/performance-reconciliation";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,8 @@ export default async function ImportsPage({
     params.tab === "reconciliation" ||
     params.tab === "followup" ||
     params.tab === "news" ||
-    params.tab === "html"
+    params.tab === "html" ||
+    params.tab === "returns"
       ? params.tab
       : undefined;
   const [imports, externalRaw, nonFinancialRaw, reconciliationPayload, newsSources] =
@@ -38,6 +40,11 @@ export default async function ImportsPage({
         .then(() => getNewsSourcesWithStats())
         .catch(() => []),
     ]);
+
+  // Réutilise le payload de performance déjà chargé (aucun recalcul supplémentaire).
+  const performanceReconciliation = reconciliationPayload
+    ? await loadPerformanceReconciliation({ payload: reconciliationPayload }).catch(() => null)
+    : null;
 
   const initialExternalAccounts: ExternalAccountDto[] = externalRaw.map((a) => ({
     id: a.id,
@@ -84,6 +91,7 @@ export default async function ImportsPage({
       initialExternalAccounts={initialExternalAccounts}
       initialNonFinancialAssets={initialNonFinancialAssets}
       initialNewsSources={newsSources}
+      initialPerformanceReconciliation={performanceReconciliation}
       initialImports={imports.map((item) => ({
         id: item.id,
         sourceFileName: item.sourceFileName,

@@ -235,6 +235,12 @@ Flux RSS/Atom ingérés en base, **rattachés aux titres réellement détenus** 
 
 Les flux du registre (`news-sources.ts`) sont recréés au seed s'ils manquent : on les **désactive** plutôt que de les supprimer. Les flux ajoutés à la main sont supprimables.
 
+## Réconciliation Disnat (états et rendements)
+
+- **Vue d'ensemble** : carte « Écart vs Disnat » — valeur live reconstruite (titres + encaisse) comparée au total du dernier fichier Disnat, avec les comptes qui divergent le plus.
+- **Administration → Rendement vs Disnat** : on colle le tableau *Rendement de portefeuille → Rendement par client* (`5KFZE;1,47;1,19;19,99;25,97;15,84;22,80`) avec sa date de référence. L'app recalcule ses TWR **à cette date** et affiche l'écart en points par période (≤ 0,5 pt = OK, ≤ 2 pt = avertissement).
+- Table : `disnat_performance_references` (`clientCode` = préfixe du numéro de compte, ex. `5KFZE`). API : `GET|POST|DELETE /api/performance/references`.
+
 ## Limites connues V1
 
 - Pas de comptes utilisateurs multi-tenant ; verrouillage site optionnel via `SITE_ACCESS_PASSWORD` uniquement.

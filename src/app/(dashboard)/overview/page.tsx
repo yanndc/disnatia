@@ -12,6 +12,7 @@ import {
 import type { PerformancePeriodResult } from "@/features/portfolio/performance-indicator-types";
 import { MarketIndicesTicker } from "@/features/market/market-indices-ticker";
 import { PortfolioNewsHighlights } from "@/features/news/portfolio-news-highlights";
+import { DisnatDriftCard } from "@/features/portfolio/disnat-drift-card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { OverviewFilteredSections } from "./overview-filtered-sections";
 
@@ -127,6 +128,7 @@ export default async function OverviewPage() {
     <div className="space-y-8">
       <MarketIndicesTicker />
       <PortfolioNewsHighlights />
+      <DisnatDriftCard />
 
       <section className="overflow-hidden rounded-4xl border border-slate-200 bg-white text-slate-950 shadow-sm">
         <div className="relative isolate p-6 sm:p-8">

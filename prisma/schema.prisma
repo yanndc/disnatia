@@ -751,6 +751,26 @@ model NewsIngestionRun {
   @@map("news_ingestion_runs")
 }
 
+/// Référence de rendement publiée par Disnat (onglet « Rendement de portefeuille »),
+/// par client et par période — sert à mesurer l'écart avec les TWR calculés par l'app.
+model DisnatPerformanceReference {
+  id            String   @id @default(cuid())
+  /// Code client Disnat (préfixe des numéros de compte, ex. `5KFZE`, `5L3AP`).
+  clientCode    String
+  /// MONTH | MONTH3 | YEAR | YEAR3 | YTD | ALL
+  period        String
+  valuePct      Float
+  /// Date de référence affichée par Disnat (« Au 30 septembre 2026 »).
+  referenceDate DateTime @db.Date
+  source        String   @default("MANUAL")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([clientCode, period, referenceDate])
+  @@index([referenceDate])
+  @@map("disnat_performance_references")
+}
+
 /// Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
 model EodReportDelivery {
   sessionDate String   @id

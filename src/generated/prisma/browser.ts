@@ -206,6 +206,12 @@ export type NewsItemTicker = Prisma.NewsItemTickerModel
  */
 export type NewsIngestionRun = Prisma.NewsIngestionRunModel
 /**
+ * Model DisnatPerformanceReference
+ * Référence de rendement publiée par Disnat (onglet « Rendement de portefeuille »),
+ * par client et par période — sert à mesurer l'écart avec les TWR calculés par l'app.
+ */
+export type DisnatPerformanceReference = Prisma.DisnatPerformanceReferenceModel
+/**
  * Model EodReportDelivery
  * Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
  */

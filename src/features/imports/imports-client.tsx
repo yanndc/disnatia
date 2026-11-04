@@ -26,6 +26,8 @@ import {
 import { NewsSourcesPanel } from "@/features/news/news-sources-panel";
 import type { NewsSourceRow } from "@/features/news/queries";
 import { DisnatHtmlPanel } from "@/features/imports/disnat-html-panel";
+import { PerformanceReconciliationPanel } from "@/features/portfolio/performance-reconciliation-panel";
+import type { PerformanceReconciliationPayload } from "@/features/portfolio/performance-reconciliation";
 import { GuidedImportSession } from "@/features/imports/guided-import-session";
 import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
 import type { PerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-types";
@@ -56,6 +58,7 @@ type ImportsTab =
   | "reconciliation"
   | "followup"
   | "html"
+  | "returns"
   | "news";
 
 /** Plage d’années civiles couverte par les dates d’opération du fichier (min / max). L’horodatage d’import est affiché à part, sans répéter son année ici. */
@@ -81,6 +84,7 @@ export function ImportsClient({
   initialExternalAccounts,
   initialNonFinancialAssets,
   initialNewsSources,
+  initialPerformanceReconciliation,
 }: {
   initialTab?: ImportsTab;
   initialReconciliationPayload: PerformanceIndicatorPayload | null;
@@ -101,6 +105,7 @@ export function ImportsClient({
   initialExternalAccounts: ExternalAccountDto[];
   initialNonFinancialAssets: NonFinancialAssetDto[];
   initialNewsSources: NewsSourceRow[];
+  initialPerformanceReconciliation: PerformanceReconciliationPayload | null;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ParsedDisnatRow[]>([]);
@@ -411,6 +416,7 @@ export function ImportsClient({
             { id: "reconciliation" as const, label: "Réconciliation" },
             { id: "followup" as const, label: "Historique et recalcul" },
             { id: "html" as const, label: "Page Disnat (coller)" },
+            { id: "returns" as const, label: "Rendement vs Disnat" },
             { id: "news" as const, label: "Nouvelles" },
           ] as const
         ).map((t) => (
@@ -443,6 +449,16 @@ export function ImportsClient({
       {tab === "news" ? <NewsSourcesPanel initialSources={initialNewsSources} /> : null}
 
       {tab === "html" ? <DisnatHtmlPanel /> : null}
+
+      {tab === "returns" ? (
+        initialPerformanceReconciliation ? (
+          <PerformanceReconciliationPanel initial={initialPerformanceReconciliation} />
+        ) : (
+          <p className="text-sm text-slate-500">
+            Réconciliation indisponible : aucune donnée de performance chargée.
+          </p>
+        )
+      ) : null}
 
       {tab === "disnat" ? (
         <>

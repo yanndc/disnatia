@@ -105,6 +105,7 @@ function hasExpectedDelegates(client: PrismaClient): boolean {
     portfolioImport?: { findMany?: unknown };
     newsItem?: { findMany?: unknown; count?: unknown };
     newsSource?: { findMany?: unknown };
+    disnatPerformanceReference?: { findMany?: unknown };
   };
   return (
     typeof c.usdCadDailyRate?.findFirst === "function" &&
@@ -112,7 +113,8 @@ function hasExpectedDelegates(client: PrismaClient): boolean {
     typeof c.chatMessage?.findMany === "function" &&
     typeof c.portfolioImport?.findMany === "function" &&
     typeof c.newsItem?.findMany === "function" &&
-    typeof c.newsSource?.findMany === "function"
+    typeof c.newsSource?.findMany === "function" &&
+    typeof c.disnatPerformanceReference?.findMany === "function"
   );
 }
 
