@@ -25,6 +25,7 @@ import {
 } from "@/features/imports/non-financial-assets-panel";
 import { NewsSourcesPanel } from "@/features/news/news-sources-panel";
 import type { NewsSourceRow } from "@/features/news/queries";
+import { DisnatHtmlPanel } from "@/features/imports/disnat-html-panel";
 import { GuidedImportSession } from "@/features/imports/guided-import-session";
 import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
 import type { PerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-types";
@@ -54,6 +55,7 @@ type ImportsTab =
   | "disnat"
   | "reconciliation"
   | "followup"
+  | "html"
   | "news";
 
 /** Plage d’années civiles couverte par les dates d’opération du fichier (min / max). L’horodatage d’import est affiché à part, sans répéter son année ici. */
@@ -408,6 +410,7 @@ export function ImportsClient({
             { id: "disnat" as const, label: "Fichier Disnat" },
             { id: "reconciliation" as const, label: "Réconciliation" },
             { id: "followup" as const, label: "Historique et recalcul" },
+            { id: "html" as const, label: "Page Disnat (coller)" },
             { id: "news" as const, label: "Nouvelles" },
           ] as const
         ).map((t) => (
@@ -438,6 +441,8 @@ export function ImportsClient({
       ) : null}
 
       {tab === "news" ? <NewsSourcesPanel initialSources={initialNewsSources} /> : null}
+
+      {tab === "html" ? <DisnatHtmlPanel /> : null}
 
       {tab === "disnat" ? (
         <>

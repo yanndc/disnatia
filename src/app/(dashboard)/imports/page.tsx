@@ -23,7 +23,8 @@ export default async function ImportsPage({
     params.tab === "disnat" ||
     params.tab === "reconciliation" ||
     params.tab === "followup" ||
-    params.tab === "news"
+    params.tab === "news" ||
+    params.tab === "html"
       ? params.tab
       : undefined;
   const [imports, externalRaw, nonFinancialRaw, reconciliationPayload, newsSources] =
