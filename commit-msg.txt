@@ -1,8 +1,0 @@
-feat: réconciliation Disnat des états et des rendements
-
-- Carte « Écart vs Disnat » sur la vue d'ensemble : valeur live reconstruite (titres + encaisse)
-  comparée au total du dernier fichier Disnat, avec les comptes qui divergent le plus et un lien
-  vers le détail.
-- Onglet « Rendement vs Disnat » : on colle le tableau « Rendement par client » avec sa date de
-  référence ; l'app recalcule ses TWR à cette date et affiche l'écart en points par période
-  (seuils 0,5 pt / 2 pt). Table disnat_performance_references, API /api/performance/references.

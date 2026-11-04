@@ -34,6 +34,9 @@ yarn-error.log*
 .pnpm-debug.log*
 *.log
 
+# fichier temporaire de message de commit
+commit-msg.txt
+
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
