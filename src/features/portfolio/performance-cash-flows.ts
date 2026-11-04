@@ -109,7 +109,15 @@ export function buildPerformanceCashFlowsFromTxRows(
     if (!FLOW_CATEGORIES.has(tx.txCategory as PerformanceCashFlow["txCategory"])) {
       continue;
     }
-    const effective = resolveFlowEffectiveDate(tx.tradeDate, tx.settlementDate);
+    // Disnat date les transferts (dont cotisations et conversions) à la **date de règlement**
+    // (T+1, note en bas de leur page) ; les autres flux gardent la date d'opération.
+    const isTransfer =
+      tx.txCategory === "CONTRIBUTION" ||
+      tx.txCategory === "TRANSFER_IN" ||
+      tx.txCategory === "TRANSFER_OUT";
+    const effective = isTransfer
+      ? (tx.settlementDate ?? tx.tradeDate ?? null)
+      : resolveFlowEffectiveDate(tx.tradeDate, tx.settlementDate);
     if (!effective) continue;
     const amount = tx.amount;
     if (amount === null || !Number.isFinite(amount) || Math.abs(amount) < 0.01) {

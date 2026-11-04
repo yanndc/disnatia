@@ -1,0 +1,72 @@
+let ConsentementDynatrace = {
+
+    listeCookiesDynatrace: ["dtCookie", "dtPC", "dtSa", "dtLatC", "dtDisable", "rxVisitor", "rxvt", "rxvisitid"],
+  
+    initialiser: function() {
+      if(document.readyState === "complete") {
+        ConsentementDynatrace.attendreOneTrust();
+      } else {
+        window.addEventListener("load", () => {
+          ConsentementDynatrace.attendreOneTrust();
+        });
+      }
+    },
+  
+    attendreOneTrust: function () {
+      if(!ConsentementDynatrace.oneTrustCharge()) {
+        let essais = 0;
+        const interval = setInterval(function () {
+          if(ConsentementDynatrace.oneTrustCharge() || essais > 100) {
+            clearInterval(interval);
+          }
+          essais++;
+        }, 100);
+      }
+    },
+  
+    oneTrustCharge: function () {
+      if(typeof window.OnetrustActiveGroups === 'string' && typeof(window.OneTrust) === 'object') {
+        ConsentementDynatrace.dynatraceOnConsentChanged();
+        ConsentementDynatrace.ajusterConsentementDynatraceRum();
+          return true;
+      }
+      return false;
+    },
+  
+    dynatraceOnConsentChanged: function() {
+      window.OneTrust.OnConsentChanged(function() {
+        ConsentementDynatrace.ajusterConsentementDynatraceRum();
+      })
+    },
+  
+    ajusterConsentementDynatraceRum: function() {
+      if(window.dtrum) {
+        ConsentementDynatrace.ajusterDtrum();
+      } else {
+        if(!ConsentementDynatrace.verifierConsentementPerformance()) {
+          ConsentementDynatrace.supprimerCookies(ConsentementDynatrace.listeCookiesDynatrace);
+        }
+      }
+    },
+  
+    ajusterDtrum: function () {
+      if(ConsentementDynatrace.verifierConsentementPerformance()) {
+        window.dtrum.enable();
+      } else {
+        window.dtrum.disable();
+      }
+    },
+  
+    supprimerCookies: function(listeCookies) {
+      listeCookies.forEach((cookie) => {
+        document.cookie = cookie + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        sessionStorage.removeItem(cookie);
+      });
+    },
+  
+    verifierConsentementPerformance: function() {
+      return window.OnetrustActiveGroups.includes('C0002');
+    }
+  };
+  
+  ConsentementDynatrace.initialiser();

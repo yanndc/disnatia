@@ -23,10 +23,17 @@ Résultat au 30 septembre 2026 : 5KFZE **22,89 %** vs 22,80 % (0,09 pt), 5L3AP *
 - **Jusqu'à un an** (1/3/12 mois, AAD) : **TWR**, car le TRI est sensible à l'encaisse absente
   aux bornes ; les deux méthodes coïncident quand les mouvements sont faibles.
 
+## Validation sur l'état de compte officiel (30 septembre 2026)
+Comparaison de la reconstruction (titres) aux états `docs/5KFZE_ETATCOMPTE_2026-09-30.pdf` :
+**174 219,54 $ reconstruits vs 174 176,01 $ officiels → +0,02 %** (écarts par compte ≤ 0,21 %).
+La valeur de fin utilisée pour le TRI est désormais celle **à la date de fin** (et non la
+valorisation live, qui surestimait de ~1,5 %).
+
 ## Écart résiduel connu
-La valeur de marché aux bornes ne contient que les **titres** (l'encaisse reconstituée par le
-ledger et les snapshots d'import ne sont pas homogènes : testé, ils dégradent le TRI de plusieurs
-points). Écart attendu ≤ 2 points sur les périodes courtes ; négligeable sur « depuis le début ».
+Il reste **l'encaisse** : 808 $ officiels côté 5KFZE (0,46 % de la valeur) absents de la
+reconstruction → décalage d'environ 0,5 pt sur les longues périodes et 1–2 pt sur 1/3/12 mois.
+Deux options : saisir l'encaisse mensuelle des relevés (12 points/an, exact) ou accepter la
+tolérance affichée.
 
 # Corrections — indicateurs de performance (2026-11-03)
 

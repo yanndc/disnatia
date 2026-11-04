@@ -1,0 +1,65 @@
+let cookieDesjardins = {
+    includeScript: function () {
+        const jsFileUrl = document.currentScript.src;
+        const url = new URL(jsFileUrl);
+        const domain = url.origin;
+        
+        //Getting OT ID
+        const scripts = document.getElementsByTagName("script");
+        let info = '';
+        let langueCookie = '';
+        let scriptConsentement = document.getElementById('consentementCookiesScript');
+        
+        let cspNonceElement = null;
+        
+        if (scriptConsentement === null) {
+            info = scripts[scripts.length - 1].getAttribute("data-domain-script");
+            langueCookie = scripts[scripts.length - 1].getAttribute("data-document-language");
+            cspNonceElement = document.querySelector('[nonce]');
+        } else {
+            info = scriptConsentement.getAttribute("data-domain-script");
+            langueCookie = scriptConsentement.getAttribute("data-document-language");
+            cspNonceElement = (scriptConsentement.getAttribute('nonce'))? scriptConsentement : document.querySelector('[nonce]');
+        }
+
+        let insref = scripts[0];
+
+        //CrossDomain: Getting the consent passed by the URL
+        let fileref = document.createElement('script');
+        fileref.setAttribute("type", "text/javascript");
+        fileref.setAttribute("src", domain + "/fw/cookie/cookieGetParamConsent.js");
+        fileref.setAttribute("charset", "UTF-8");
+        if(cspNonceElement) fileref.setAttribute('nonce', cspNonceElement.nonce || cspNonceElement.getAttribute('nonce'));
+        insref.parentNode.insertBefore(fileref, insref);
+
+        //Importing OT script
+        fileref = document.createElement('script');
+        fileref.setAttribute("type", "text/javascript");
+        fileref.setAttribute("src", "https://cdn.cookielaw.org/scripttemplates/otSDKStub.js");
+        fileref.setAttribute("charset", "UTF-8");
+        fileref.setAttribute("data-domain-script", info);
+        fileref.setAttribute("data-document-language", "true");
+        if(cspNonceElement) fileref.setAttribute('nonce', cspNonceElement.nonce || cspNonceElement.getAttribute('nonce'));
+        if (langueCookie !== undefined && langueCookie !== null) {
+            fileref.setAttribute("data-document-language", langueCookie);
+        }
+        insref.parentNode.insertBefore(fileref, insref);
+
+        fileref = document.createElement('script');
+        fileref.setAttribute("type", "text/javascript");
+        fileref.setAttribute("src", domain + "/fw/cookie/cookieOptanonWrapper.js");
+        fileref.setAttribute("charset", "UTF-8");
+        if(cspNonceElement) fileref.setAttribute('nonce', cspNonceElement.nonce || cspNonceElement.getAttribute('nonce'));
+        insref.parentNode.insertBefore(fileref, insref);
+
+        //CrossDomain: Setting the consent
+        fileref = document.createElement('script');
+        fileref.setAttribute("type", "text/javascript");
+        fileref.setAttribute("src", domain + "/fw/cookie/cookieSetParamConsent.js");
+        fileref.setAttribute("charset", "UTF-8");
+        if(cspNonceElement) fileref.setAttribute('nonce', cspNonceElement.nonce || cspNonceElement.getAttribute('nonce'));
+        insref.parentNode.insertBefore(fileref, insref);
+    }
+}
+
+cookieDesjardins.includeScript();

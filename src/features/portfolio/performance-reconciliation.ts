@@ -160,7 +160,10 @@ export async function loadPerformanceReconciliation(
               startIso: start,
               startValue: clientValueAt(comparisonPayload, accountKeySet, start),
               endIso: end,
-              endValue: result.currentCad,
+              // Valeur **à la date de fin** (reconstruction), pas la valorisation live :
+              // l'écart mesuré sur l'état de compte officiel est de 0,02 % avec cette source,
+              // contre ~1,5 % avec `currentCad` (cours du jour).
+              endValue: clientValueAt(comparisonPayload, accountKeySet, end),
               flows: comparisonPayload.cashFlows
                 .filter(
                   (flow) =>

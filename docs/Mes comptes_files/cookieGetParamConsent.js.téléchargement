@@ -1,0 +1,80 @@
+let cookieDesjardinsGetParamConsent = {
+    getExternalConsent: function() {
+        
+        let url = document.URL;
+        let queryParams = this.getQueryParams(window.location.search);
+        const paramList = ["USPrivacy", "addtlString", "tcString","consentedDate", "groups", "consentSign"];
+        
+        const timeLimit = Number(atob(queryParams.get("consentSign"))) + 30000;
+
+        this.cleanUpUrl(url, paramList);
+
+        if(this.isConsentMissingAndTimeLimitRespected(timeLimit)) {
+            this.overrideConsent(paramList, queryParams);
+        }
+    },
+
+    overrideConsent: function(params, queryParams) {
+        window.OTExternalConsent = {};
+        params.forEach(param => {
+            window.OTExternalConsent[param] = queryParams.get(param)
+        });
+    },
+
+    cleanUpUrl: function(url, params) {
+        params.forEach(param => {
+            url = this.removeURLParameter(url, param)
+        });
+        window.history.replaceState({}, document.title, url);
+    },
+
+    isConsentMissingAndTimeLimitRespected: function(timeLimit) {
+        // On utilise le OptanonAlertBoxClosed plutôt que OptanonConsent, car OptanonConsent peut être créé sans avoir fait de choix
+        let oneTrustCookieName = "OptanonAlertBoxClosed";
+        return !this.getCookie(oneTrustCookieName) && Date.now() <= timeLimit;
+    },
+
+    removeURLParameter: function(url, parameter) {
+        // Source: https://stackoverflow.com/questions/1634748/how-can-i-delete-a-query-string-parameter-in-javascript
+        let urlparts = url.split('?');
+        if (urlparts.length >= 2) {
+            let prefix = encodeURIComponent(parameter) + '=';
+            let pars = urlparts[1].split(/[&;]/g);
+            for (let i = pars.length; i-- > 0;) {
+                if (pars[i].lastIndexOf(prefix, 0) !== -1) {
+                    pars.splice(i, 1);
+                }
+            }
+            return urlparts[0] + (pars.length > 0 ? '?' + pars.join('&') : '');
+        }
+        return url;
+    },
+
+    getCookie: function(name) {
+        let value = "; " + document.cookie;
+        let parts = value.split("; " + name + "=");
+        if (parts.length >= 2) {
+            return parts.pop().split(";").shift()
+        }
+    },
+
+    getQueryParams: function(urlQueryString) {
+        let urlQueryParams = "";
+        const mapObj = {
+            addtlstring: "addtlString",
+            tcstring: "tcString",
+            consenteddate: "consentedDate",
+            consentsign: "consentSign",
+            usprivacy: "USPrivacy",
+            groups: "groups"
+        };
+        //Dans le cas où certains middleware change les parametres en snake_case ou lowercase
+        urlQueryString = urlQueryString.replace(/_/g, "");
+        urlQueryParams = urlQueryString.replace(/groups|usprivacy|addtlstring|tcstring|consenteddate|consentsign/gi, function(matched){
+            return mapObj[matched.toLowerCase()];
+        });
+        return new URLSearchParams(urlQueryParams);
+    }
+
+}
+cookieDesjardinsGetParamConsent.getExternalConsent();
