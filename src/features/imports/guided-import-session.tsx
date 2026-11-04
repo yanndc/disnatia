@@ -128,8 +128,7 @@ export function GuidedImportSession() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("accounts");
-  const [confirmSelection, setConfirmSelection] = useState<string[]>([]);
-  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmingKey, setConfirmingKey] = useState<string | null>(null);
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [parseBusy, setParseBusy] = useState(false);
@@ -138,11 +137,6 @@ export function GuidedImportSession() {
 
   const applySession = useCallback((payload: ImportSessionPayload) => {
     setSession(payload);
-    setConfirmSelection(
-      payload.accounts
-        .filter((account) => account.coverage.requiresConfirmation)
-        .map((account) => account.accountKey),
-    );
   }, []);
 
   const loadSession = useCallback(async () => {
@@ -202,32 +196,17 @@ export function GuidedImportSession() {
   const missingAccount = usableFiles.filter((item) => !item.accountKey);
   const canImport = usableFiles.length > 0 && missingAccount.length === 0 && !importBusy;
 
-  /** Sélectionne tous les comptes affichés (pour attester en une fois). */
-  function selectAllAccounts() {
+  /** Atteste « rien n'a changé » pour un seul compte (aucun montant n'est écrit). */
+  async function confirmAccount(accountKey: string) {
     if (!session) return;
-    setConfirmSelection(session.accounts.map((account) => account.accountKey));
-  }
-
-  /** Ne garde que les comptes en attente de confirmation (sélection d'origine). */
-  function selectAccountsToConfirm() {
-    if (!session) return;
-    setConfirmSelection(
-      session.accounts
-        .filter((account) => account.coverage.requiresConfirmation)
-        .map((account) => account.accountKey),
-    );
-  }
-
-  async function confirmAccounts() {
-    if (!session || confirmSelection.length === 0) return;
-    setConfirmBusy(true);
+    setConfirmingKey(accountKey);
     setConfirmMessage(null);
     try {
       const response = await fetch("/api/portfolio/import-session/confirmations", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          accountKeys: confirmSelection,
+          accountKeys: [accountKey],
           dataAsOf: session.expectedSessionIso,
           note: "Confirmation depuis la session guidée : aucune transaction sur la période.",
         }),
@@ -242,14 +221,14 @@ export function GuidedImportSession() {
         return;
       }
       setConfirmMessage(
-        `${payload.confirmations?.length ?? confirmSelection.length} compte(s) attesté(s) comme inchangés jusqu'au ${formatIso(payload.dataAsOf ?? session.expectedSessionIso)}.`,
+        `Compte attesté comme inchangé jusqu'au ${formatIso(payload.dataAsOf ?? session.expectedSessionIso)}.`,
       );
       await loadSession();
       router.refresh();
     } catch {
       setConfirmMessage("Erreur réseau lors de la confirmation.");
     } finally {
-      setConfirmBusy(false);
+      setConfirmingKey(null);
     }
   }
 
@@ -523,19 +502,6 @@ export function GuidedImportSession() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => void confirmAccounts()}
-                disabled={confirmBusy || confirmSelection.length === 0}
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
-              >
-                {confirmBusy ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="size-3.5" />
-                )}
-                Attester « rien n&apos;a changé » ({confirmSelection.length})
-              </button>
-              <button
-                type="button"
                 onClick={() => setStep("files")}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
               >
@@ -551,43 +517,15 @@ export function GuidedImportSession() {
             </p>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={selectAllAccounts}
-                className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Tout sélectionner
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmSelection([])}
-                disabled={confirmSelection.length === 0}
-                className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-              >
-                Tout désélectionner
-              </button>
-              <button
-                type="button"
-                onClick={selectAccountsToConfirm}
-                className="rounded-md px-2.5 py-1.5 text-[11px] font-medium text-slate-500 hover:bg-slate-100"
-              >
-                À confirmer seulement ({session.summary.toConfirm})
-              </button>
-            </div>
-            <p className="max-w-md text-[11px] leading-snug text-slate-400">
-              La sélection ne sert qu&apos;à l&apos;attestation « rien n&apos;a changé » : elle
-              n&apos;écrit aucun montant et ne change ni l&apos;attribution des fichiers ni les
-              soldes.
-            </p>
+          <div className="mt-1 text-[11px] text-slate-400">
+            Un compte dormant (aucune opération) : clique « Rien n&apos;a changé » sur sa ligne.
+            Aucun montant n&apos;est écrit.
           </div>
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-xs">
               <thead className="text-slate-400">
                 <tr>
-                  <th className="w-8 py-2" />
                   <th className="py-2 font-medium">Compte</th>
                   <th className="py-2 font-medium">Solde</th>
                   <th className="py-2 font-medium">Dernier import</th>
@@ -600,7 +538,7 @@ export function GuidedImportSession() {
                 {accountGroups.map((group) => (
                   <Fragment key={group.owner ?? "__sans_proprietaire"}>
                     <tr className="bg-slate-50/80">
-                      <td colSpan={7} className="px-2 py-2">
+                      <td colSpan={6} className="px-2 py-2">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                           <span>{group.owner ?? "Sans propriétaire"}</span>
                           <span className="font-medium normal-case tabular-nums text-slate-500">
@@ -610,24 +548,8 @@ export function GuidedImportSession() {
                       </td>
                     </tr>
                     {group.accounts.map((account) => {
-                      const checked = confirmSelection.includes(account.accountKey);
                       return (
                         <tr key={account.accountKey} className="align-top">
-                          <td className="py-2">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() =>
-                                setConfirmSelection((previous) =>
-                                  checked
-                                    ? previous.filter((key) => key !== account.accountKey)
-                                    : [...previous, account.accountKey],
-                                )
-                              }
-                              className="size-3.5 rounded border-slate-300"
-                              aria-label={`Sélectionner ${account.accountName}`}
-                            />
-                          </td>
                           <td className="py-2">
                             <div className="font-medium text-slate-800">
                               {account.accountType ?? account.accountName}
@@ -665,6 +587,27 @@ export function GuidedImportSession() {
                             {account.coverage.staleTradingDays} séance(s)
                           </span>
                         ) : null}
+                        <div className="mt-1">
+                          <button
+                            type="button"
+                            onClick={() => void confirmAccount(account.accountKey)}
+                            disabled={confirmingKey === account.accountKey}
+                            title="Attester qu'aucune transaction n'a eu lieu sur ce compte (aucun montant n'est écrit)"
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-50",
+                              account.coverage.requiresConfirmation
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                            )}
+                          >
+                            {confirmingKey === account.accountKey ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="size-3" />
+                            )}
+                            Rien n&apos;a changé
+                          </button>
+                        </div>
                       </td>
                         </tr>
                       );
