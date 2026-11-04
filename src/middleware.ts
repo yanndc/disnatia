@@ -14,6 +14,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/site-lock") ||
     pathname.startsWith("/api/site-access") ||
     pathname.startsWith("/api/cron/") ||
+    // Favori « Envoyer à DisnatIA » : protégé par DISNAT_IMPORT_TOKEN (appel cross-origin).
+    pathname.startsWith("/api/portfolio/import-session/page") ||
     pathname === "/sw.js" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/~offline"
