@@ -20,7 +20,11 @@ type AccountImportResult = {
 const MAX_HTML_CHARS = 8_000_000;
 
 /** Import depuis la page Disnat sauvegardée (un bloc par compte, compte lu dans le HTML). */
-export function DisnatHtmlPanel() {
+export function DisnatHtmlPanel({
+  bookmarkletHref,
+}: {
+  bookmarkletHref: string | null;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -225,6 +229,51 @@ export function DisnatHtmlPanel() {
           {parsed && !parsed.ok && parsed.error ? (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{parsed.error}</p>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Favori : « Envoyer à DisnatIA »</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs text-slate-600">
+          {bookmarkletHref ? (
+            <>
+              <p>
+                Sur la page Disnat (onglet <strong>Historique</strong>), un clic sur le favori
+                envoie la page à DisnatIA et l&apos;importe — sans fichier ni copier-coller.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={bookmarkletHref}
+                  draggable
+                  onClick={(event) => event.preventDefault()}
+                  className="inline-flex cursor-grab items-center gap-1.5 rounded-md bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                  title="Glisse ce lien dans la barre de favoris"
+                >
+                  <Upload className="size-3.5" />
+                  Envoyer à DisnatIA
+                </a>
+                <span className="text-[11px] text-slate-500">
+                  Glisse-le dans ta barre de favoris (ou clic droit → « Ajouter aux favoris »).
+                </span>
+              </div>
+              <ol className="list-decimal space-y-1 pl-4 text-[11px] text-slate-500">
+                <li>Disnat → Mes comptes → Historique (la période voulue), puis clique le favori.</li>
+                <li>DisnatIA importe chaque compte et affiche le récapitulatif dans une alerte.</li>
+              </ol>
+              <p className="text-[11px] text-slate-400">
+                Le jeton d&apos;import est intégré au lien : l&apos;app est mono-utilisateur derrière
+                le verrou de site. Aucun identifiant Disnat n&apos;est stocké ni transmis.
+              </p>
+            </>
+          ) : (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+              Favori désactivé : ajoute <code>DISNAT_IMPORT_TOKEN</code> dans les variables
+              d&apos;environnement (et <code>NEXT_PUBLIC_APP_URL</code> en production), puis
+              redéploie.
+            </p>
+          )}
         </CardContent>
       </Card>
 

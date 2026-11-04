@@ -8,6 +8,7 @@ import { getImportHistory } from "@/features/portfolio/queries";
 import { getNewsSourcesWithStats } from "@/features/news/queries";
 import { ensureNewsSourcesSeeded } from "@/features/news/news-sources";
 import { loadPerformanceReconciliation } from "@/features/portfolio/performance-reconciliation";
+import { buildDisnatBookmarklet } from "@/features/imports/disnat-bookmarklet";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,15 @@ export default async function ImportsPage({
   // Réutilise le payload de performance déjà chargé (aucun recalcul supplémentaire).
   const performanceReconciliation = reconciliationPayload
     ? await loadPerformanceReconciliation({ payload: reconciliationPayload }).catch(() => null)
+    : null;
+
+  // Favori « Envoyer à DisnatIA » : jeton serveur + URL publique de l'app.
+  const importToken = process.env.DISNAT_IMPORT_TOKEN?.trim() || null;
+  const publicAppUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3001");
+  const bookmarkletHref = importToken
+    ? buildDisnatBookmarklet(publicAppUrl, importToken)
     : null;
 
   const initialExternalAccounts: ExternalAccountDto[] = externalRaw.map((a) => ({
@@ -92,6 +102,7 @@ export default async function ImportsPage({
       initialNonFinancialAssets={initialNonFinancialAssets}
       initialNewsSources={newsSources}
       initialPerformanceReconciliation={performanceReconciliation}
+      initialBookmarkletHref={bookmarkletHref}
       initialImports={imports.map((item) => ({
         id: item.id,
         sourceFileName: item.sourceFileName,

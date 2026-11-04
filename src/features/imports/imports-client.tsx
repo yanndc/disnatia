@@ -85,6 +85,7 @@ export function ImportsClient({
   initialNonFinancialAssets,
   initialNewsSources,
   initialPerformanceReconciliation,
+  initialBookmarkletHref,
 }: {
   initialTab?: ImportsTab;
   initialReconciliationPayload: PerformanceIndicatorPayload | null;
@@ -106,6 +107,7 @@ export function ImportsClient({
   initialNonFinancialAssets: NonFinancialAssetDto[];
   initialNewsSources: NewsSourceRow[];
   initialPerformanceReconciliation: PerformanceReconciliationPayload | null;
+  initialBookmarkletHref: string | null;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ParsedDisnatRow[]>([]);
@@ -448,7 +450,7 @@ export function ImportsClient({
 
       {tab === "news" ? <NewsSourcesPanel initialSources={initialNewsSources} /> : null}
 
-      {tab === "html" ? <DisnatHtmlPanel /> : null}
+      {tab === "html" ? <DisnatHtmlPanel bookmarkletHref={initialBookmarkletHref} /> : null}
 
       {tab === "returns" ? (
         initialPerformanceReconciliation ? (
