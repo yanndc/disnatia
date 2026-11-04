@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DisnatiaLogo } from "@/components/brand/disnatia-logo";
+import { AppVersionBadge } from "@/components/dashboard/app-version-badge";
 import { dashboardNavigation } from "@/components/dashboard/dashboard-navigation";
 import { dashboardNavIcons } from "@/components/dashboard/dashboard-nav-icons";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
@@ -7,12 +8,12 @@ import { MobileNav } from "@/components/dashboard/mobile-nav";
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-200 bg-white px-4 py-5 lg:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-5 lg:flex">
         <Link href="/overview" className="flex flex-col gap-2 px-2">
           <DisnatiaLogo className="h-9 w-auto text-slate-950" />
           <p className="text-xs text-slate-500">Assistant portefeuille DisnatIA</p>
         </Link>
-        <nav className="mt-8 space-y-1">
+        <nav className="mt-8 flex-1 space-y-1 overflow-y-auto">
           {dashboardNavigation.map((item) => {
             const Icon = dashboardNavIcons[item.icon];
             return (
@@ -27,6 +28,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <AppVersionBadge showCalculation />
+        </div>
       </aside>
       <div className="lg:pl-64">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">

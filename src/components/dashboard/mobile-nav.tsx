@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { AppVersionBadge } from "./app-version-badge";
 import type { DashboardNavItem } from "./dashboard-navigation";
 import { dashboardNavIcons } from "./dashboard-nav-icons";
 
@@ -88,6 +89,9 @@ export function MobileNav({ items }: { items: DashboardNavItem[] }) {
                     })}
                   </ul>
                 </nav>
+                <div className="border-t border-slate-100 px-4 py-3">
+                  <AppVersionBadge showCalculation className="text-[11px]" />
+                </div>
               </aside>
             </div>,
             document.body,
