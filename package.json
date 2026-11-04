@@ -14,6 +14,7 @@
     "seed:house": "npx tsx scripts/seed-house-asset.ts",
     "news:refresh": "npx tsx scripts/refresh-news.ts",
     "backfill:owners": "npx tsx scripts/backfill-owner-portfolio-dimension.ts",
+    "backfill:tx-dates": "npx tsx scripts/backfill-tx-trade-date.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
