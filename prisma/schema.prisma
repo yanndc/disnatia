@@ -138,6 +138,53 @@ model PortfolioAccountState {
   @@map("portfolio_account_states")
 }
 
+/**
+ * Attestation « aucune transaction depuis » pour un compte dormant.
+ *
+ * Permet de sortir un compte des alertes de péremption sans réimporter un historique :
+ * `dataAsOf` = date jusqu'à laquelle l'historique des opérations est jugé complet,
+ * `confirmedAt` = date de la confirmation (audit). Ne modifie jamais les montants de
+ * `PortfolioAccountState` : la valorisation reste celle du dernier export portefeuille.
+ */
+model PortfolioAccountConfirmation {
+  id          String   @id @default(cuid())
+  accountKey  String
+  /// Dernier jour couvert par l'attestation (UTC, jour civil).
+  dataAsOf    DateTime @db.Date
+  confirmedAt DateTime @default(now())
+  /// MANUAL (session guidée) | IMPORT (import de transactions couvrant la date)
+  source      String   @default("MANUAL")
+  note        String?
+  /// Copie des montants attestés au moment de la confirmation (preuve, non recalculée).
+  totalValue  Float?
+  cashValue   Float?
+  marketValue Float?
+
+  @@index([accountKey, dataAsOf])
+  @@index([confirmedAt])
+  @@map("portfolio_account_confirmations")
+}
+
+/**
+ * Règle apprise « fichier Disnat → compte » pendant une session d'import guidée.
+ *
+ * Les exports « Historique des transactions » ne contiennent aucun numéro de compte :
+ * la signature (nom de fichier normalisé + forme des colonnes) mémorise l'attribution
+ * validée une première fois pour éviter de la redemander.
+ */
+model PortfolioImportAttributionRule {
+  id             String   @id @default(cuid())
+  signature      String   @unique
+  accountKey     String
+  sampleFileName String
+  hits           Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([accountKey])
+  @@map("portfolio_import_attribution_rules")
+}
+
 /// Dernier cours connu pour une ligne (ticker + devise ligne Disnat). Non lié à un import : sert au tableau de bord « en cours ».
 model PortfolioLiveQuote {
   id          String   @id @default(cuid())

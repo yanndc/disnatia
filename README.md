@@ -169,7 +169,17 @@ Envoi automatique d’un courriel HTML après chaque **jour ouvré** (lun–ven,
 
 ## Importer un CSV Disnat
 
-Va dans `/imports`, dépose un fichier `.csv`, vérifie la preview et les messages de validation, puis clique sur `Valider et sauvegarder l'import`.
+Deux chemins dans `/imports` :
+
+1. **Session guidée** (onglet par défaut) — le déroulé recommandé pour une mise à jour périodique :
+   1. **Comptes** : liste des comptes avec dernier import, dernière opération, dernière attestation et statut (`À jour` / `À confirmer`). Pour un compte dormant, le bouton `Attester « rien n'a changé »` enregistre la date de confirmation sans réimporter : c'est cette date qui prouve que la donnée a été validée (table `portfolio_account_confirmations`, montants attestés conservés en copie). Les montants de `PortfolioAccountState` ne sont jamais modifiés par une attestation.
+   2. **Fichiers** : dépôt **multi-fichiers** (CSV/XLSX). Chaque export « Historique des transactions » ne contient **aucun numéro de compte** : l'attribution est proposée par score (numéro de compte dans le fichier ou le nom, règle mémorisée, type/propriétaire dans le nom, titres en commun dont titres exclusifs au compte, devise). Score ambigu → choix manuel obligatoire.
+   3. **Récap & import** : attributions à confirmer, puis import séquentiel qui réutilise `POST /api/imports` (dédup par empreinte compte + opération).
+   4. **Rapport** : transactions ajoutées / doublons ignorés par fichier. Les attributions validées sont mémorisées (`portfolio_import_attribution_rules`) pour les sessions suivantes.
+
+   Endpoints : `GET /api/portfolio/import-session`, `POST /api/portfolio/import-session/confirmations`, `POST /api/portfolio/import-session/attribution`. Logique : [`account-coverage.ts`](src/features/portfolio/account-coverage.ts), [`account-attribution.ts`](src/lib/csv/account-attribution.ts), [`import-session-queries.ts`](src/features/portfolio/import-session-queries.ts).
+
+2. **Fichier Disnat** (onglet historique) — dépôt d'un seul fichier, preview, validation, puis `Valider et sauvegarder l'import`.
 
 Le parseur cherche des colonnes courantes comme:
 

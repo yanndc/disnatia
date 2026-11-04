@@ -402,6 +402,8 @@ export const ModelName = {
   PortfolioPosition: 'PortfolioPosition',
   PortfolioHolding: 'PortfolioHolding',
   PortfolioAccountState: 'PortfolioAccountState',
+  PortfolioAccountConfirmation: 'PortfolioAccountConfirmation',
+  PortfolioImportAttributionRule: 'PortfolioImportAttributionRule',
   PortfolioLiveQuote: 'PortfolioLiveQuote',
   PortfolioDailyPrice: 'PortfolioDailyPrice',
   PortfolioDailyHolding: 'PortfolioDailyHolding',
@@ -439,7 +441,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "pinocchioAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "eodReportDelivery"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioAccountConfirmation" | "portfolioImportAttributionRule" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "pinocchioAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -810,6 +812,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PortfolioAccountStateCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PortfolioAccountStateCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioAccountConfirmation: {
+      payload: Prisma.$PortfolioAccountConfirmationPayload<ExtArgs>
+      fields: Prisma.PortfolioAccountConfirmationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioAccountConfirmationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioAccountConfirmationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioAccountConfirmationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioAccountConfirmationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioAccountConfirmationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioAccountConfirmationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioAccountConfirmationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioAccountConfirmationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioAccountConfirmationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>
+        }
+        update: {
+          args: Prisma.PortfolioAccountConfirmationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioAccountConfirmationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioAccountConfirmationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioAccountConfirmationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioAccountConfirmationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioAccountConfirmationPayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioAccountConfirmationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioAccountConfirmation>
+        }
+        groupBy: {
+          args: Prisma.PortfolioAccountConfirmationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioAccountConfirmationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioAccountConfirmationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioAccountConfirmationCountAggregateOutputType> | number
+        }
+      }
+    }
+    PortfolioImportAttributionRule: {
+      payload: Prisma.$PortfolioImportAttributionRulePayload<ExtArgs>
+      fields: Prisma.PortfolioImportAttributionRuleFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PortfolioImportAttributionRuleFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PortfolioImportAttributionRuleFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>
+        }
+        findFirst: {
+          args: Prisma.PortfolioImportAttributionRuleFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PortfolioImportAttributionRuleFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>
+        }
+        findMany: {
+          args: Prisma.PortfolioImportAttributionRuleFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>[]
+        }
+        create: {
+          args: Prisma.PortfolioImportAttributionRuleCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>
+        }
+        createMany: {
+          args: Prisma.PortfolioImportAttributionRuleCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PortfolioImportAttributionRuleCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>[]
+        }
+        delete: {
+          args: Prisma.PortfolioImportAttributionRuleDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>
+        }
+        update: {
+          args: Prisma.PortfolioImportAttributionRuleUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>
+        }
+        deleteMany: {
+          args: Prisma.PortfolioImportAttributionRuleDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PortfolioImportAttributionRuleUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PortfolioImportAttributionRuleUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>[]
+        }
+        upsert: {
+          args: Prisma.PortfolioImportAttributionRuleUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PortfolioImportAttributionRulePayload>
+        }
+        aggregate: {
+          args: Prisma.PortfolioImportAttributionRuleAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePortfolioImportAttributionRule>
+        }
+        groupBy: {
+          args: Prisma.PortfolioImportAttributionRuleGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioImportAttributionRuleGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PortfolioImportAttributionRuleCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PortfolioImportAttributionRuleCountAggregateOutputType> | number
         }
       }
     }
@@ -2579,6 +2729,34 @@ export const PortfolioAccountStateScalarFieldEnum = {
 export type PortfolioAccountStateScalarFieldEnum = (typeof PortfolioAccountStateScalarFieldEnum)[keyof typeof PortfolioAccountStateScalarFieldEnum]
 
 
+export const PortfolioAccountConfirmationScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  dataAsOf: 'dataAsOf',
+  confirmedAt: 'confirmedAt',
+  source: 'source',
+  note: 'note',
+  totalValue: 'totalValue',
+  cashValue: 'cashValue',
+  marketValue: 'marketValue'
+} as const
+
+export type PortfolioAccountConfirmationScalarFieldEnum = (typeof PortfolioAccountConfirmationScalarFieldEnum)[keyof typeof PortfolioAccountConfirmationScalarFieldEnum]
+
+
+export const PortfolioImportAttributionRuleScalarFieldEnum = {
+  id: 'id',
+  signature: 'signature',
+  accountKey: 'accountKey',
+  sampleFileName: 'sampleFileName',
+  hits: 'hits',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioImportAttributionRuleScalarFieldEnum = (typeof PortfolioImportAttributionRuleScalarFieldEnum)[keyof typeof PortfolioImportAttributionRuleScalarFieldEnum]
+
+
 export const PortfolioLiveQuoteScalarFieldEnum = {
   id: 'id',
   ticker: 'ticker',
@@ -3291,6 +3469,8 @@ export type GlobalOmitConfig = {
   portfolioPosition?: Prisma.PortfolioPositionOmit
   portfolioHolding?: Prisma.PortfolioHoldingOmit
   portfolioAccountState?: Prisma.PortfolioAccountStateOmit
+  portfolioAccountConfirmation?: Prisma.PortfolioAccountConfirmationOmit
+  portfolioImportAttributionRule?: Prisma.PortfolioImportAttributionRuleOmit
   portfolioLiveQuote?: Prisma.PortfolioLiveQuoteOmit
   portfolioDailyPrice?: Prisma.PortfolioDailyPriceOmit
   portfolioDailyHolding?: Prisma.PortfolioDailyHoldingOmit

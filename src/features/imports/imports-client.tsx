@@ -23,6 +23,7 @@ import {
   NonFinancialAssetsPanel,
   type NonFinancialAssetDto,
 } from "@/features/imports/non-financial-assets-panel";
+import { GuidedImportSession } from "@/features/imports/guided-import-session";
 import { PerformanceIndicatorCard } from "@/features/portfolio/performance-indicator-card";
 import type { PerformanceIndicatorPayload } from "@/features/portfolio/performance-indicator-types";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ const importSchema = z.object({
 
 type ImportForm = z.infer<typeof importSchema>;
 
-type ImportsTab = "external" | "assets" | "disnat" | "reconciliation" | "followup";
+type ImportsTab = "session" | "external" | "assets" | "disnat" | "reconciliation" | "followup";
 
 /** Plage d’années civiles couverte par les dates d’opération du fichier (min / max). L’horodatage d’import est affiché à part, sans répéter son année ici. */
 function dataYearsInFileLabel(dataFromIso: string | null, dataToIso: string | null): string {
@@ -106,7 +107,7 @@ export function ImportsClient({
   const [historyBusy, setHistoryBusy] = useState(false);
   const [historyResult, setHistoryResult] = useState<string | null>(null);
   const [ownerMap, setOwnerMap] = useState<Map<string, string>>(() => new Map());
-  const [tab, setTab] = useState<ImportsTab>(initialTab ?? "disnat");
+  const [tab, setTab] = useState<ImportsTab>(initialTab ?? "session");
   const form = useForm<ImportForm>({
     resolver: zodResolver(importSchema),
   });
@@ -390,6 +391,7 @@ export function ImportsClient({
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         {(
           [
+            { id: "session" as const, label: "Session guidée" },
             { id: "external" as const, label: "Comptes hors Disnat" },
             { id: "assets" as const, label: "Actifs non-boursiers" },
             { id: "disnat" as const, label: "Fichier Disnat" },
@@ -412,6 +414,8 @@ export function ImportsClient({
           </button>
         ))}
       </div>
+
+      {tab === "session" ? <GuidedImportSession /> : null}
 
       {tab === "external" ? (
         <ExternalAccountsPanel initialAccounts={initialExternalAccounts} />

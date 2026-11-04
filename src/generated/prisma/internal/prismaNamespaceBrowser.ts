@@ -56,6 +56,8 @@ export const ModelName = {
   PortfolioPosition: 'PortfolioPosition',
   PortfolioHolding: 'PortfolioHolding',
   PortfolioAccountState: 'PortfolioAccountState',
+  PortfolioAccountConfirmation: 'PortfolioAccountConfirmation',
+  PortfolioImportAttributionRule: 'PortfolioImportAttributionRule',
   PortfolioLiveQuote: 'PortfolioLiveQuote',
   PortfolioDailyPrice: 'PortfolioDailyPrice',
   PortfolioDailyHolding: 'PortfolioDailyHolding',
@@ -193,6 +195,34 @@ export const PortfolioAccountStateScalarFieldEnum = {
 } as const
 
 export type PortfolioAccountStateScalarFieldEnum = (typeof PortfolioAccountStateScalarFieldEnum)[keyof typeof PortfolioAccountStateScalarFieldEnum]
+
+
+export const PortfolioAccountConfirmationScalarFieldEnum = {
+  id: 'id',
+  accountKey: 'accountKey',
+  dataAsOf: 'dataAsOf',
+  confirmedAt: 'confirmedAt',
+  source: 'source',
+  note: 'note',
+  totalValue: 'totalValue',
+  cashValue: 'cashValue',
+  marketValue: 'marketValue'
+} as const
+
+export type PortfolioAccountConfirmationScalarFieldEnum = (typeof PortfolioAccountConfirmationScalarFieldEnum)[keyof typeof PortfolioAccountConfirmationScalarFieldEnum]
+
+
+export const PortfolioImportAttributionRuleScalarFieldEnum = {
+  id: 'id',
+  signature: 'signature',
+  accountKey: 'accountKey',
+  sampleFileName: 'sampleFileName',
+  hits: 'hits',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PortfolioImportAttributionRuleScalarFieldEnum = (typeof PortfolioImportAttributionRuleScalarFieldEnum)[keyof typeof PortfolioImportAttributionRuleScalarFieldEnum]
 
 
 export const PortfolioLiveQuoteScalarFieldEnum = {

@@ -15,6 +15,7 @@ export default async function ImportsPage({
 }) {
   const params = (await searchParams) ?? {};
   const tab =
+    params.tab === "session" ||
     params.tab === "external" ||
     params.tab === "assets" ||
     params.tab === "disnat" ||

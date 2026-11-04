@@ -73,6 +73,27 @@ export type PortfolioHolding = Prisma.PortfolioHoldingModel
  */
 export type PortfolioAccountState = Prisma.PortfolioAccountStateModel
 /**
+ * Model PortfolioAccountConfirmation
+ * *
+ *  * Attestation « aucune transaction depuis » pour un compte dormant.
+ *  *
+ *  * Permet de sortir un compte des alertes de péremption sans réimporter un historique :
+ *  * `dataAsOf` = date jusqu'à laquelle l'historique des opérations est jugé complet,
+ *  * `confirmedAt` = date de la confirmation (audit). Ne modifie jamais les montants de
+ *  * `PortfolioAccountState` : la valorisation reste celle du dernier export portefeuille.
+ */
+export type PortfolioAccountConfirmation = Prisma.PortfolioAccountConfirmationModel
+/**
+ * Model PortfolioImportAttributionRule
+ * *
+ *  * Règle apprise « fichier Disnat → compte » pendant une session d'import guidée.
+ *  *
+ *  * Les exports « Historique des transactions » ne contiennent aucun numéro de compte :
+ *  * la signature (nom de fichier normalisé + forme des colonnes) mémorise l'attribution
+ *  * validée une première fois pour éviter de la redemander.
+ */
+export type PortfolioImportAttributionRule = Prisma.PortfolioImportAttributionRuleModel
+/**
  * Model PortfolioLiveQuote
  * Dernier cours connu pour une ligne (ticker + devise ligne Disnat). Non lié à un import : sert au tableau de bord « en cours ».
  */
