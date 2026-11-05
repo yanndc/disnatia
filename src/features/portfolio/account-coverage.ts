@@ -62,6 +62,16 @@ export function expectedCoverageSessionIso(now = new Date()): string {
   return priorSessionDateIso(now);
 }
 
+/**
+ * Code client Disnat d'un compte : les 5 premiers caractères du numéro (`5KFZEY4|CAD` → `5KFZE`).
+ * C'est la clé des captures « Vue d'ensemble » lues par le favori.
+ */
+export function clientCodeFromAccountKey(accountKey: string): string {
+  const raw = accountKey.split("|")[0]?.trim().toUpperCase() ?? "";
+  const match = /^[A-Z0-9]{5}/.exec(raw);
+  return match ? match[0] : raw;
+}
+
 /** Séances strictement comprises entre `fromIso` (exclu) et `toIso` (inclus). */
 export function countTradingDaysAfter(fromIso: string, toIso: string): number {
   if (fromIso >= toIso) return 0;

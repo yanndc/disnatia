@@ -5,6 +5,7 @@ import { isoDateFromDbTimestamp } from "@/features/portfolio/daily-close-key";
 import { isoDateInToronto } from "@/lib/market/equity-session";
 import {
   assessAccountCoverage,
+  clientCodeFromAccountKey,
   expectedCoverageSessionIso,
   summarizeCoverage,
 } from "@/features/portfolio/account-coverage";
@@ -141,7 +142,7 @@ export async function buildImportSession(
             ? confirmation.confirmedAt.toISOString()
             : null,
           clientSnapshotAsOf: cashSnapshotByClient.get(
-            state.accountKey.split("|")[0]?.toUpperCase() ?? "",
+            clientCodeFromAccountKey(state.accountKey),
           ),
         },
         now,

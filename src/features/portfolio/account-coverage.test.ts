@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { assessAccountCoverage, countTradingDaysAfter, summarizeCoverage } from "./account-coverage";
+import {
+  assessAccountCoverage,
+  clientCodeFromAccountKey,
+  countTradingDaysAfter,
+  summarizeCoverage,
+} from "./account-coverage";
 
 /** Mercredi 4 novembre 2026, 15 h UTC : dernière séance attendue = mardi 3 novembre. */
 const NOW = new Date("2026-11-04T15:00:00.000Z");
@@ -131,5 +136,20 @@ describe("assessAccountCoverage", () => {
     ]);
 
     assert.deepEqual(summary, { total: 3, upToDate: 1, toConfirm: 1, withoutData: 1 });
+  });
+});
+
+describe("clientCodeFromAccountKey", () => {
+  test("les 5 premiers caractères du numéro de compte donnent le code client", () => {
+    assert.equal(clientCodeFromAccountKey("5KFZEY4|CAD"), "5KFZE");
+    assert.equal(clientCodeFromAccountKey("5L3APU9|USD"), "5L3AP");
+  });
+
+  test("tolère une clé sans devise ou en minuscules", () => {
+    assert.equal(clientCodeFromAccountKey("5kfzez2"), "5KFZE");
+  });
+
+  test("clé trop courte : renvoyée telle quelle", () => {
+    assert.equal(clientCodeFromAccountKey("ABC|CAD"), "ABC");
   });
 });

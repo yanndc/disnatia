@@ -563,6 +563,9 @@ export function GuidedImportSession() {
                               {account.currency}
                             </span>
                             {formatMoney(account.totalValue)} $
+                            <div className="text-[10px] font-normal text-slate-400">
+                              relevé {formatIso(account.snapshotAsOf)}
+                            </div>
                           </td>
                       <td className="py-2 text-slate-600">
                         {formatIso(account.snapshotAsOf)}
@@ -586,6 +589,12 @@ export function GuidedImportSession() {
                           <span className="ml-1 text-slate-400">
                             {account.coverage.staleTradingDays} séance(s)
                           </span>
+                        ) : null}
+                        {account.coverage.freshnessSource === "SNAPSHOT_CLIENT" &&
+                        account.coverage.freshnessIso ? (
+                          <div className="text-[10px] text-slate-400">
+                            capture client {formatIso(account.coverage.freshnessIso)}
+                          </div>
                         ) : null}
                         <div className="mt-1">
                           <button
