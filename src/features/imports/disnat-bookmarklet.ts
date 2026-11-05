@@ -78,7 +78,8 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
         alert(lignes.join("\\n"));
       }else{
         alert("DisnatIA — "+(j.error||("erreur "+r.status)));
-        if(r.status===422||r.status>=500)secours();
+        const refus=j.code==="AGGREGATE_VIEW"||j.code==="MULTIPLE_CLIENTS";
+        if(!refus&&(r.status===422||r.status>=500))secours();
       }
     }catch(e){
       alert("DisnatIA — échec réseau : "+e.message);

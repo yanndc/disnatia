@@ -29,6 +29,11 @@ describe("buildDisnatBookmarklet", () => {
     assert.ok(code.includes("disnatia.clientCode"));
   });
 
+  test("ne propose pas la copie de secours sur un refus métier", () => {
+    assert.ok(code.includes('j.code==="AGGREGATE_VIEW"'));
+    assert.ok(code.includes('j.code==="MULTIPLE_CLIENTS"'));
+  });
+
   test("recopie aussi le contenu des iframes lisibles", () => {
     assert.ok(code.includes("contentDocument"));
   });
