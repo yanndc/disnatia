@@ -149,6 +149,8 @@ export async function POST(request: Request) {
           ok: true,
           mode: "summary",
           split: perClient.length > 1,
+          // Compatibilité : les favoris antérieurs à la liste `clients` lisent ce champ.
+          clientCode: perClient.map((client) => client.clientCode).join(" + "),
           asOfDate: asOfDate.toISOString().slice(0, 10),
           rate: usdCadRate,
           cashCad: round2(perClient.reduce((sum, client) => sum + client.cashCad, 0)),
