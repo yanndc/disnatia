@@ -3,6 +3,9 @@ Sur la vue d'ensemble d'**un seul client** (`clientId=5KFZE`), le favori renvoya
 « Aucune section de compte trouvée » : cette page n'a pas de ligne *Total des actifs*,
 seulement une ligne `Total` en fin de tableau.
 
+- Page **« Tous les comptes »** : plusieurs lignes de totaux = plusieurs clients. L'API refuse
+  l'envoi (`MULTIPLE_CLIENTS`) plutôt que de risquer de créditer le mauvais client : un envoi
+  par client tant que l'appariement bloc → code client n'est pas implémenté.
 - `parseDisnatSummaryHtml` lit maintenant la ligne de totaux **quelle que soit son étiquette**
   (`Total`, `Vue d'ensemble`, `Total des actifs`…) et quel que soit le balisage des cellules
   (`<td>`, `<div>`, `<span>`). L'identité `encaisse + titres = total` reste le garde-fou.

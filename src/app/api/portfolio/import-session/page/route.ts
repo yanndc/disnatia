@@ -5,6 +5,7 @@ import {
   clientCodeFromDisnatHtml,
   clientCodeFromDisnatUrl,
   parseDisnatSummaryHtml,
+  parseDisnatSummaryRows,
 } from "@/lib/csv/disnat-summary";
 import { prisma } from "@/lib/db/prisma";
 import { POST as importRoutePost } from "@/app/api/imports/route";
@@ -73,7 +74,23 @@ export async function POST(request: Request) {
   const payloadUrl = typeof payload.url === "string" ? payload.url : "";
 
   // Page « Vue d'ensemble » : on enregistre l'encaisse officielle du client (ligne de totaux).
-  const summary = parseDisnatSummaryHtml(html);
+  // Plusieurs lignes de totaux = plusieurs clients sur la page : on refuse plutôt que de
+  // créditer le mauvais client (l'écran « Tous les comptes » demande un envoi par client).
+  const summaryRows = parseDisnatSummaryRows(html);
+  if (summaryRows.length > 1) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "MULTIPLE_CLIENTS",
+        error:
+          "Cette page contient les totaux de plusieurs clients — ouvre la « Vue d'ensemble » d'un seul client (ou choisis-le dans la liste « Compte »), puis relance le favori.",
+        diagnostic: describeDisnatPage(html, payloadUrl).hint,
+      },
+      { status: 422, headers },
+    );
+  }
+
+  const summary = summaryRows[0] ?? parseDisnatSummaryHtml(html);
   if (summary) {
     // Le code client vient du favori (page « Tous les comptes »), sinon de l'URL, sinon du HTML.
     const payloadClient = (payload.clientCode ?? "").trim().toUpperCase();

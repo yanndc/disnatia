@@ -5,6 +5,7 @@ import {
   clientCodeFromDisnatUrl,
   extractMoneyValues,
   parseDisnatSummaryHtml,
+  parseDisnatSummaryRows,
 } from "./disnat-summary";
 
 /** Extrait réel de la page « Vue d'ensemble » (ligne « Total des actifs »). */
@@ -57,6 +58,16 @@ const MES_COMPTES_TWO_ROWS_SNIPPET = `<html><head><title>Mes comptes</title></he
   </tbody>
 </table></body></html>`;
 
+/** Page « Tous les comptes » avec deux clients : une ligne « Vue d'ensemble » chacun. */
+const TWO_CLIENTS_SNIPPET = `<html><body>
+<h2>YANN DE CHAMPLAIN</h2>
+<table><thead><tr><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th></tr></thead>
+<tbody><tr><td>Vue d'ensemble</td><td>230,92 CAD</td><td>42 564,48 CAD</td><td>42 795,40 CAD</td></tr></tbody></table>
+<h2>AUTRE CLIENT</h2>
+<table><thead><tr><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th></tr></thead>
+<tbody><tr><td>Vue d'ensemble</td><td>100,00 CAD</td><td>9 900,00 CAD</td><td>10 000,00 CAD</td></tr></tbody></table>
+</body></html>`;
+
 describe("parseDisnatSummaryHtml", () => {
   test("lit l'encaisse, les titres et le total de la ligne « Total des actifs »", () => {
     assert.deepEqual(parseDisnatSummaryHtml(SUMMARY_SNIPPET), {
@@ -106,6 +117,26 @@ describe("parseDisnatSummaryHtml", () => {
   test("ignore une ligne « Total » sans identité comptable", () => {
     const html = `<tr><td>Total</td><td>1 000,00 CAD</td><td>2 000,00 CAD</td><td>4 000,00 CAD</td></tr>`;
     assert.equal(parseDisnatSummaryHtml(html), null);
+  });
+
+  test("relève une ligne de totaux par client (page « Tous les comptes »)", () => {
+    const rows = parseDisnatSummaryRows(TWO_CLIENTS_SNIPPET);
+    assert.equal(rows.length, 2);
+    assert.deepEqual(rows[0], {
+      rate: null,
+      cashCad: 230.92,
+      securitiesCad: 42564.48,
+      totalCad: 42795.4,
+    });
+    assert.deepEqual(rows[1], {
+      rate: null,
+      cashCad: 100,
+      securitiesCad: 9900,
+      totalCad: 10000,
+    });
+    // `parseDisnatSummaryHtml` reste « première ligne » (le serveur refuse s'il y en a plusieurs).
+    assert.deepEqual(parseDisnatSummaryHtml(TWO_CLIENTS_SNIPPET), rows[0]);
+    assert.equal(parseDisnatSummaryRows(MES_COMPTES_SNIPPET).length, 1);
   });
 
   test("retourne null hors page « Vue d'ensemble »", () => {

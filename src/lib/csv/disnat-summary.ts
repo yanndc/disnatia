@@ -113,6 +113,23 @@ function totalsFromText(text: string, labelled: boolean): DisnatSummaryTotals | 
 }
 
 /**
+ * Lignes de totaux **libellées** (« Total », « Vue d'ensemble »…) qui vérifient l'identité
+ * comptable, dans l'ordre du document. Une page « Tous les comptes » en contient une par client.
+ */
+export function parseDisnatSummaryRows(html: string): DisnatSummaryTotals[] {
+  if (!html) return [];
+  const rows: DisnatSummaryTotals[] = [];
+  for (const rowMatch of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
+    const rowHtml = rowMatch[0];
+    const text = stripHtmlTags(rowHtml);
+    if (!TOTAL_LABEL.test(text)) continue;
+    const totals = totalsFromCells(rowHtml) ?? totalsFromText(text, false);
+    if (totals) rows.push(totals);
+  }
+  return rows;
+}
+
+/**
  * Lit la ligne de totaux d'une page d'encaisse Disnat.
  *
  * Trois mises en page coexistent :
@@ -143,26 +160,18 @@ export function parseDisnatSummaryHtml(html: string): DisnatSummaryTotals | null
     if (fromText) return fromText;
   }
 
-  // 2) Page d'encaisse (en-têtes « Liquidités » + « Valeur totale ») : on privilégie la ligne
-  //    libellée « Vue d'ensemble »/« Total » ; à défaut, la première ligne qui vérifie
-  //    `encaisse + titres = total` (CAD lu en premier quand deux devises sont empilées).
-  const hasCashHeaders = /liquidit[ée]s/i.test(html) && /valeur totale/i.test(html);
-  let fallback: DisnatSummaryTotals | null = null;
+  // 2) Ligne libellée (« Vue d'ensemble », « Total »…) : première de la page.
+  const labelled = parseDisnatSummaryRows(html);
+  if (labelled.length > 0) return labelled[0];
 
+  // 3) Page d'encaisse sans libellé exploitable : première ligne à identité comptable
+  //    (CAD lu en premier quand deux devises sont empilées).
+  if (!/liquidit[ée]s/i.test(html) || !/valeur totale/i.test(html)) return null;
   for (const rowMatch of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
-    const rowHtml = rowMatch[0];
-    const text = stripHtmlTags(rowHtml);
-    if (TOTAL_LABEL.test(text)) {
-      const labelled = totalsFromCells(rowHtml) ?? totalsFromText(text, false);
-      if (labelled) return labelled;
-      continue;
-    }
-    if (hasCashHeaders && !fallback) {
-      fallback = totalsFromCells(rowHtml);
-    }
+    const totals = totalsFromCells(rowMatch[0]);
+    if (totals) return totals;
   }
-
-  return fallback;
+  return null;
 }
 
 /** Code client depuis l'URL Disnat (`clientId=5KFZE`), `ALL` sinon. */
