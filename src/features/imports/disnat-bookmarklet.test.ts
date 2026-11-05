@@ -34,6 +34,11 @@ describe("buildDisnatBookmarklet", () => {
     assert.ok(code.includes('j.code==="MULTIPLE_CLIENTS"'));
   });
 
+  test("résume un enregistrement réparti entre plusieurs clients", () => {
+    assert.ok(code.includes("j.clients&&j.clients.length>0"));
+    assert.ok(code.includes("c.clientCode"));
+  });
+
   test("recopie aussi le contenu des iframes lisibles", () => {
     assert.ok(code.includes("contentDocument"));
   });

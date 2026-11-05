@@ -63,12 +63,18 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
       }
       if(r.ok){
         if(j.mode==="summary"){
+          const f=(v)=>new Intl.NumberFormat("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2}).format(v||0);
+          if(j.clients&&j.clients.length>0){
+            const lignes=["DisnatIA — encaisse enregistrée le "+j.asOfDate+" :",
+              ...j.clients.map((c)=>"• "+c.clientCode+" — "+f(c.cashCad)+" $ d'encaisse, "+f(c.securitiesCad)+" $ de titres, "+f(c.totalCad)+" $ au total")];
+            alert(lignes.join("\\n"));
+            return;
+          }
           const n=${
             JSON.stringify(
               "DisnatIA — encaisse du client %client% enregistrée le %date% : %cash% $ d'encaisse, %sec% $ de titres, %total% $ au total.",
             )
           };
-          const f=(v)=>new Intl.NumberFormat("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2}).format(v||0);
           alert(n.replace("%client%",j.clientCode||"").replace("%date%",j.asOfDate).replace("%cash%",f(j.cashCad)).replace("%sec%",f(j.securitiesCad)).replace("%total%",f(j.totalCad)));
           return;
         }

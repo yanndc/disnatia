@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseDisnatHistoryHtml } from "@/lib/csv/disnat-html";
 import { describeDisnatPage } from "@/lib/csv/disnat-diagnostics";
+import { parseDisnatHoldingsByClient } from "@/lib/csv/disnat-positions";
 import {
   clientCodeFromDisnatHtml,
   clientCodeFromDisnatUrl,
@@ -12,6 +13,10 @@ import { prisma } from "@/lib/db/prisma";
 import { POST as importRoutePost } from "@/app/api/imports/route";
 
 export const maxDuration = 300;
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
 
 /** Origines autorisées à appeler cet endpoint depuis un favori (page Disnat ouverte). */
 const ALLOWED_ORIGINS = ["https://tmw.secure.vmd.ca", "https://www.disnat.com"];
@@ -97,19 +102,83 @@ export async function POST(request: Request) {
     const directory = disnatClientDirectory(html);
     const scopeCode = scope?.clientName ? (directory.get(scope.clientName) ?? null) : null;
     const pageCodes = new Set(directory.values());
+    const asOfDate = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
 
-    // Vue agrégée (« Vue d'ensemble » = tous les comptes) avec plusieurs clients : le total
-    // additionne les clients, donc il ne peut pas être crédité à un seul.
+    // Vue agrégée (« Vue d'ensemble » = tous les comptes) : le total additionne les clients.
+    // La valeur des titres se répartit **par client** avec les numéros de compte du tableau
+    // « Titres » (Σ CAD + Σ USD × taux = « Valeur des titres » affichée, au cent près) ;
+    // l'encaisse, qui n'existe qu'en un seul total, est répartie au prorata de cette valeur.
     if (!scopeCode && pageCodes.size > 1) {
-      const known = [...directory.entries()].map(([name, code]) => `${code} (${name})`).join(" · ");
+      const securitiesByClient = parseDisnatHoldingsByClient(html, summary.rate);
+      const shares = [...securitiesByClient.entries()]
+        .map(([code, value]) => ({ code, value: round2(value) }))
+        .filter((entry) => entry.value > 0)
+        .sort((a, b) => b.value - a.value);
+      const securitiesTotal = round2(shares.reduce((sum, entry) => sum + entry.value, 0));
+
+      if (shares.length < 2 || securitiesTotal <= 0) {
+        const known = [...directory.entries()].map(([name, code]) => `${code} (${name})`).join(" · ");
+        return NextResponse.json(
+          {
+            ok: false,
+            code: "AGGREGATE_VIEW",
+            error: `Vue agrégée de ${pageCodes.size} clients : choisis ton client dans la liste « Compte » avant d'envoyer — ${known}.`,
+            diagnostic: describeDisnatPage(html, payloadUrl).hint,
+          },
+          { status: 422, headers },
+        );
+      }
+
+      const clients = shares.map((entry) => {
+        const cashCad = round2((summary.cashCad * entry.value) / securitiesTotal);
+        return {
+          clientCode: entry.code,
+          cashCad,
+          securitiesCad: entry.value,
+          totalCad: round2(entry.value + cashCad),
+        };
+      });
+      // Le prorata laisse des cents : on les reporte sur le plus gros client pour que la somme
+      // des encaisses égale exactement l'encaisse affichée par Disnat.
+      const gap = round2(summary.cashCad - round2(clients.reduce((sum, c) => sum + c.cashCad, 0)));
+      if (gap !== 0) {
+        clients[0].cashCad = round2(clients[0].cashCad + gap);
+        clients[0].totalCad = round2(clients[0].securitiesCad + clients[0].cashCad);
+      }
+
+      await prisma.$transaction(
+        clients.map((client) =>
+          prisma.disnatClientCashSnapshot.upsert({
+            where: { clientCode_asOfDate: { clientCode: client.clientCode, asOfDate } },
+            create: {
+              clientCode: client.clientCode,
+              asOfDate,
+              cashCad: client.cashCad,
+              securitiesCad: client.securitiesCad,
+              totalCad: client.totalCad,
+            },
+            update: {
+              cashCad: client.cashCad,
+              securitiesCad: client.securitiesCad,
+              totalCad: client.totalCad,
+            },
+          }),
+        ),
+      );
+
       return NextResponse.json(
         {
-          ok: false,
-          code: "AGGREGATE_VIEW",
-          error: `Vue agrégée de ${pageCodes.size} clients : choisis ton client dans la liste « Compte » avant d'envoyer — ${known}.`,
-          diagnostic: describeDisnatPage(html, payloadUrl).hint,
+          ok: true,
+          mode: "summary",
+          split: true,
+          asOfDate: asOfDate.toISOString().slice(0, 10),
+          rate: summary.rate,
+          cashCad: summary.cashCad,
+          securitiesCad: summary.securitiesCad,
+          totalCad: summary.totalCad,
+          clients,
         },
-        { status: 422, headers },
+        { headers },
       );
     }
 
@@ -133,7 +202,6 @@ export async function POST(request: Request) {
         { status: 422, headers },
       );
     }
-    const asOfDate = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
     await prisma.disnatClientCashSnapshot.upsert({
       where: { clientCode_asOfDate: { clientCode, asOfDate } },
       create: {

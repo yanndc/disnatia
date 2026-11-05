@@ -6,9 +6,11 @@ seulement une ligne `Total` en fin de tableau.
 - **Rattachement au client** : le titulaire affiché au-dessus des totaux (`YANN DE CHAMPLAIN`)
   est relié à son code par les libellés « NOM - CODE » de la liste « Compte »
   (`<optgroup label="YANN DE CHAMPLAIN - 5KFZE">`) — plus de code à saisir.
-- Vue **agrégée** (« Vue d'ensemble » = tous les comptes) : le total additionne les clients, l'API
-  refuse (`AGGREGATE_VIEW`) au lieu de le créditer à un seul. Une page contenant plusieurs lignes
-  de totaux est également refusée (`MULTIPLE_CLIENTS`).
+- Vue **agrégée** (« Vue d'ensemble » = tous les comptes) : un seul clic enregistre **les deux
+  clients**. La valeur des titres est répartie avec les numéros de compte du tableau « Titres »
+  (Σ CAD + Σ USD × taux = « Valeur des titres » affichée, au cent près) ; l'encaisse, qui n'existe
+  qu'en un seul total, est répartie au prorata de cette valeur (Σ des encaisses = total affiché).
+  Si la répartition est impossible, l'API refuse (`AGGREGATE_VIEW`).
 - `parseDisnatSummaryHtml` lit maintenant la ligne de totaux **quelle que soit son étiquette**
   (`Total`, `Vue d'ensemble`, `Total des actifs`…) et quel que soit le balisage des cellules
   (`<td>`, `<div>`, `<span>`). L'identité `encaisse + titres = total` reste le garde-fou.
