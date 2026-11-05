@@ -430,6 +430,7 @@ export const ModelName = {
   NewsItemTicker: 'NewsItemTicker',
   NewsIngestionRun: 'NewsIngestionRun',
   DisnatPerformanceReference: 'DisnatPerformanceReference',
+  DisnatClientCashSnapshot: 'DisnatClientCashSnapshot',
   EodReportDelivery: 'EodReportDelivery'
 } as const
 
@@ -446,7 +447,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioAccountConfirmation" | "portfolioImportAttributionRule" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "pinocchioAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "newsSource" | "newsItem" | "newsItemTicker" | "newsIngestionRun" | "disnatPerformanceReference" | "eodReportDelivery"
+    modelProps: "portfolioImport" | "portfolioAccount" | "portfolioPosition" | "portfolioHolding" | "portfolioAccountState" | "portfolioAccountConfirmation" | "portfolioImportAttributionRule" | "portfolioLiveQuote" | "portfolioDailyPrice" | "portfolioDailyHolding" | "portfolioDailyValue" | "portfolioDailyAccountSessionGain" | "portfolioPerformanceSnapshot" | "portfolioTransactionLine" | "chatSession" | "chatMessage" | "pinocchioAgentRules" | "usdCadDailyRate" | "externalPortfolioAccount" | "externalAccountSnapshot" | "owner" | "portfolio" | "portfolioOwnerMembership" | "portfolioAccountOwner" | "externalPortfolioAccountOwner" | "nonFinancialAsset" | "nonFinancialAssetSnapshot" | "nonFinancialAssetOwnerShare" | "newsSource" | "newsItem" | "newsItemTicker" | "newsIngestionRun" | "disnatPerformanceReference" | "disnatClientCashSnapshot" | "eodReportDelivery"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2892,6 +2893,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DisnatClientCashSnapshot: {
+      payload: Prisma.$DisnatClientCashSnapshotPayload<ExtArgs>
+      fields: Prisma.DisnatClientCashSnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DisnatClientCashSnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DisnatClientCashSnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.DisnatClientCashSnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DisnatClientCashSnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.DisnatClientCashSnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.DisnatClientCashSnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.DisnatClientCashSnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DisnatClientCashSnapshotCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>[]
+        }
+        delete: {
+          args: Prisma.DisnatClientCashSnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>
+        }
+        update: {
+          args: Prisma.DisnatClientCashSnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.DisnatClientCashSnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DisnatClientCashSnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DisnatClientCashSnapshotUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>[]
+        }
+        upsert: {
+          args: Prisma.DisnatClientCashSnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DisnatClientCashSnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.DisnatClientCashSnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDisnatClientCashSnapshot>
+        }
+        groupBy: {
+          args: Prisma.DisnatClientCashSnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DisnatClientCashSnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DisnatClientCashSnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DisnatClientCashSnapshotCountAggregateOutputType> | number
+        }
+      }
+    }
     EodReportDelivery: {
       payload: Prisma.$EodReportDeliveryPayload<ExtArgs>
       fields: Prisma.EodReportDeliveryFieldRefs
@@ -3529,6 +3604,21 @@ export const DisnatPerformanceReferenceScalarFieldEnum = {
 export type DisnatPerformanceReferenceScalarFieldEnum = (typeof DisnatPerformanceReferenceScalarFieldEnum)[keyof typeof DisnatPerformanceReferenceScalarFieldEnum]
 
 
+export const DisnatClientCashSnapshotScalarFieldEnum = {
+  id: 'id',
+  clientCode: 'clientCode',
+  asOfDate: 'asOfDate',
+  cashCad: 'cashCad',
+  securitiesCad: 'securitiesCad',
+  totalCad: 'totalCad',
+  source: 'source',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DisnatClientCashSnapshotScalarFieldEnum = (typeof DisnatClientCashSnapshotScalarFieldEnum)[keyof typeof DisnatClientCashSnapshotScalarFieldEnum]
+
+
 export const EodReportDeliveryScalarFieldEnum = {
   sessionDate: 'sessionDate',
   sentAt: 'sentAt',
@@ -3992,6 +4082,7 @@ export type GlobalOmitConfig = {
   newsItemTicker?: Prisma.NewsItemTickerOmit
   newsIngestionRun?: Prisma.NewsIngestionRunOmit
   disnatPerformanceReference?: Prisma.DisnatPerformanceReferenceOmit
+  disnatClientCashSnapshot?: Prisma.DisnatClientCashSnapshotOmit
   eodReportDelivery?: Prisma.EodReportDeliveryOmit
 }
 

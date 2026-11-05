@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseDisnatHistoryHtml } from "@/lib/csv/disnat-html";
+import { clientCodeFromDisnatUrl, parseDisnatSummaryHtml } from "@/lib/csv/disnat-summary";
+import { prisma } from "@/lib/db/prisma";
 import { POST as importRoutePost } from "@/app/api/imports/route";
 
 export const maxDuration = 300;
@@ -48,9 +50,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Jeton invalide." }, { status: 401, headers });
   }
 
-  let payload: { html?: string };
+  let payload: { html?: string; url?: string };
   try {
-    payload = (await request.json()) as { html?: string };
+    payload = (await request.json()) as { html?: string; url?: string };
   } catch {
     return NextResponse.json({ error: "Corps JSON invalide." }, { status: 400, headers });
   }
@@ -60,6 +62,52 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Contenu de page trop court — ouvre l'onglet « Historique » avant d'envoyer." },
       { status: 422, headers },
+    );
+  }
+
+  const payloadUrl = typeof payload.url === "string" ? payload.url : "";
+
+  // Page « Vue d'ensemble » : on enregistre l'encaisse officielle du client (ligne « Total des actifs »).
+  const summary = parseDisnatSummaryHtml(html);
+  if (summary) {
+    const clientCode = clientCodeFromDisnatUrl(payloadUrl);
+    if (!clientCode) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Encaisse non rattachée : choisis un client précis (et non « Tous les comptes ») avant d'envoyer la page « Vue d'ensemble ».",
+        },
+        { status: 422, headers },
+      );
+    }
+    const asOfDate = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+    await prisma.disnatClientCashSnapshot.upsert({
+      where: { clientCode_asOfDate: { clientCode, asOfDate } },
+      create: {
+        clientCode,
+        asOfDate,
+        cashCad: summary.cashCad,
+        securitiesCad: summary.securitiesCad,
+        totalCad: summary.totalCad,
+      },
+      update: {
+        cashCad: summary.cashCad,
+        securitiesCad: summary.securitiesCad,
+        totalCad: summary.totalCad,
+      },
+    });
+    return NextResponse.json(
+      {
+        ok: true,
+        mode: "summary",
+        clientCode,
+        asOfDate: asOfDate.toISOString().slice(0, 10),
+        cashCad: summary.cashCad,
+        securitiesCad: summary.securitiesCad,
+        totalCad: summary.totalCad,
+      },
+      { headers },
     );
   }
 

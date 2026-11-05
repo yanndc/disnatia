@@ -1,3 +1,14 @@
+# Encaisse officielle par client (2026-11-05)
+Le favori **« Envoyer à DisnatIA »** est devenu conscient de la page :
+- page **Historique** → transactions (inchangé) ;
+- page **« Vue d'ensemble »** → lit la ligne *Total des actifs*
+  (Liquidités / Valeur des titres / Valeur totale) et enregistre un instantané
+  `disnat_client_cash_snapshots` pour le **client** de l'URL (`clientId=5KFZE`).
+  Trois montants consécutifs sont retenus par l'identité comptable `encaisse + titres = total`,
+  ce qui évite de confondre avec le gain/perte ou le taux de change de la ligne.
+Ces instantanés sont additionnés aux bornes du TRI (±45 j) : l'écart résiduel de 0,5 pt
+disparaît dès qu'une capture existe à la date de référence.
+
 # Rendements vs Disnat — méthode officielle (2026-11-04)
 
 ## Ce que fait Disnat (docs dans `/docs`)

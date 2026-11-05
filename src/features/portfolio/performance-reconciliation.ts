@@ -77,6 +77,46 @@ const TONE_RANK: Record<ReconciliationTone, number> = {
   error: 3,
 };
 
+/** Encaisse officielle utilisable si capturée à ±45 jours de la borne. */
+const CASH_SNAPSHOT_TOLERANCE_DAYS = 45;
+
+/** Encaisse capturée par le favori (« Vue d'ensemble ») pour chaque client, triée par date. */
+async function loadCashSnapshotsByClient(
+  clientCodes: string[],
+): Promise<Map<string, { asOfDate: string; cashCad: number }[]>> {
+  const map = new Map<string, { asOfDate: string; cashCad: number }[]>();
+  if (clientCodes.length === 0) return map;
+  const rows = await prisma.disnatClientCashSnapshot
+    .findMany({
+      where: { clientCode: { in: clientCodes } },
+      orderBy: { asOfDate: "asc" },
+      select: { clientCode: true, asOfDate: true, cashCad: true },
+    })
+    .catch(() => []);
+  for (const row of rows) {
+    const list = map.get(row.clientCode) ?? [];
+    list.push({ asOfDate: isoDateFromDbTimestamp(row.asOfDate), cashCad: row.cashCad });
+    map.set(row.clientCode, list);
+  }
+  return map;
+}
+
+/** Encaisse la plus récente à la date donnée (tolérance ±45 j), 0 si aucune capture. */
+function cashAt(
+  snapshots: { asOfDate: string; cashCad: number }[] | undefined,
+  isoDate: string,
+): number {
+  if (!snapshots?.length) return 0;
+  let best: { asOfDate: string; cashCad: number } | null = null;
+  for (const snapshot of snapshots) {
+    if (daysBetweenIso(snapshot.asOfDate, isoDate) < 0) break;
+    best = snapshot;
+  }
+  if (!best) return 0;
+  if (Math.abs(daysBetweenIso(best.asOfDate, isoDate)) > CASH_SNAPSHOT_TOLERANCE_DAYS) return 0;
+  return best.cashCad;
+}
+
 /**
  * Compare, par client Disnat et par période, le TWR de l'app aux valeurs publiées
  * dans « Rendement de portefeuille » (dernière date de référence enregistrée).
@@ -128,6 +168,7 @@ export async function loadPerformanceReconciliation(
     : baseFilters;
 
   const clients: ReconciliationClient[] = [];
+  const cashByClient = await loadCashSnapshotsByClient([...accountsByClient.keys()]);
   for (const [clientCode, accounts] of [...accountsByClient.entries()].sort((a, b) =>
     a[0].localeCompare(b[0]),
   )) {
@@ -158,12 +199,18 @@ export async function loadPerformanceReconciliation(
           } else {
             const moneyWeighted = computeMoneyWeightedReturn({
               startIso: start,
-              startValue: clientValueAt(comparisonPayload, accountKeySet, start),
+              // Encaisse officielle capturée par le favori (page « Vue d'ensemble »), sinon 0 :
+              // c'est elle qui explique l'essentiel de l'écart résiduel sur les périodes courtes.
+              startValue:
+                clientValueAt(comparisonPayload, accountKeySet, start) +
+                cashAt(cashByClient.get(clientCode), start),
               endIso: end,
               // Valeur **à la date de fin** (reconstruction), pas la valorisation live :
               // l'écart mesuré sur l'état de compte officiel est de 0,02 % avec cette source,
               // contre ~1,5 % avec `currentCad` (cours du jour).
-              endValue: clientValueAt(comparisonPayload, accountKeySet, end),
+              endValue:
+                clientValueAt(comparisonPayload, accountKeySet, end) +
+                cashAt(cashByClient.get(clientCode), end),
               flows: comparisonPayload.cashFlows
                 .filter(
                   (flow) =>

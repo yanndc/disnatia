@@ -212,6 +212,12 @@ export type NewsIngestionRun = Prisma.NewsIngestionRunModel
  */
 export type DisnatPerformanceReference = Prisma.DisnatPerformanceReferenceModel
 /**
+ * Model DisnatClientCashSnapshot
+ * Encaisse officielle par client Disnat, capturée depuis la page « Vue d'ensemble »
+ * (ligne « Total des actifs »). Sert à inclure l'encaisse aux bornes des calculs de rendement.
+ */
+export type DisnatClientCashSnapshot = Prisma.DisnatClientCashSnapshotModel
+/**
  * Model EodReportDelivery
  * Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
  */

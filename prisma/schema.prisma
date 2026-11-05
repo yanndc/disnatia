@@ -771,6 +771,25 @@ model DisnatPerformanceReference {
   @@map("disnat_performance_references")
 }
 
+/// Encaisse officielle par client Disnat, capturée depuis la page « Vue d'ensemble »
+/// (ligne « Total des actifs »). Sert à inclure l'encaisse aux bornes des calculs de rendement.
+model DisnatClientCashSnapshot {
+  id            String   @id @default(cuid())
+  /// Code client Disnat (`5KFZE`, `5L3AP`).
+  clientCode    String
+  asOfDate      DateTime @db.Date
+  cashCad       Float
+  securitiesCad Float
+  totalCad      Float
+  source        String   @default("BOOKMARKLET")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([clientCode, asOfDate])
+  @@index([asOfDate])
+  @@map("disnat_client_cash_snapshots")
+}
+
 /// Envoi idempotent du rapport fin de journée par courriel (une ligne par séance).
 model EodReportDelivery {
   sessionDate String   @id
