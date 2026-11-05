@@ -102,7 +102,10 @@ export async function POST(request: Request) {
   const scopes = converted.length > 0 ? converted : rawScopes;
 
   const scope = scopes[0] ?? null;
-  const summary = scope?.totals ?? rawSummary;
+  // Une page « Historique » porte aussi l'entête d'encaisse agrégé : dès que l'historique est
+  // lisible, il prime — on veut alors les transactions, pas l'encaisse.
+  const history = parseDisnatHistoryHtml(html);
+  const summary = history.ok ? null : (scope?.totals ?? rawSummary);
   if (summary) {
     const directory = disnatClientDirectory(html);
     const pageCodes = new Set(directory.values());
@@ -306,7 +309,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = parseDisnatHistoryHtml(html);
+  const parsed = history;
   if (!parsed.ok) {
     const diagnostic = describeDisnatPage(html, payloadUrl);
     const message = parsed.error ?? "Aucune transaction trouvée.";

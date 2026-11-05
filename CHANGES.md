@@ -6,6 +6,9 @@ seulement une ligne `Total` en fin de tableau.
 - **Rattachement au client** : le titulaire affiché au-dessus des totaux (`YANN DE CHAMPLAIN`)
   est relié à son code par les libellés « NOM - CODE » de la liste « Compte »
   (`<optgroup label="YANN DE CHAMPLAIN - 5KFZE">`) — plus de code à saisir.
+- Page **Historique** : elle affiche aussi l'entête d'encaisse agrégé. Les transactions priment
+  désormais dès que l'historique est lisible (sinon la page répondait `AGGREGATE_VIEW` au lieu
+  d'importer).
 - **Encaisse d'un client** : les cellules empilent « CAD » puis « USD ». La ligne USD est
   désormais convertie (taux « Taux » de la page, sinon Banque du Canada du jour) ; avant, seule la
   partie CAD était enregistrée — soit ~25 % de la valeur d'un client qui détient des titres US.
