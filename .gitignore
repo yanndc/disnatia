@@ -27,6 +27,10 @@
 # Copie locale des sources importées (Excel/CSV)
 .data/
 
+# Pages Disnat sauvegardées (données personnelles : jamais dans le dépôt)
+docs/*.html
+docs/*_files/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

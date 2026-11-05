@@ -112,21 +112,93 @@ function totalsFromText(text: string, labelled: boolean): DisnatSummaryTotals | 
   return triplet ? toTotals(triplet, null) : null;
 }
 
-/**
- * Lignes de totaux **libellées** (« Total », « Vue d'ensemble »…) qui vérifient l'identité
- * comptable, dans l'ordre du document. Une page « Tous les comptes » en contient une par client.
- */
-export function parseDisnatSummaryRows(html: string): DisnatSummaryTotals[] {
-  if (!html) return [];
-  const rows: DisnatSummaryTotals[] = [];
+/** Ligne de totaux avec sa position dans le document. */
+type LabelledTotalsRow = { totals: DisnatSummaryTotals; index: number };
+
+function labelledTotalsRows(html: string): LabelledTotalsRow[] {
+  const rows: LabelledTotalsRow[] = [];
   for (const rowMatch of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
     const rowHtml = rowMatch[0];
     const text = stripHtmlTags(rowHtml);
     if (!TOTAL_LABEL.test(text)) continue;
     const totals = totalsFromCells(rowHtml) ?? totalsFromText(text, false);
-    if (totals) rows.push(totals);
+    if (totals) rows.push({ totals, index: rowMatch.index ?? 0 });
   }
   return rows;
+}
+
+/**
+ * Lignes de totaux **libellées** (« Total », « Vue d'ensemble »…) qui vérifient l'identité
+ * comptable, dans l'ordre du document. Une page « Tous les comptes » en contient une par client.
+ */
+export function parseDisnatSummaryRows(html: string): DisnatSummaryTotals[] {
+  return labelledTotalsRows(html).map((row) => row.totals);
+}
+
+export type DisnatSummaryScope = {
+  totals: DisnatSummaryTotals;
+  /**
+   * Titulaire affiché au-dessus de la ligne de totaux (en-tête `row-label` du tableau).
+   * `null` = vue **agrégée** « tous les comptes » (le total couvre alors plusieurs clients).
+   */
+  clientName: string | null;
+};
+
+/**
+ * Répertoire « NOM - CODE » fourni par la liste « Compte » de Disnat
+ * (`<optgroup label="YANN DE CHAMPLAIN - 5KFZE">`) : c'est ce qui permet de rattacher
+ * chaque bloc de totaux à son client sans deviner.
+ */
+export function disnatClientDirectory(html: string): Map<string, string> {
+  const directory = new Map<string, string>();
+  for (const match of html.matchAll(/<optgroup[^>]*\blabel="([^"]*)"/gi)) {
+    const label = stripHtmlTags(match[1]).toUpperCase();
+    const parts = label.match(/^(.*?)\s*[-–]\s*([A-Z0-9]{4,8})$/);
+    if (!parts) continue;
+    const name = parts[1].trim();
+    if (name) directory.set(name, parts[2]);
+  }
+  return directory;
+}
+
+/** Neutralise les listes « Compte » (les noms y figurent aussi) sans décaler les index. */
+function maskSelects(html: string): string {
+  return html
+    .replace(/<select[\s\S]*?<\/select>/gi, (block) => " ".repeat(block.length))
+    .replace(/<optgroup[\s\S]*?<\/optgroup>/gi, (block) => " ".repeat(block.length))
+    .replace(/<option[\s\S]*?<\/option>/gi, (block) => " ".repeat(block.length));
+}
+
+/**
+ * Titulaire affiché au-dessus de la ligne de totaux :
+ * 1. cellule `th.row-label` du tableau (« Détail du compte ») ;
+ * 2. à défaut, nom de client le plus proche **avant** la ligne (titre du bloc), en ignorant
+ *    les `<select>` de la liste « Compte » qui contiennent tous les noms.
+ */
+function scopeNameBefore(html: string, index: number, directory: Map<string, string>): string | null {
+  const head = html.lastIndexOf("<thead", index);
+  if (head >= 0) {
+    const cell = html.slice(head, index).match(/<th[^>]*row-label[^>]*>([\s\S]*?)<\/th>/i);
+    const label = cell ? stripHtmlTags(cell[1]).toUpperCase() : "";
+    if (label && directory.has(label)) return label;
+  }
+
+  const window = maskSelects(html.slice(Math.max(0, index - 4000), index)).toUpperCase();
+  let best: { name: string; at: number } | null = null;
+  for (const name of directory.keys()) {
+    const at = window.lastIndexOf(name);
+    if (at >= 0 && at > (best?.at ?? -1)) best = { name, at };
+  }
+  return best?.name ?? null;
+}
+
+/** Lignes de totaux avec le titulaire affiché (nom → code via `disnatClientDirectory`). */
+export function parseDisnatSummaryScopes(html: string): DisnatSummaryScope[] {
+  const directory = disnatClientDirectory(html);
+  return labelledTotalsRows(html).map((row) => ({
+    totals: row.totals,
+    clientName: scopeNameBefore(html, row.index, directory),
+  }));
 }
 
 /**

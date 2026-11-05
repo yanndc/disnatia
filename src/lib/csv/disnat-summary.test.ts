@@ -3,9 +3,11 @@ import { describe, test } from "node:test";
 import {
   clientCodeFromDisnatHtml,
   clientCodeFromDisnatUrl,
+  disnatClientDirectory,
   extractMoneyValues,
   parseDisnatSummaryHtml,
   parseDisnatSummaryRows,
+  parseDisnatSummaryScopes,
 } from "./disnat-summary";
 
 /** Extrait réel de la page « Vue d'ensemble » (ligne « Total des actifs »). */
@@ -67,6 +69,33 @@ const TWO_CLIENTS_SNIPPET = `<html><body>
 <table><thead><tr><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th></tr></thead>
 <tbody><tr><td>Vue d'ensemble</td><td>100,00 CAD</td><td>9 900,00 CAD</td><td>10 000,00 CAD</td></tr></tbody></table>
 </body></html>`;
+
+/**
+ * Vue d'ensemble d'un client (capture réelle) : la liste « Compte » porte `NOM - CODE`,
+ * le titre du bloc donne le titulaire et la ligne de totaux s'appelle « Vue d'ensemble ».
+ */
+const CLIENT_SCOPED_SNIPPET = `<html><body>
+<select name="compte">
+  <optgroup label="Vue d'ensemble"><option value="ALL|ALL">Vue d'ensemble</option></optgroup>
+  <optgroup label="YANN DE CHAMPLAIN - 5KFZE"><option value="ALL|5KFZE">5KFZE Vue d'ensemble</option></optgroup>
+  <optgroup label="VALERIE DEGRANDPRE - 5L3AP"><option value="ALL|5L3AP">5L3AP Vue d'ensemble</option></optgroup>
+</select>
+<div class="dsd-block-title">YANN DE CHAMPLAIN</div>
+<table>
+  <thead><tr><th class="row-label" colspan="3">&nbsp;</th><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th></tr></thead>
+  <tbody><tr><td colspan="3">Vue d'ensemble</td><td>230,92 CAD</td><td>42 564,48 CAD</td><td>42 795,40 CAD</td></tr></tbody>
+</table></body></html>`;
+
+/** Même page en vue **agrégée** : « Total des actifs » couvre plusieurs clients. */
+const AGGREGATE_SNIPPET = `<html><body>
+<select name="compte">
+  <optgroup label="YANN DE CHAMPLAIN - 5KFZE"><option value="ALL|5KFZE">5KFZE Vue d'ensemble</option></optgroup>
+  <optgroup label="VALERIE DEGRANDPRE - 5L3AP"><option value="ALL|5L3AP">5L3AP Vue d'ensemble</option></optgroup>
+</select>
+<table>
+  <thead><tr><th class="row-label" colspan="3">&nbsp;</th><th>Taux</th><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th></tr></thead>
+  <tbody><tr><td colspan="3">Total des actifs</td><td>1.3998</td><td>1 529,01 CAD</td><td>240 151,61 CAD</td><td>241 680,62 CAD</td></tr></tbody>
+</table></body></html>`;
 
 describe("parseDisnatSummaryHtml", () => {
   test("lit l'encaisse, les titres et le total de la ligne « Total des actifs »", () => {
@@ -150,6 +179,41 @@ describe("extractMoneyValues", () => {
       extractMoneyValues("Total des actifs 1.3977 | 1 527,54 CAD | 247 530,27 | 2026-10-30 | 5KFZES7"),
       [1527.54, 247530.27],
     );
+  });
+});
+
+describe("disnatClientDirectory", () => {
+  test("relie les libellés « NOM - CODE » des optgroups aux codes clients", () => {
+    const directory = disnatClientDirectory(CLIENT_SCOPED_SNIPPET);
+    assert.equal(directory.get("YANN DE CHAMPLAIN"), "5KFZE");
+    assert.equal(directory.get("VALERIE DEGRANDPRE"), "5L3AP");
+    assert.equal(directory.get("Vue d'ensemble"), undefined);
+  });
+});
+
+describe("parseDisnatSummaryScopes", () => {
+  test("rattache la ligne de totaux au titulaire affiché", () => {
+    const scopes = parseDisnatSummaryScopes(CLIENT_SCOPED_SNIPPET);
+    assert.equal(scopes.length, 1);
+    assert.equal(scopes[0].clientName, "YANN DE CHAMPLAIN");
+    assert.deepEqual(scopes[0].totals, {
+      rate: null,
+      cashCad: 230.92,
+      securitiesCad: 42564.48,
+      totalCad: 42795.4,
+    });
+  });
+
+  test("ne rattache personne en vue agrégée (aucun titulaire affiché)", () => {
+    const scopes = parseDisnatSummaryScopes(AGGREGATE_SNIPPET);
+    assert.equal(scopes.length, 1);
+    assert.equal(scopes[0].clientName, null);
+    assert.deepEqual(scopes[0].totals, {
+      rate: 1.3998,
+      cashCad: 1529.01,
+      securitiesCad: 240151.61,
+      totalCad: 241680.62,
+    });
   });
 });
 

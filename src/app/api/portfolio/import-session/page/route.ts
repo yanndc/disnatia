@@ -4,8 +4,9 @@ import { describeDisnatPage } from "@/lib/csv/disnat-diagnostics";
 import {
   clientCodeFromDisnatHtml,
   clientCodeFromDisnatUrl,
+  disnatClientDirectory,
   parseDisnatSummaryHtml,
-  parseDisnatSummaryRows,
+  parseDisnatSummaryScopes,
 } from "@/lib/csv/disnat-summary";
 import { prisma } from "@/lib/db/prisma";
 import { POST as importRoutePost } from "@/app/api/imports/route";
@@ -74,10 +75,10 @@ export async function POST(request: Request) {
   const payloadUrl = typeof payload.url === "string" ? payload.url : "";
 
   // Page « Vue d'ensemble » : on enregistre l'encaisse officielle du client (ligne de totaux).
-  // Plusieurs lignes de totaux = plusieurs clients sur la page : on refuse plutôt que de
-  // créditer le mauvais client (l'écran « Tous les comptes » demande un envoi par client).
-  const summaryRows = parseDisnatSummaryRows(html);
-  if (summaryRows.length > 1) {
+  // Le titulaire affiché au-dessus de la ligne (`YANN DE CHAMPLAIN`) est relié à son code client
+  // par les libellés « NOM - CODE » de la liste « Compte ».
+  const scopes = parseDisnatSummaryScopes(html);
+  if (scopes.length > 1) {
     return NextResponse.json(
       {
         ok: false,
@@ -90,11 +91,32 @@ export async function POST(request: Request) {
     );
   }
 
-  const summary = summaryRows[0] ?? parseDisnatSummaryHtml(html);
+  const scope = scopes[0] ?? null;
+  const summary = scope?.totals ?? parseDisnatSummaryHtml(html);
   if (summary) {
-    // Le code client vient du favori (page « Tous les comptes »), sinon de l'URL, sinon du HTML.
+    const directory = disnatClientDirectory(html);
+    const scopeCode = scope?.clientName ? (directory.get(scope.clientName) ?? null) : null;
+    const pageCodes = new Set(directory.values());
+
+    // Vue agrégée (« Vue d'ensemble » = tous les comptes) avec plusieurs clients : le total
+    // additionne les clients, donc il ne peut pas être crédité à un seul.
+    if (!scopeCode && pageCodes.size > 1) {
+      const known = [...directory.entries()].map(([name, code]) => `${code} (${name})`).join(" · ");
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "AGGREGATE_VIEW",
+          error: `Vue agrégée de ${pageCodes.size} clients : choisis ton client dans la liste « Compte » avant d'envoyer — ${known}.`,
+          diagnostic: describeDisnatPage(html, payloadUrl).hint,
+        },
+        { status: 422, headers },
+      );
+    }
+
+    // Ordre : titulaire affiché, puis code envoyé par le favori, puis URL, puis déduction du HTML.
     const payloadClient = (payload.clientCode ?? "").trim().toUpperCase();
     const clientCode =
+      scopeCode ??
       (/^[A-Z0-9]{4,8}$/.test(payloadClient) ? payloadClient : null) ??
       clientCodeFromDisnatUrl(payloadUrl) ??
       clientCodeFromDisnatHtml(html);
