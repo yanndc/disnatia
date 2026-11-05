@@ -9,6 +9,24 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
   const endpoint = `${appUrl.replace(/\/$/, "")}/api/portfolio/import-session/page`;
   const script = `(async()=>{
     if(!confirm("Envoyer cette page Disnat à DisnatIA ?"))return;
+    const secours=()=>{
+      const html=document.documentElement.outerHTML;
+      try{
+        const ta=document.createElement("textarea");
+        ta.value=html;ta.style.position="fixed";ta.style.top="-9999px";
+        document.body.appendChild(ta);ta.select();
+        const ok=document.execCommand("copy");
+        document.body.removeChild(ta);
+        if(ok){alert("DisnatIA — envoi impossible. La page (HTML complet) est dans le presse-papier : colle-la dans le chat ou dans un fichier .html à me transmettre.");return;}
+      }catch(_){}
+      try{
+        const a=document.createElement("a");
+        a.href=URL.createObjectURL(new Blob([html],{type:"text/html"}));
+        a.download="disnatia-"+(new Date().toISOString().slice(0,10))+".html";
+        a.click();URL.revokeObjectURL(a.href);
+        alert("DisnatIA — envoi impossible. La page a été téléchargée : dépose le fichier dans le dossier docs/.");
+      }catch(e2){alert("DisnatIA — envoi impossible ("+e2.message+").");}
+    };
     try{
       const r=await fetch(${JSON.stringify(endpoint)},{
         method:"POST",
@@ -33,8 +51,12 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
         alert(lignes.join("\\n"));
       }else{
         alert("DisnatIA — "+(j.error||("erreur "+r.status)));
+        if(r.status>=500||r.status===0)secours();
       }
-    }catch(e){alert("DisnatIA — échec réseau : "+e.message);}
+    }catch(e){
+      alert("DisnatIA — échec réseau : "+e.message);
+      secours();
+    }
   })();`;
   return `javascript:${script.replace(/\s+/g, " ")}`;
 }
