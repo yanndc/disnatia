@@ -9,8 +9,11 @@ seulement une ligne `Total` en fin de tableau.
 - Écran **« Mes comptes »** (`clientId=ALL`) : les colonnes empilent CAD puis USD dans la même
   cellule ; on retient le montant CAD de chaque colonne (en-têtes *Liquidités* / *Valeur totale*
   comme garde-fou de contexte).
-- Le favori **demande le code client** (`5KFZE`, mémorisé dans `localStorage`) quand la page ne
-  permet pas de le déduire — cas de « Tous les comptes » — puis rejoue l'envoi.
+- Le favori **déduit le client** des numéros de compte de la page (les 5 premiers caractères de
+  `5KFZEY4` → `5KFZE`) ou des liens `clientId=…` ; il ne demande le code (mémorisé dans
+  `localStorage`) que si plusieurs clients cohabitent.
+- Le favori n'émet plus que de l'**ASCII** (`—` → `\u2014`) : il est décodé avec le charset de la
+  page Disnat, ce qui affichait « Ã© » à la place de « é ».
 - Le client est aussi déduit du HTML (`clientId=…` unique dans la page) quand l'URL est absente.
 - Les 422 joignent un diagnostic compact (titre, sections de compte, lignes de grille, ligne de
   totaux) et le favori recopie le HTML complet en secours dès une page illisible.

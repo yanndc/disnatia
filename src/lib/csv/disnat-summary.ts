@@ -178,18 +178,30 @@ export function clientCodeFromDisnatUrl(url: string): string | null {
 }
 
 /**
- * Code client déduit du HTML de la page : repli quand le favori n'envoie pas d'URL
- * (favori généré avant l'ajout du champ `url`). On ne retient le code que s'il est
- * **unique** dans la page — sinon la portée reste ambiguë (vue « Tous les comptes »).
+ * Code client déduit du HTML de la page. On ne retient une valeur que si elle est **unique** :
+ * - paramètre `clientId=…` des liens (hors `ALL`) ;
+ * - **numéros de compte** : les 5 premiers caractères d'un compte (`5KFZEY4`) sont le code client
+ *   propriétaire (`5KFZE`) — c'est ce qui identifie le client sur l'écran « Mes comptes ».
+ * Plusieurs clients dans la page ⇒ `null` (le favori demande alors le code).
  */
 export function clientCodeFromDisnatHtml(html: string): string | null {
   if (!html) return null;
   const codes = new Set<string>();
+
   for (const match of html.matchAll(/clientId=([A-Za-z0-9]{4,8})\b/g)) {
     const code = match[1].toUpperCase();
     if (code === "ALL") continue;
     codes.add(code);
     if (codes.size > 1) return null;
   }
+
+  for (const match of html.matchAll(/\b\d[A-Z0-9]{6}\b/g)) {
+    const account = match[0];
+    // Écarte les jetons purement numériques (dates condensées, identifiants techniques).
+    if ((account.match(/[A-Z]/g) ?? []).length < 4) continue;
+    codes.add(account.slice(0, 5));
+    if (codes.size > 1) return null;
+  }
+
   return codes.size === 1 ? [...codes][0] : null;
 }

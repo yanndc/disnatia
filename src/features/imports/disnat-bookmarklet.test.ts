@@ -13,6 +13,10 @@ describe("buildDisnatBookmarklet", () => {
     assert.ok(!code.includes(" //"));
   });
 
+  test("reste 100 % ASCII (le favori est décodé avec le charset de la page Disnat)", () => {
+    assert.ok(!/[^\x00-\x7F]/.test(href));
+  });
+
   test("vise l'endpoint d'import avec le jeton et l'URL de la page", () => {
     assert.ok(code.includes("https://app.example.com/api/portfolio/import-session/page"));
     assert.ok(code.includes('"x-disnat-token":"jeton-test"'));

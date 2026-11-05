@@ -143,11 +143,21 @@ describe("clientCodeFromDisnatHtml", () => {
     );
   });
 
+  test("déduit le client des 5 premiers caractères des numéros de compte", () => {
+    const html = `<table><tr><td>5KFZEY4</td><td>5KFZEZ2</td><td>5KFZEH4</td><td>2026</td></tr></table>`;
+    assert.equal(clientCodeFromDisnatHtml(html), "5KFZE");
+  });
+
+  test("ignore les jetons numériques (dates, identifiants)", () => {
+    assert.equal(clientCodeFromDisnatHtml(`<td>20261030</td><td>12345678</td>`), null);
+  });
+
   test("reste muet quand plusieurs clients cohabitent", () => {
     assert.equal(
       clientCodeFromDisnatHtml(`<a href="?clientId=5KFZE">a</a><a href="?clientId=5L3AP">b</a>`),
       null,
     );
+    assert.equal(clientCodeFromDisnatHtml(`<td>5KFZEY4</td><td>5L3APA5</td>`), null);
   });
 });
 

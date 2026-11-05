@@ -85,5 +85,11 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
       secours();
     }
   })();`;
-  return `javascript:${script.replace(/\s+/g, " ")}`;
+  // Le favori est décodé avec le jeu de caractères de la page Disnat (souvent windows-1252) :
+  // tout accent ou tiret typographique sortirait en « Ã© ». On n'émet donc que de l'ASCII,
+  // en échappant les caractères non ASCII (`—` → `\u2014`) à l'intérieur des chaînes.
+  const ascii = script.replace(/[^\x00-\x7F]/g, (char) =>
+    `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+  return `javascript:${ascii.replace(/\s+/g, " ")}`;
 }

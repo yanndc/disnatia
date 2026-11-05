@@ -326,8 +326,8 @@ export function DisnatHtmlPanel({
                 <li>DisnatIA importe chaque compte et affiche le récapitulatif dans une alerte.</li>
                 <li>
                   Encaisse : Disnat → « Mes comptes » / Vue d&apos;ensemble, puis clique le
-                  favori. Si l&apos;écran est en « Tous les comptes », le favori demande une fois
-                  le code client (5KFZE) pour créditer le bon client.
+                  favori. Le client est déduit des numéros de compte ; s&apos;il y a plusieurs
+                  clients à l&apos;écran, le favori demande une fois le code (5KFZE).
                 </li>
               </ol>
               <p className="text-[11px] text-slate-400">
