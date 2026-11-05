@@ -7,20 +7,21 @@
  */
 export function buildDisnatBookmarklet(appUrl: string, token: string): string {
   const endpoint = `${appUrl.replace(/\/$/, "")}/api/portfolio/import-session/page`;
+  const cacheKey = "disnatia.clientCode";
   const script = `(async()=>{
     if(!confirm("Envoyer cette page Disnat à DisnatIA ?"))return;
     const collectHtml=()=>{
-      let html=document.documentElement.outerHTML;
+      let markup=document.documentElement.outerHTML;
       document.querySelectorAll("iframe").forEach((frame)=>{
         try{
           const doc=frame.contentDocument;
-          if(doc&&doc.documentElement)html+="\\n<!-- iframe -->\\n"+doc.documentElement.outerHTML;
+          if(doc&&doc.documentElement)markup+="\\n<!-- iframe -->\\n"+doc.documentElement.outerHTML;
         }catch(_){}
       });
-      return html;
+      return markup;
     };
+    const html=collectHtml();
     const secours=()=>{
-      const html=collectHtml();
       try{
         const ta=document.createElement("textarea");
         ta.value=html;ta.style.position="fixed";ta.style.top="-9999px";
@@ -37,22 +38,38 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
         alert("DisnatIA — envoi impossible. La page a été téléchargée : dépose le fichier dans l'onglet « Page Disnat (coller) » de DisnatIA.");
       }catch(e2){alert("DisnatIA — envoi impossible ("+e2.message+").");}
     };
+    const askClient=()=>{
+      let saved="";
+      try{saved=localStorage.getItem(${JSON.stringify(cacheKey)})||"";}catch(_){}
+      const answer=prompt("DisnatIA — code client Disnat à créditer (ex. 5KFZE) :",saved);
+      if(!answer)return "";
+      const code=answer.trim().toUpperCase();
+      try{localStorage.setItem(${JSON.stringify(cacheKey)},code);}catch(_){}
+      return code;
+    };
+    const send=(clientCode)=>fetch(${JSON.stringify(endpoint)},{
+      method:"POST",
+      headers:{"content-type":"application/json","x-disnat-token":${JSON.stringify(token)}},
+      body:JSON.stringify({html:html,url:location.href,clientCode:clientCode||""})
+    });
     try{
-      const r=await fetch(${JSON.stringify(endpoint)},{
-        method:"POST",
-        headers:{"content-type":"application/json","x-disnat-token":${JSON.stringify(token)}},
-        body:JSON.stringify({html:collectHtml(),url:location.href})
-      });
-      const j=await r.json().catch(()=>({}));
+      let r=await send("");
+      let j=await r.json().catch(()=>({}));
+      if(!r.ok&&j.code==="CLIENT_REQUIRED"){
+        const code=askClient();
+        if(!code){alert("DisnatIA — envoi annulé : code client requis pour rattacher l'encaisse.");return;}
+        r=await send(code);
+        j=await r.json().catch(()=>({}));
+      }
       if(r.ok){
         if(j.mode==="summary"){
           const n=${
             JSON.stringify(
-              "DisnatIA — encaisse du client enregistrée le %date% : %cash% $ d'encaisse, %sec% $ de titres, %total% $ au total.",
+              "DisnatIA — encaisse du client %client% enregistrée le %date% : %cash% $ d'encaisse, %sec% $ de titres, %total% $ au total.",
             )
           };
           const f=(v)=>new Intl.NumberFormat("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2}).format(v||0);
-          alert(n.replace("%date%",j.asOfDate).replace("%cash%",f(j.cashCad)).replace("%sec%",f(j.securitiesCad)).replace("%total%",f(j.totalCad)));
+          alert(n.replace("%client%",j.clientCode||"").replace("%date%",j.asOfDate).replace("%cash%",f(j.cashCad)).replace("%sec%",f(j.securitiesCad)).replace("%total%",f(j.totalCad)));
           return;
         }
         const lignes=["DisnatIA — "+(j.rowsTotal??0)+" ligne(s) lues sur "+(j.accounts||[]).length+" compte(s).",

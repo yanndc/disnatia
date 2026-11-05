@@ -4,10 +4,14 @@ Sur la vue d'ensemble d'**un seul client** (`clientId=5KFZE`), le favori renvoya
 seulement une ligne `Total` en fin de tableau.
 
 - `parseDisnatSummaryHtml` lit maintenant la ligne de totaux **quelle que soit son étiquette**
-  (`Total`, `Total des actifs`, `Total des comptes`…) et quel que soit le balisage des cellules
+  (`Total`, `Vue d'ensemble`, `Total des actifs`…) et quel que soit le balisage des cellules
   (`<td>`, `<div>`, `<span>`). L'identité `encaisse + titres = total` reste le garde-fou.
-- Le client est déduit du HTML (`clientId=…` unique dans la page) quand le favori n'envoie pas
-  l'URL — cas des favoris générés avant l'ajout de ce champ.
+- Écran **« Mes comptes »** (`clientId=ALL`) : les colonnes empilent CAD puis USD dans la même
+  cellule ; on retient le montant CAD de chaque colonne (en-têtes *Liquidités* / *Valeur totale*
+  comme garde-fou de contexte).
+- Le favori **demande le code client** (`5KFZE`, mémorisé dans `localStorage`) quand la page ne
+  permet pas de le déduire — cas de « Tous les comptes » — puis rejoue l'envoi.
+- Le client est aussi déduit du HTML (`clientId=…` unique dans la page) quand l'URL est absente.
 - Les 422 joignent un diagnostic compact (titre, sections de compte, lignes de grille, ligne de
   totaux) et le favori recopie le HTML complet en secours dès une page illisible.
 - Le favori recolle aussi le contenu des iframes lisibles, et l'onglet « Page Disnat (coller) »

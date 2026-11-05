@@ -44,8 +44,8 @@ export function extractMoneyValues(text: string): number[] {
   return values;
 }
 
-/** Libellé de la ligne de totaux d'une « Vue d'ensemble ». */
-const TOTAL_LABEL = /total/i;
+/** Libellé d'une ligne de totaux : « Total », « Total des actifs », « Vue d'ensemble »… */
+const TOTAL_LABEL = /total|vue d['’]?ensemble/i;
 
 type Triplet = { index: number; cashCad: number; securitiesCad: number; totalCad: number };
 
@@ -79,6 +79,17 @@ function toTotals(triplet: Triplet, rate: number | null): DisnatSummaryTotals {
   };
 }
 
+/**
+ * Montant d'une cellule. Disnat empile parfois deux devises dans la même cellule
+ * (`230,92 CAD` puis `613,96 USD`) : on retient alors la **première** (devise du compte, CAD ici).
+ */
+function cellMoney(text: string): number | null {
+  const whole = parseDisnatMoney(text);
+  if (whole !== null) return whole;
+  const [first] = extractMoneyValues(text);
+  return first ?? null;
+}
+
 /** Totaux lus dans les cellules `<td>/<th>` d'un extrait (format historique). */
 function totalsFromCells(chunk: string): DisnatSummaryTotals | null {
   const cells = [...chunk.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)]
@@ -86,7 +97,7 @@ function totalsFromCells(chunk: string): DisnatSummaryTotals | null {
     .filter((cell) => cell.length > 0);
 
   const numbers = cells
-    .map((cell) => ({ text: cell, value: parseDisnatMoney(cell) }))
+    .map((cell) => ({ text: cell, value: cellMoney(cell) }))
     .filter((entry) => entry.value !== null) as { text: string; value: number }[];
   const triplet = findTotalsTriplet(numbers.map((entry) => entry.value));
   if (!triplet) return null;
@@ -102,11 +113,15 @@ function totalsFromText(text: string, labelled: boolean): DisnatSummaryTotals | 
 }
 
 /**
- * Lit la ligne de totaux d'une page « Vue d'ensemble » Disnat.
+ * Lit la ligne de totaux d'une page d'encaisse Disnat.
  *
- * Deux mises en page existent selon la portée choisie :
- * - tous les clients (agrégat) : ligne `Total des actifs | 1.3977 | 1 527,54 CAD | …` ;
- * - **un seul client** : tableau des comptes terminé par une simple ligne `Total`.
+ * Trois mises en page coexistent :
+ * - agrégat historique : ligne `Total des actifs | 1.3977 | 1 527,54 CAD | …` ;
+ * - vue d'ensemble d'un client : ligne `Total` en fin de tableau ;
+ * - **« Mes comptes »** (écran `clientId=ALL`) : en-têtes *Liquidités / Valeur des titres /
+ *   Valeur totale* et une ligne **`Vue d'ensemble`** par client (CAD empilé au-dessus du USD),
+ *   sans le mot « total » — on la reconnaît à l'identité comptable.
+ *
  * La page ne contient pas le détail par transaction : on rattache ces totaux au **client**
  * (`clientId` de l'URL) pour alimenter l'encaisse aux bornes.
  */
@@ -128,17 +143,26 @@ export function parseDisnatSummaryHtml(html: string): DisnatSummaryTotals | null
     if (fromText) return fromText;
   }
 
-  // 2) « Vue d'ensemble » d'un client seul : ligne « Total » (ou « Total des comptes »…).
+  // 2) Page d'encaisse (en-têtes « Liquidités » + « Valeur totale ») : on privilégie la ligne
+  //    libellée « Vue d'ensemble »/« Total » ; à défaut, la première ligne qui vérifie
+  //    `encaisse + titres = total` (CAD lu en premier quand deux devises sont empilées).
+  const hasCashHeaders = /liquidit[ée]s/i.test(html) && /valeur totale/i.test(html);
+  let fallback: DisnatSummaryTotals | null = null;
+
   for (const rowMatch of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
-    const text = stripHtmlTags(rowMatch[0]);
-    if (!TOTAL_LABEL.test(text)) continue;
-    const fromCells = totalsFromCells(rowMatch[0]);
-    if (fromCells) return fromCells;
-    const fromText = totalsFromText(text, false);
-    if (fromText) return fromText;
+    const rowHtml = rowMatch[0];
+    const text = stripHtmlTags(rowHtml);
+    if (TOTAL_LABEL.test(text)) {
+      const labelled = totalsFromCells(rowHtml) ?? totalsFromText(text, false);
+      if (labelled) return labelled;
+      continue;
+    }
+    if (hasCashHeaders && !fallback) {
+      fallback = totalsFromCells(rowHtml);
+    }
   }
 
-  return null;
+  return fallback;
 }
 
 /** Code client depuis l'URL Disnat (`clientId=5KFZE`), `ALL` sinon. */

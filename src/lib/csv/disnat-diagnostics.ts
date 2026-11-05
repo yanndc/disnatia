@@ -47,7 +47,7 @@ function assetTitles(html: string): string[] {
 function totalRow(html: string): { label: string; values: number[] } | null {
   for (const match of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
     const text = stripHtmlTags(match[0]);
-    if (!/total/i.test(text)) continue;
+    if (!/total|vue d['’]?ensemble/i.test(text)) continue;
     const values = extractMoneyValues(text).slice(0, 4);
     if (values.length === 0) continue;
     return { label: text.slice(0, MAX_LABEL), values };

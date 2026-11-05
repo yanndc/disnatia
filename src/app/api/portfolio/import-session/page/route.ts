@@ -55,9 +55,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Jeton invalide." }, { status: 401, headers });
   }
 
-  let payload: { html?: string; url?: string };
+  let payload: { html?: string; url?: string; clientCode?: string };
   try {
-    payload = (await request.json()) as { html?: string; url?: string };
+    payload = (await request.json()) as { html?: string; url?: string; clientCode?: string };
   } catch {
     return NextResponse.json({ error: "Corps JSON invalide." }, { status: 400, headers });
   }
@@ -75,15 +75,20 @@ export async function POST(request: Request) {
   // Page « Vue d'ensemble » : on enregistre l'encaisse officielle du client (ligne de totaux).
   const summary = parseDisnatSummaryHtml(html);
   if (summary) {
-    // `clientCodeFromDisnatHtml` : repli pour les favoris générés avant l'envoi de `url`.
-    const clientCode = clientCodeFromDisnatUrl(payloadUrl) ?? clientCodeFromDisnatHtml(html);
+    // Le code client vient du favori (page « Tous les comptes »), sinon de l'URL, sinon du HTML.
+    const payloadClient = (payload.clientCode ?? "").trim().toUpperCase();
+    const clientCode =
+      (/^[A-Z0-9]{4,8}$/.test(payloadClient) ? payloadClient : null) ??
+      clientCodeFromDisnatUrl(payloadUrl) ??
+      clientCodeFromDisnatHtml(html);
     if (!clientCode) {
       const diagnostic = describeDisnatPage(html, payloadUrl);
       return NextResponse.json(
         {
           ok: false,
+          code: "CLIENT_REQUIRED",
           error:
-            "Encaisse non rattachée : ouvre la « Vue d'ensemble » d'un client précis (pas « Tous les comptes »), puis relance le favori.",
+            "Encaisse non rattachée : indique ton code client Disnat (ex. 5KFZE) pour créditer le bon client.",
           diagnostic: diagnostic.hint,
         },
         { status: 422, headers },

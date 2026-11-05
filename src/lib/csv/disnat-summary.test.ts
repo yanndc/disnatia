@@ -30,6 +30,33 @@ const DIV_CELLS_SNIPPET = `<div class="dsd-grid">
   <div class="dsd-row"><span>Total des actifs</span><span>1 527,54 CAD</span><span>247 530,27 CAD</span><span>249 057,81 CAD</span></div>
 </div>`;
 
+/**
+ * Écran « Mes comptes » (`clientId=ALL`) : en-têtes d'encaisse et ligne « Vue d'ensemble »
+ * par client, avec CAD empilé au-dessus du USD dans la même cellule.
+ */
+const MES_COMPTES_SNIPPET = `<html><head><title>Mes comptes</title></head><body>
+<table class="dsd-cash">
+  <thead><tr><td></td><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th><th>Variation</th><th>Marge</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2">Vue d'ensemble</td>
+      <td>230,92 CAD<br>613,96 USD</td>
+      <td>42 564,48 CAD<br>90 882,15 USD</td>
+      <td>42 795,40 CAD<br>91 496,11 USD</td>
+      <td>-2 107,66 CAD<br>-3 546,72 USD</td>
+      <td>0,00 CAD<br>0,00 USD</td></tr>
+  </tbody>
+</table></body></html>`;
+
+/** Même écran, mais une ligne par devise (le libellé est porté par un `rowspan`). */
+const MES_COMPTES_TWO_ROWS_SNIPPET = `<html><head><title>Mes comptes</title></head><body>
+<table class="dsd-cash">
+  <thead><tr><td></td><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th><th>Variation</th><th>Marge</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2">Vue d'ensemble</td><td>230,92 CAD</td><td>42 564,48 CAD</td><td>42 795,40 CAD</td><td>-2 107,66 CAD</td><td>0,00 CAD</td></tr>
+    <tr><td>613,96 USD</td><td>90 882,15 USD</td><td>91 496,11 USD</td><td>-3 546,72 USD</td><td>0,00 USD</td></tr>
+  </tbody>
+</table></body></html>`;
+
 describe("parseDisnatSummaryHtml", () => {
   test("lit l'encaisse, les titres et le total de la ligne « Total des actifs »", () => {
     assert.deepEqual(parseDisnatSummaryHtml(SUMMARY_SNIPPET), {
@@ -55,6 +82,24 @@ describe("parseDisnatSummaryHtml", () => {
       cashCad: 1527.54,
       securitiesCad: 247530.27,
       totalCad: 249057.81,
+    });
+  });
+
+  test("lit la ligne « Vue d'ensemble » de l'écran « Mes comptes » (CAD empilé sur USD)", () => {
+    assert.deepEqual(parseDisnatSummaryHtml(MES_COMPTES_SNIPPET), {
+      rate: null,
+      cashCad: 230.92,
+      securitiesCad: 42564.48,
+      totalCad: 42795.4,
+    });
+  });
+
+  test("lit la même page quand chaque devise a sa propre ligne", () => {
+    assert.deepEqual(parseDisnatSummaryHtml(MES_COMPTES_TWO_ROWS_SNIPPET), {
+      rate: null,
+      cashCad: 230.92,
+      securitiesCad: 42564.48,
+      totalCad: 42795.4,
     });
   });
 

@@ -325,9 +325,9 @@ export function DisnatHtmlPanel({
                 <li>Disnat → Mes comptes → Historique (la période voulue), puis clique le favori.</li>
                 <li>DisnatIA importe chaque compte et affiche le récapitulatif dans une alerte.</li>
                 <li>
-                  Encaisse : Disnat → Vue d&apos;ensemble d&apos;un client précis (pas « Tous les
-                  comptes »), puis clique le favori. À refaire depuis le favori de cette page
-                  (l&apos;ancien lien n&apos;envoie pas l&apos;URL du client).
+                  Encaisse : Disnat → « Mes comptes » / Vue d&apos;ensemble, puis clique le
+                  favori. Si l&apos;écran est en « Tous les comptes », le favori demande une fois
+                  le code client (5KFZE) pour créditer le bon client.
                 </li>
               </ol>
               <p className="text-[11px] text-slate-400">

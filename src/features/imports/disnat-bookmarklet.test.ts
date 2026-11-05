@@ -19,6 +19,12 @@ describe("buildDisnatBookmarklet", () => {
     assert.ok(code.includes("url:location.href"));
   });
 
+  test("demande le code client et rejoue l'envoi quand le serveur le réclame", () => {
+    assert.ok(code.includes("clientCode:clientCode"));
+    assert.ok(code.includes('j.code==="CLIENT_REQUIRED"'));
+    assert.ok(code.includes("disnatia.clientCode"));
+  });
+
   test("recopie aussi le contenu des iframes lisibles", () => {
     assert.ok(code.includes("contentDocument"));
   });
