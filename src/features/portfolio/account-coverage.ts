@@ -17,7 +17,12 @@ import {
  */
 export type AccountCoverageStatus = "A_JOUR" | "A_CONFIRMER" | "SANS_DONNEES";
 
-export type AccountCoverageSource = "PORTEFEUILLE" | "OPERATIONS" | "CONFIRMATION";
+export type AccountCoverageSource =
+  | "PORTEFEUILLE"
+  | "OPERATIONS"
+  | "CONFIRMATION"
+  | "SNAPSHOT_CLIENT";
+
 
 export type AccountCoverageInput = {
   accountKey: string;
@@ -29,6 +34,11 @@ export type AccountCoverageInput = {
   lastConfirmationDataAsOf: string | null;
   /** Horodatage de la dernière attestation (ISO datetime). */
   lastConfirmationAt: string | null;
+  /**
+   * `asOf` de la dernière capture « Vue d'ensemble » du **client** (favori Disnat).
+   * Les totaux officiels du client ont été lus à cette date : tous ses comptes sont frais.
+   */
+  clientSnapshotAsOf?: string | null;
 };
 
 export type AccountCoverage = {
@@ -75,6 +85,7 @@ export function assessAccountCoverage(
     { iso: input.snapshotAsOf, source: "PORTEFEUILLE" },
     { iso: input.lastTransactionDate, source: "OPERATIONS" },
     { iso: input.lastConfirmationDataAsOf, source: "CONFIRMATION" },
+    { iso: input.clientSnapshotAsOf ?? null, source: "SNAPSHOT_CLIENT" },
   ];
 
   let freshnessIso: string | null = null;

@@ -21,6 +21,24 @@ describe("countTradingDaysAfter", () => {
 });
 
 describe("assessAccountCoverage", () => {
+  test("capture « Vue d'ensemble » du client → tous ses comptes sont à jour", () => {
+    const coverage = assessAccountCoverage(
+      {
+        accountKey: "5KFZE|5KFZEA9",
+        snapshotAsOf: "2026-06-30",
+        lastTransactionDate: null,
+        lastConfirmationDataAsOf: null,
+        lastConfirmationAt: null,
+        clientSnapshotAsOf: "2026-11-03",
+      },
+      NOW,
+    );
+
+    assert.equal(coverage.status, "A_JOUR");
+    assert.equal(coverage.freshnessSource, "SNAPSHOT_CLIENT");
+    assert.equal(coverage.requiresConfirmation, false);
+  });
+
   test("compte alimenté par des opérations récentes → à jour", () => {
     const coverage = assessAccountCoverage(
       {

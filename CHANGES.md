@@ -9,6 +9,10 @@ Le favori **« Envoyer à DisnatIA »** est devenu conscient de la page :
 Ces instantanés sont additionnés aux bornes du TRI (±45 j) : l'écart résiduel de 0,5 pt
 disparaît dès qu'une capture existe à la date de référence.
 
+Ils comptent aussi comme **quatrième source de fraîcheur** de la session guidée
+(`SNAPSHOT_CLIENT`) : après un clic sur « Vue d'ensemble », tous les comptes du client
+passent « À jour » dans la liste qui demande quoi mettre à jour — sans case à cocher.
+
 # Rendements vs Disnat — méthode officielle (2026-11-04)
 
 ## Ce que fait Disnat (docs dans `/docs`)

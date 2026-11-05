@@ -36,7 +36,7 @@ function isoFromNullableDate(value: Date | null | undefined): string | null {
 export async function buildImportSession(
   now = new Date(),
 ): Promise<ImportSessionPayload> {
-  const [accountStates, holdings, transactionBounds, lastTransactions, confirmations, rules] =
+  const [accountStates, holdings, transactionBounds, lastTransactions, confirmations, rules, cashSnapshots] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
         orderBy: [{ owner: "asc" }, { accountType: "asc" }, { accountName: "asc" }],
@@ -63,6 +63,9 @@ export async function buildImportSession(
         orderBy: { updatedAt: "desc" },
         take: 200,
       }),
+      prisma.disnatClientCashSnapshot
+        .findMany({ select: { clientCode: true, asOfDate: true } })
+        .catch(() => []),
     ]);
 
   const lastTransactionByAccount = new Map<string, Date>();
@@ -70,6 +73,15 @@ export async function buildImportSession(
     if (row.accountKey && row._max.tradeDate) {
       lastTransactionByAccount.set(row.accountKey, row._max.tradeDate);
     }
+  }
+
+  // Dernière capture « Vue d'ensemble » par code client (favori Disnat) : elle rend frais
+  // tous les comptes du client, quel que soit leur propre historique.
+  const cashSnapshotByClient = new Map<string, string>();
+  for (const snapshot of cashSnapshots) {
+    const iso = isoDateFromDbTimestamp(snapshot.asOfDate);
+    const current = cashSnapshotByClient.get(snapshot.clientCode);
+    if (!current || iso > current) cashSnapshotByClient.set(snapshot.clientCode, iso);
   }
 
   const latestConfirmationByAccount = new Map<
@@ -128,6 +140,9 @@ export async function buildImportSession(
           lastConfirmationAt: confirmation
             ? confirmation.confirmedAt.toISOString()
             : null,
+          clientSnapshotAsOf: cashSnapshotByClient.get(
+            state.accountKey.split("|")[0]?.toUpperCase() ?? "",
+          ),
         },
         now,
       ),
