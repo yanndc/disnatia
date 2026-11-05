@@ -39,4 +39,11 @@ describe("describeDisnatPage", () => {
     assert.deepEqual(result.totalRowValues, [1527.54, 247530.27, 249057.81]);
     assert.match(result.hint, /totaux « Total/);
   });
+
+  test("joint un extrait du texte visible, sans le script inline", () => {
+    const html = `<html><body><script>var x = 1 < 2;</script><h1>Mes comptes</h1><p>Titres</p></body></html>`;
+    const result = describeDisnatPage(html);
+    assert.equal(result.textSample, "Mes comptes Titres");
+    assert.match(result.hint, /texte « Mes comptes Titres »/);
+  });
 });

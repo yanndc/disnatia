@@ -18,11 +18,14 @@ export type DisnatPageDiagnostics = {
   totalRowLabel: string | null;
   /** Montants lus sur cette ligne de totaux. */
   totalRowValues: number[];
+  /** Début du texte visible de la page (pour reconnaître l'onglet ouvert). */
+  textSample: string;
   /** Résumé d'une ligne, à coller dans un message d'erreur. */
   hint: string;
 };
 
 const MAX_LABEL = 140;
+const MAX_SAMPLE = 160;
 
 function pageTitle(html: string): string | null {
   const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -52,6 +55,14 @@ function totalRow(html: string): { label: string; values: number[] } | null {
   return null;
 }
 
+/** Début du texte visible (hors `<script>`/`<style>`) : identifie l'onglet ouvert. */
+function visibleTextSample(html: string): string {
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ");
+  return stripHtmlTags(cleaned).slice(0, MAX_SAMPLE);
+}
+
 /**
  * Décrit la page Disnat reçue (comptes, grille d'historique, ligne de totaux).
  * Aucune valeur n'est écrite en base : c'est uniquement du diagnostic.
@@ -61,6 +72,7 @@ export function describeDisnatPage(html: string, url = ""): DisnatPageDiagnostic
   const gridRows = (html.match(/row-index="/g) ?? []).length;
   const totals = totalRow(html);
   const clientId = clientCodeFromDisnatUrl(url);
+  const textSample = visibleTextSample(html);
 
   const parts: string[] = [];
   const title = pageTitle(html);
@@ -73,6 +85,7 @@ export function describeDisnatPage(html: string, url = ""): DisnatPageDiagnostic
   } else {
     parts.push("aucune ligne de totaux");
   }
+  if (textSample) parts.push(`texte « ${textSample} »`);
 
   return {
     title,
@@ -81,6 +94,7 @@ export function describeDisnatPage(html: string, url = ""): DisnatPageDiagnostic
     gridRows,
     totalRowLabel: totals?.label ?? null,
     totalRowValues: totals?.values ?? [],
+    textSample,
     hint: parts.join(" · "),
   };
 }
