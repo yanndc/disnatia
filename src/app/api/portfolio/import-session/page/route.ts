@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { parseDisnatHistoryHtml } from "@/lib/csv/disnat-html";
-import { clientCodeFromDisnatUrl, parseDisnatSummaryHtml } from "@/lib/csv/disnat-summary";
+import { describeDisnatPage } from "@/lib/csv/disnat-diagnostics";
+import {
+  clientCodeFromDisnatHtml,
+  clientCodeFromDisnatUrl,
+  parseDisnatSummaryHtml,
+} from "@/lib/csv/disnat-summary";
 import { prisma } from "@/lib/db/prisma";
 import { POST as importRoutePost } from "@/app/api/imports/route";
 
@@ -67,16 +72,19 @@ export async function POST(request: Request) {
 
   const payloadUrl = typeof payload.url === "string" ? payload.url : "";
 
-  // Page « Vue d'ensemble » : on enregistre l'encaisse officielle du client (ligne « Total des actifs »).
+  // Page « Vue d'ensemble » : on enregistre l'encaisse officielle du client (ligne de totaux).
   const summary = parseDisnatSummaryHtml(html);
   if (summary) {
-    const clientCode = clientCodeFromDisnatUrl(payloadUrl);
+    // `clientCodeFromDisnatHtml` : repli pour les favoris générés avant l'envoi de `url`.
+    const clientCode = clientCodeFromDisnatUrl(payloadUrl) ?? clientCodeFromDisnatHtml(html);
     if (!clientCode) {
+      const diagnostic = describeDisnatPage(html, payloadUrl);
       return NextResponse.json(
         {
           ok: false,
           error:
-            "Encaisse non rattachée : choisis un client précis (et non « Tous les comptes ») avant d'envoyer la page « Vue d'ensemble ».",
+            "Encaisse non rattachée : ouvre la « Vue d'ensemble » d'un client précis (pas « Tous les comptes »), puis relance le favori.",
+          diagnostic: diagnostic.hint,
         },
         { status: 422, headers },
       );
@@ -113,7 +121,15 @@ export async function POST(request: Request) {
 
   const parsed = parseDisnatHistoryHtml(html);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error ?? "Aucune transaction trouvée." }, { status: 422, headers });
+    const diagnostic = describeDisnatPage(html, payloadUrl);
+    const message = parsed.error ?? "Aucune transaction trouvée.";
+    return NextResponse.json(
+      {
+        error: `${message} [${diagnostic.hint}]`,
+        diagnostic: diagnostic.hint,
+      },
+      { status: 422, headers },
+    );
   }
 
   const results: { account: string; status: string; detail: string }[] = [];

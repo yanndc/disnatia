@@ -10,6 +10,8 @@ import {
   type DisnatHtmlAccount,
   type DisnatHtmlParseResult,
 } from "@/lib/csv/disnat-html";
+import { describeDisnatPage } from "@/lib/csv/disnat-diagnostics";
+import { parseDisnatSummaryHtml } from "@/lib/csv/disnat-summary";
 
 type AccountImportResult = {
   label: string;
@@ -42,6 +44,8 @@ export function DisnatHtmlPanel({
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState<AccountImportResult[]>([]);
   const [copied, setCopied] = useState(false);
+  /** Message d'appoint quand la page collée n'est pas un historique (vue d'ensemble, coquille vide…). */
+  const [fallbackNote, setFallbackNote] = useState<string | null>(null);
 
   async function copyBookmarklet() {
     if (!bookmarkletHref) return;
@@ -57,7 +61,25 @@ export function DisnatHtmlPanel({
   const analyze = useCallback((html: string) => {
     setText(html);
     setResults([]);
-    setParsed(html.trim().length > 0 ? parseDisnatHistoryHtml(html) : null);
+    const result = html.trim().length > 0 ? parseDisnatHistoryHtml(html) : null;
+    setParsed(result);
+    if (!result || result.ok) {
+      setFallbackNote(null);
+      return;
+    }
+    // Page sans historique : on dit ce qu'elle contient (vue d'ensemble lue ? coquille vide ?).
+    const summary = parseDisnatSummaryHtml(html);
+    const money = (value: number) =>
+      value.toLocaleString("fr-CA", { style: "currency", currency: "CAD" });
+    setFallbackNote(
+      summary
+        ? `Page « Vue d'ensemble » : encaisse ${money(summary.cashCad)}, titres ${money(
+            summary.securitiesCad,
+          )}, total ${money(
+            summary.totalCad,
+          )}. Pour l'enregistrer, clique le favori « Envoyer à DisnatIA » sur cette page Disnat.`
+        : `Page non reconnue — ${describeDisnatPage(html).hint}.`,
+    );
   }, []);
 
   async function onFiles(files: FileList | null) {
@@ -250,6 +272,11 @@ export function DisnatHtmlPanel({
           {parsed && !parsed.ok && parsed.error ? (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{parsed.error}</p>
           ) : null}
+          {fallbackNote ? (
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+              {fallbackNote}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -262,7 +289,9 @@ export function DisnatHtmlPanel({
             <>
               <p>
                 Sur la page Disnat (onglet <strong>Historique</strong>), un clic sur le favori
-                envoie la page à DisnatIA et l&apos;importe — sans fichier ni copier-coller.
+                envoie la page à DisnatIA et l&apos;importe — sans fichier ni copier-coller. Sur la
+                page <strong>Vue d&apos;ensemble</strong> d&apos;un client, il enregistre plutôt son
+                encaisse officielle.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {/* React neutralise les href `javascript:` : on rend l'ancre brute pour que le
@@ -295,6 +324,11 @@ export function DisnatHtmlPanel({
               <ol className="list-decimal space-y-1 pl-4 text-[11px] text-slate-500">
                 <li>Disnat → Mes comptes → Historique (la période voulue), puis clique le favori.</li>
                 <li>DisnatIA importe chaque compte et affiche le récapitulatif dans une alerte.</li>
+                <li>
+                  Encaisse : Disnat → Vue d&apos;ensemble d&apos;un client précis (pas « Tous les
+                  comptes »), puis clique le favori. À refaire depuis le favori de cette page
+                  (l&apos;ancien lien n&apos;envoie pas l&apos;URL du client).
+                </li>
               </ol>
               <p className="text-[11px] text-slate-400">
                 Le jeton d&apos;import est intégré au lien : l&apos;app est mono-utilisateur derrière
