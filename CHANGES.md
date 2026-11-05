@@ -9,7 +9,11 @@ seulement une ligne `Total` en fin de tableau.
 - **Encaisse d'un client** : les cellules empilent « CAD » puis « USD ». La ligne USD est
   désormais convertie (taux « Taux » de la page, sinon Banque du Canada du jour) ; avant, seule la
   partie CAD était enregistrée — soit ~25 % de la valeur d'un client qui détient des titres US.
-- Vue **agrégée** (« Vue d'ensemble » = tous les comptes) : un seul clic enregistre **les deux
+- Page **« Mes comptes → Vue d'ensemble »** : elle donne le total **par client** (et par compte),
+  déjà converti en CAD par Disnat. Ces lignes sont enregistrées telles quelles — plus de prorata.
+  Le rattachement se fait par le sélecteur de client (`automation-id="client-selector-5KFZE"` +
+  libellé « YANN DE CHAMPLAIN - 5KFZE »).
+- Vue **agrégée** sans détail par client (onglet « Titres ») : un seul clic enregistre **les deux
   clients**. La valeur des titres est répartie avec les numéros de compte du tableau « Titres »
   (Σ CAD + Σ USD × taux = « Valeur des titres » affichée, au cent près) ; l'encaisse, qui n'existe
   qu'en un seul total, est répartie au prorata de cette valeur (Σ des encaisses = total affiché).

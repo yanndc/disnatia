@@ -115,17 +115,23 @@ function totalsFromText(text: string, labelled: boolean): DisnatSummaryTotals | 
   return triplet ? toTotals(triplet, null) : null;
 }
 
-/** Ligne de totaux avec sa position dans le document. */
-type LabelledTotalsRow = { totals: DisnatSummaryTotals; index: number };
+/** Ligne de totaux avec sa position dans le document et, si connu, son client. */
+type LabelledTotalsRow = { totals: DisnatSummaryTotals; index: number; clientName: string | null };
 
 function labelledTotalsRows(html: string, usdCadRate: number | null): LabelledTotalsRow[] {
+  const directory = disnatClientDirectory(html);
+  const names = [...directory.keys()];
   const rows: LabelledTotalsRow[] = [];
   for (const rowMatch of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
     const rowHtml = rowMatch[0];
-    const text = stripHtmlTags(rowHtml);
-    if (!TOTAL_LABEL.test(text)) continue;
+    const text = stripHtmlTags(rowHtml).toUpperCase();
+    // Ligne de totaux : libellée « Total »/« Vue d'ensemble », ou portant le nom d'un client
+    // (`YANN DE CHAMPLAIN 1 089,42 CAD …`) sur l'écran « Mes comptes → Vue d'ensemble ».
+    const clientName = names.find((name) => text.includes(name)) ?? null;
+    if (!clientName && !TOTAL_LABEL.test(text)) continue;
     const totals = totalsFromCells(rowHtml, usdCadRate) ?? totalsFromText(text, false);
-    if (totals) rows.push({ totals, index: rowMatch.index ?? 0 });
+    if (!totals) continue;
+    rows.push({ totals, index: rowMatch.index ?? 0, clientName });
   }
   return rows;
 }
@@ -152,51 +158,58 @@ export type DisnatSummaryScope = {
 };
 
 /**
- * Répertoire « NOM - CODE » fourni par la liste « Compte » de Disnat
- * (`<optgroup label="YANN DE CHAMPLAIN - 5KFZE">`) : c'est ce qui permet de rattacher
- * chaque bloc de totaux à son client sans deviner.
+ * Répertoire « NOM - CODE » des clients présents sur la page :
+ * - sélecteur de client (`automation-id="client-selector-5KFZE"` + libellé « YANN DE CHAMPLAIN - 5KFZE ») ;
+ * - `optgroup label="NOM - CODE"` de la liste « Compte » (ancienne mise en page).
+ * C'est ce qui permet de rattacher chaque bloc de totaux à son client sans deviner.
  */
 export function disnatClientDirectory(html: string): Map<string, string> {
   const directory = new Map<string, string>();
+
+  for (const match of html.matchAll(
+    /automation-id="client-selector-([A-Za-z0-9]{4,8})"[\s\S]{0,600}?dsd-button-text">([^<]*)</g,
+  )) {
+    const code = match[1].toUpperCase();
+    if (code === "ALL") continue;
+    const label = stripHtmlTags(match[2]).toUpperCase();
+    const name = label.replace(/\s*[-–]\s*[A-Z0-9]{4,8}$/, "").trim();
+    if (name && name !== "VUE D'ENSEMBLE") directory.set(name, code);
+  }
+
   for (const match of html.matchAll(/<optgroup[^>]*\blabel="([^"]*)"/gi)) {
     const label = stripHtmlTags(match[1]).toUpperCase();
     const parts = label.match(/^(.*?)\s*[-–]\s*([A-Z0-9]{4,8})$/);
     if (!parts) continue;
     const name = parts[1].trim();
-    if (name) directory.set(name, parts[2]);
+    if (name && name !== "VUE D'ENSEMBLE") directory.set(name, parts[2]);
   }
+
   return directory;
 }
 
-/** Neutralise les listes « Compte » (les noms y figurent aussi) sans décaler les index. */
-function maskSelects(html: string): string {
-  return html
-    .replace(/<select[\s\S]*?<\/select>/gi, (block) => " ".repeat(block.length))
-    .replace(/<optgroup[\s\S]*?<\/optgroup>/gi, (block) => " ".repeat(block.length))
-    .replace(/<option[\s\S]*?<\/option>/gi, (block) => " ".repeat(block.length));
+/** Client sélectionné dans le sélecteur (`class="active"`), `null` si « Vue d'ensemble » (tous). */
+export function disnatActiveClientCode(html: string): string | null {
+  for (const match of html.matchAll(
+    /<dsd-button[^>]*automation-id="client-selector-([A-Za-z0-9]{4,8})"[^>]*>/g,
+  )) {
+    if (!/\bclass="[^"]*\bactive\b/i.test(match[0])) continue;
+    const code = match[1].toUpperCase();
+    return code === "ALL" ? null : code;
+  }
+  return null;
 }
 
 /**
- * Titulaire affiché au-dessus de la ligne de totaux :
- * 1. cellule `th.row-label` du tableau (« Détail du compte ») ;
- * 2. à défaut, nom de client le plus proche **avant** la ligne (titre du bloc), en ignorant
- *    les `<select>` de la liste « Compte » qui contiennent tous les noms.
+ * Titulaire lu dans l'en-tête (`th.row-label`) du tableau qui précède la ligne.
+ * On ne devine jamais à partir du texte environnant : le bandeau de la page contient aussi
+ * le nom de l'utilisateur, et les sélecteurs de client listent tous les noms.
  */
 function scopeNameBefore(html: string, index: number, directory: Map<string, string>): string | null {
   const head = html.lastIndexOf("<thead", index);
-  if (head >= 0) {
-    const cell = html.slice(head, index).match(/<th[^>]*row-label[^>]*>([\s\S]*?)<\/th>/i);
-    const label = cell ? stripHtmlTags(cell[1]).toUpperCase() : "";
-    if (label && directory.has(label)) return label;
-  }
-
-  const window = maskSelects(html.slice(Math.max(0, index - 4000), index)).toUpperCase();
-  let best: { name: string; at: number } | null = null;
-  for (const name of directory.keys()) {
-    const at = window.lastIndexOf(name);
-    if (at >= 0 && at > (best?.at ?? -1)) best = { name, at };
-  }
-  return best?.name ?? null;
+  if (head < 0) return null;
+  const cell = html.slice(head, index).match(/<th[^>]*row-label[^>]*>([\s\S]*?)<\/th>/i);
+  const label = cell ? stripHtmlTags(cell[1]).toUpperCase() : "";
+  return label && directory.has(label) ? label : null;
 }
 
 /** Lignes de totaux avec le titulaire affiché (nom → code via `disnatClientDirectory`). */
@@ -207,7 +220,7 @@ export function parseDisnatSummaryScopes(
   const directory = disnatClientDirectory(html);
   return labelledTotalsRows(html, usdCadRate).map((row) => ({
     totals: row.totals,
-    clientName: scopeNameBefore(html, row.index, directory),
+    clientName: row.clientName ?? scopeNameBefore(html, row.index, directory),
   }));
 }
 

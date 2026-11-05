@@ -5,6 +5,7 @@ import { parseDisnatHoldingsByClient } from "@/lib/csv/disnat-positions";
 import {
   clientCodeFromDisnatHtml,
   clientCodeFromDisnatUrl,
+  disnatActiveClientCode,
   disnatClientDirectory,
   parseDisnatSummaryHtml,
   parseDisnatSummaryScopes,
@@ -100,25 +101,81 @@ export async function POST(request: Request) {
   const converted = usdCadRate ? parseDisnatSummaryScopes(html, usdCadRate) : rawScopes;
   const scopes = converted.length > 0 ? converted : rawScopes;
 
-  if (scopes.length > 1) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "MULTIPLE_CLIENTS",
-        error:
-          "Cette page contient les totaux de plusieurs clients — ouvre la « Vue d'ensemble » d'un seul client (ou choisis-le dans la liste « Compte »), puis relance le favori.",
-        diagnostic: describeDisnatPage(html, payloadUrl).hint,
-      },
-      { status: 422, headers },
-    );
-  }
-
   const scope = scopes[0] ?? null;
   const summary = scope?.totals ?? rawSummary;
   if (summary) {
     const directory = disnatClientDirectory(html);
-    const scopeCode = scope?.clientName ? (directory.get(scope.clientName) ?? null) : null;
     const pageCodes = new Set(directory.values());
+
+    // Cas idéal : la page donne les totaux **par client** (« Mes comptes → Vue d'ensemble ») —
+    // encaisse, titres et total déjà convertis en CAD par Disnat : rien à répartir.
+    const perClient = scopes.flatMap((entry) => {
+      const code = entry.clientName ? directory.get(entry.clientName) : null;
+      return code
+        ? [
+            {
+              clientCode: code,
+              cashCad: entry.totals.cashCad,
+              securitiesCad: entry.totals.securitiesCad,
+              totalCad: entry.totals.totalCad,
+            },
+          ]
+        : [];
+    });
+
+    if (perClient.length > 0) {
+      await prisma.$transaction(
+        perClient.map((client) =>
+          prisma.disnatClientCashSnapshot.upsert({
+            where: { clientCode_asOfDate: { clientCode: client.clientCode, asOfDate } },
+            create: {
+              clientCode: client.clientCode,
+              asOfDate,
+              cashCad: client.cashCad,
+              securitiesCad: client.securitiesCad,
+              totalCad: client.totalCad,
+            },
+            update: {
+              cashCad: client.cashCad,
+              securitiesCad: client.securitiesCad,
+              totalCad: client.totalCad,
+            },
+          }),
+        ),
+      );
+
+      return NextResponse.json(
+        {
+          ok: true,
+          mode: "summary",
+          split: perClient.length > 1,
+          asOfDate: asOfDate.toISOString().slice(0, 10),
+          rate: usdCadRate,
+          cashCad: round2(perClient.reduce((sum, client) => sum + client.cashCad, 0)),
+          securitiesCad: round2(perClient.reduce((sum, client) => sum + client.securitiesCad, 0)),
+          totalCad: round2(perClient.reduce((sum, client) => sum + client.totalCad, 0)),
+          clients: perClient,
+        },
+        { headers },
+      );
+    }
+
+    if (scopes.length > 1) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "MULTIPLE_CLIENTS",
+          error:
+            "Cette page contient les totaux de plusieurs clients — ouvre la « Vue d'ensemble » d'un seul client (ou choisis-le dans la liste « Compte »), puis relance le favori.",
+          diagnostic: describeDisnatPage(html, payloadUrl).hint,
+        },
+        { status: 422, headers },
+      );
+    }
+
+    const scopeCode =
+      (scope?.clientName ? (directory.get(scope.clientName) ?? null) : null) ??
+      disnatActiveClientCode(html);
 
     // Vue agrégée (« Vue d'ensemble » = tous les comptes) : le total additionne les clients.
     // La valeur des titres se répartit **par client** avec les numéros de compte du tableau

@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 import {
   clientCodeFromDisnatHtml,
   clientCodeFromDisnatUrl,
+  disnatActiveClientCode,
   disnatClientDirectory,
   extractMoneyValues,
   parseDisnatSummaryHtml,
@@ -71,19 +72,23 @@ const TWO_CLIENTS_SNIPPET = `<html><body>
 </body></html>`;
 
 /**
- * Vue d'ensemble d'un client (capture réelle) : la liste « Compte » porte `NOM - CODE`,
- * le titre du bloc donne le titulaire et la ligne de totaux s'appelle « Vue d'ensemble ».
+ * Écran « Mes comptes → Vue d'ensemble » : sélecteur de client (nom - code) puis un total
+ * agrégé, un total **par client** et le détail par compte (devise dans la 1re colonne).
  */
 const CLIENT_SCOPED_SNIPPET = `<html><body>
-<select name="compte">
-  <optgroup label="Vue d'ensemble"><option value="ALL|ALL">Vue d'ensemble</option></optgroup>
-  <optgroup label="YANN DE CHAMPLAIN - 5KFZE"><option value="ALL|5KFZE">5KFZE Vue d'ensemble</option></optgroup>
-  <optgroup label="VALERIE DEGRANDPRE - 5L3AP"><option value="ALL|5L3AP">5L3AP Vue d'ensemble</option></optgroup>
-</select>
-<div class="dsd-block-title">YANN DE CHAMPLAIN</div>
+<tmw-mfe-client-selector>
+  <dsd-button automation-id="client-selector-5KFZE" class="is-n3"><span class="dsd-button-text"> YANN DE CHAMPLAIN - 5KFZE </span></dsd-button>
+  <dsd-button automation-id="client-selector-5L3AP" class="is-n3"><span class="dsd-button-text"> VALERIE DEGRANDPRE - 5L3AP </span></dsd-button>
+  <dsd-button automation-id="client-selector-ALL" class="active is-n3"><span class="dsd-button-text"> Vue d'ensemble </span></dsd-button>
+</tmw-mfe-client-selector>
 <table>
-  <thead><tr><th class="row-label" colspan="3">&nbsp;</th><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th></tr></thead>
-  <tbody><tr><td colspan="3">Vue d'ensemble</td><td>230,92 CAD</td><td>42 564,48 CAD</td><td>42 795,40 CAD</td></tr></tbody>
+  <thead><tr><th class="row-label" colspan="3">&nbsp;</th><th>Taux</th><th>Liquidités</th><th>Valeur des titres</th><th>Valeur totale</th></tr></thead>
+  <tbody>
+    <tr class="summaryTotal"><td colspan="3">Total des actifs</td><td>1,3983</td><td>1 527,96 CAD</td><td>237 028,20 CAD</td><td>238 556,16 CAD</td></tr>
+    <tr class="fullwidth-row"><td colspan="3"><span class="dsd-fw-bold">YANN DE CHAMPLAIN</span></td><td></td><td>1 089,42 CAD</td><td>169 350,45 CAD</td><td>170 439,87 CAD</td></tr>
+    <tr class="account-row"><td colspan="3"><span class="accountType">REER</span><span class="account-number">5KFZEY4</span></td><td>CAD</td><td>60,73 CAD</td><td>15 264,58 CAD</td><td>15 325,31 CAD</td></tr>
+    <tr class="fullwidth-row"><td colspan="3"><span class="dsd-fw-bold">VALERIE DEGRANDPRE</span></td><td></td><td>438,54 CAD</td><td>67 677,75 CAD</td><td>68 116,29 CAD</td></tr>
+  </tbody>
 </table></body></html>`;
 
 /** Même page en vue **agrégée** : « Total des actifs » couvre plusieurs clients. */
@@ -201,19 +206,22 @@ describe("disnatClientDirectory", () => {
 });
 
 describe("parseDisnatSummaryScopes", () => {
-  test("rattache la ligne de totaux au titulaire affiché", () => {
+  test("rattache chaque ligne de totaux à son client (agrégat ignoré)", () => {
     const scopes = parseDisnatSummaryScopes(CLIENT_SCOPED_SNIPPET);
-    assert.equal(scopes.length, 1);
-    assert.equal(scopes[0].clientName, "YANN DE CHAMPLAIN");
-    assert.deepEqual(scopes[0].totals, {
-      rate: null,
-      cashCad: 230.92,
-      securitiesCad: 42564.48,
-      totalCad: 42795.4,
-    });
+    const named = scopes.filter((scope) => scope.clientName);
+    assert.equal(named.length, 2);
+    assert.deepEqual(
+      named.map((scope) => [scope.clientName, scope.totals.cashCad, scope.totals.totalCad]),
+      [
+        ["YANN DE CHAMPLAIN", 1089.42, 170439.87],
+        ["VALERIE DEGRANDPRE", 438.54, 68116.29],
+      ],
+    );
+    // La ligne agrégée « Total des actifs » n'est rattachée à personne.
+    assert.ok(scopes.some((scope) => scope.clientName === null));
   });
 
-  test("ne rattache personne en vue agrégée (aucun titulaire affiché)", () => {
+  test("ne rattache personne en vue agrégée sans détail par client", () => {
     const scopes = parseDisnatSummaryScopes(AGGREGATE_SNIPPET);
     assert.equal(scopes.length, 1);
     assert.equal(scopes[0].clientName, null);
@@ -223,6 +231,18 @@ describe("parseDisnatSummaryScopes", () => {
       securitiesCad: 240151.61,
       totalCad: 241680.62,
     });
+  });
+});
+
+describe("disnatActiveClientCode", () => {
+  test("lit le client actif du sélecteur", () => {
+    assert.equal(disnatActiveClientCode(CLIENT_SCOPED_SNIPPET), null);
+    assert.equal(
+      disnatActiveClientCode(
+        `<dsd-button automation-id="client-selector-5KFZE" class="active is-n3"></dsd-button>`,
+      ),
+      "5KFZE",
+    );
   });
 });
 
