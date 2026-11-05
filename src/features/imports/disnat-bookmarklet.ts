@@ -80,6 +80,7 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
         }
         const lignes=["DisnatIA — "+(j.rowsTotal??0)+" ligne(s) lues sur "+(j.accounts||[]).length+" compte(s).",
           (j.updated||0)+" compte(s) mis à jour · "+(j.duplicates||0)+" déjà à jour"+(j.errors?(" · "+j.errors+" erreur(s)"):"")];
+        if(j.skippedAccounts&&j.skippedAccounts.length)lignes.push("Sans transaction sur la période : "+j.skippedAccounts.join(" · "));
         if(j.errorAccounts&&j.errorAccounts.length)lignes.push("",...j.errorAccounts);
         alert(lignes.join("\\n"));
       }else{

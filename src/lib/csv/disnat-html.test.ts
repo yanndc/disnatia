@@ -74,7 +74,8 @@ describe("parseDisnatHistoryHtml", () => {
     );
     assert.equal(result.rowsTotal, 3);
     assert.ok(result.skipped.some((s) => s.title.includes("Vue d’ensemble")));
-    assert.ok(result.skipped.some((s) => s.title.includes("5L3APA5")));
+    assert.ok(result.skipped.some((s) => s.title.includes("5L3APA5") && s.kind === "empty"));
+    assert.ok(result.skipped.some((s) => s.kind === "aggregate"));
   });
 
   test("normalise les devises et construit le CSV attendu", () => {

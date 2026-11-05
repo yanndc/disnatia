@@ -39,6 +39,10 @@ describe("buildDisnatBookmarklet", () => {
     assert.ok(code.includes("c.clientCode"));
   });
 
+  test("liste les comptes sans transaction sur la période", () => {
+    assert.ok(code.includes("j.skippedAccounts"));
+  });
+
   test("recopie aussi le contenu des iframes lisibles", () => {
     assert.ok(code.includes("contentDocument"));
   });

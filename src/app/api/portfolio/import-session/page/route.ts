@@ -377,6 +377,8 @@ export async function POST(request: Request) {
       accounts: results,
       errorAccounts: failed.map((row) => `• ${row.account} — ${row.detail}`),
       skipped: parsed.skipped,
+      // Comptes sans transaction sur la période : le favori les liste pour confirmer le périmètre lu.
+      skippedAccounts: parsed.skipped.filter((entry) => entry.kind === "empty").map((entry) => entry.title),
       rowsTotal: parsed.rowsTotal,
     },
     { headers },

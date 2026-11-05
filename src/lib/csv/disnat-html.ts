@@ -60,8 +60,8 @@ export type DisnatHtmlParseResult = {
   ok: boolean;
   accounts: DisnatHtmlAccount[];
   rowsTotal: number;
-  /** Sections ignorées (agrégat « Vue d'ensemble », comptes sans transaction…). */
-  skipped: { title: string; reason: string }[];
+  /** Sections ignorées : agrégat « Vue d'ensemble » ou compte sans transaction sur la période. */
+  skipped: { title: string; reason: string; kind: "aggregate" | "empty" }[];
   error?: string;
 };
 
@@ -127,7 +127,7 @@ function buildCsv(rows: DisnatHtmlRow[]): string {
  * Fonction pure : aucune I/O, testable avec un fragment HTML.
  */
 export function parseDisnatHistoryHtml(html: string): DisnatHtmlParseResult {
-  const skipped: { title: string; reason: string }[] = [];
+  const skipped: { title: string; reason: string; kind: "aggregate" | "empty" }[] = [];
   const accounts: DisnatHtmlAccount[] = [];
 
   if (!html || html.length < 200) {
@@ -158,7 +158,7 @@ export function parseDisnatHistoryHtml(html: string): DisnatHtmlParseResult {
     const title = titleMatch ? stripTags(titleMatch[1]) : "Section sans titre";
     const accountMatch = title.match(/^(.*?)\s*\(([A-Za-z0-9]{4,})\)\s*$/);
     if (!accountMatch) {
-      skipped.push({ title, reason: "section agrégée (pas un compte)" });
+      skipped.push({ title, reason: "section agrégée (pas un compte)", kind: "aggregate" });
       continue;
     }
 
@@ -195,7 +195,7 @@ export function parseDisnatHistoryHtml(html: string): DisnatHtmlParseResult {
     }
 
     if (rows.length === 0) {
-      skipped.push({ title, reason: "aucune transaction sur la période" });
+      skipped.push({ title, reason: "aucune transaction sur la période", kind: "empty" });
       continue;
     }
 
