@@ -1,3 +1,24 @@
+# Titre US détenu dans un compte CAD : cotation et valorisation corrigées (2026-11-05)
+Un titre US acheté dans un compte en dollars canadiens (`AMZN`, `AAPL`…) ressort chez Disnat
+libellé `AMZN-C` sur les lignes de compte (fractionnement, dividende), avec « Prix » en USD et
+marché « USA ». L'app en déduisait une cotation canadienne (`AMZN-C|CAD` → `AMZN.TO`), soit le
+cours du **CDR** : valorisation ~10× trop basse de 2022-07-26 à 2024-03-27 (5 566 $ au lieu de
+12 547 $ pour le portefeuille au 2022-07-26) et « trous » de clôtures imaginaires (série Yahoo du
+CDR démarrée le 2022-07-26, alors que la position est détenue depuis le 2022-04-27).
+
+- **Devise de cotation** (`project-transaction-holdings.ts`) : elle est déduite des **opérations
+  tarifées** du titre dans le compte (marché `USA` / prix en USD → USD ; marché `CAN` → CAD), plus
+  des suffixes `-U`/`-C`. Un fractionnement `AMZN-C` suit donc l'achat `AMZN` en USD ; un vrai CDR
+  (`NVDA-C`, « NVIDIA CORP CDR C$HDG », achat marché CAN) reste en CAD.
+- `normalizeDisnatTickerForPortfolio(ticker, "USD")` ne fabrique plus de clé fantôme `AMZN-C-U`
+  quand la ligne porte un suffixe `-C`.
+- **Taux USD→CAD** (`refresh-usd-cad-rates.ts`) : l'historique BoC remonte au 2022-01-01 (tête de
+  série complétée automatiquement), sinon les positions US de 2022-2023 n'étaient pas converties.
+- `scripts/repair-us-listing-in-cad-accounts.ts` : re-projection des holdings, purge des clôtures
+  enregistrées sous l'ancienne paire CAD, backfill puis recalcul des gains de séance de la fenêtre
+  fausse (`--dry-run`, `--gains-only`).
+- Résultat après réparation : **0 trou** (10 782 séances vérifiées), 0 position sans prix.
+
 # Favori Disnat — « Vue d'ensemble » d'un seul client (2026-11-05)
 Sur la vue d'ensemble d'**un seul client** (`clientId=5KFZE`), le favori renvoyait
 « Aucune section de compte trouvée » : cette page n'a pas de ligne *Total des actifs*,

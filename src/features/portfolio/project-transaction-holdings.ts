@@ -150,29 +150,75 @@ function signedQuantityForPosition(tx: ProjectableTransaction): number | null {
   }
 }
 
-/**
- * Indice par ligne : devise de **cotation du titre** (pas seulement « devise du prix » sur cette ligne).
- * Les transferts sortants peuvent avoir Devise du prix = CAN alors que le titre suit encore la cote US
- * (ex. achat `AMZN-U` puis transfert libellé `AMZN`), d’où des positions fantômes si on lit seulement priceDevise.
- */
-function inferListingCurrencyHintFromRow(tx: ProjectableTransaction): "USD" | "CAD" | null {
-  const raw = standardizeDisnatTickerMarketDots(tx.ticker?.trim().toUpperCase() ?? "").trim();
-  if (!raw || raw === "-") return null;
-  if (raw.endsWith("-U")) return "USD";
-  if (raw.endsWith("-C")) return "CAD";
-  if (normalizeCurrency(tx.priceDevise) === "USD") return "USD";
-  const m = tx.market?.trim().toUpperCase() ?? "";
-  if (m && m !== "-" && !/^N\/?A$/i.test(m)) {
-    if (
-      /\b(USA|US|NYSE|NASDAQ|AMERIQUE|AMÉRICAIN|AMERICAIN|ÉTATS-UNIS|ETATS-UNIS)\b/.test(m) ||
-      m === "US"
-    ) {
-      return "USD";
-    }
-    if (/\b(TSX|TSXV|CSE|TORONTO|CANADA|VENTURE)\b/.test(m)) {
-      return "CAD";
-    }
+/** Marché Disnat (« USA », « CAN », « TSX »…) → pays de cotation, `null` si non renseigné. */
+function listingMarketKind(market: string | null | undefined): "US" | "CA" | null {
+  const m = market?.trim().toUpperCase() ?? "";
+  if (!m || m === "-" || /^N\/?A$/i.test(m)) return null;
+  if (/\b(USA|US|NYSE|NASDAQ|AMERIQUE|AMÉRICAIN|AMERICAIN|ÉTATS-UNIS|ETATS-UNIS)\b/.test(m)) {
+    return "US";
   }
+  if (/\b(TSX|TSXV|CSE|TORONTO|CANADA|CAN|VENTURE)\b/.test(m)) return "CA";
+  return null;
+}
+
+export type ListingEvidenceRow = {
+  ticker: string | null;
+  currency: string | null;
+  priceDevise: string | null;
+  market: string | null;
+  price: number | null;
+};
+
+/**
+ * Devise de **cotation** d’une tige (titre) dans un compte, déduite des lignes Disnat.
+ *
+ * Les opérations tarifées (achat / vente) sont la seule preuve fiable : Disnat suffit `-C`
+ * à *toutes* les lignes d’un compte en dollars canadiens, y compris un titre US
+ * (ex. achat `AMZN` Prix US, marché `USA`, puis fractionnement libellé `AMZN-C`).
+ * Le suffixe `-C` ne doit donc **pas** créer une cotation canadienne quand une opération
+ * tarifée du même titre dans le même compte dit `USA` / prix en USD.
+ *
+ * Priorité :
+ * 1. règlement tarifé sur un marché canadien → CAD (vrai titre TSX / CDR) ;
+ * 2. règlement tarifé en USD ou sur un marché US → USD (titre US détenu dans un compte CAD inclus) ;
+ * 3. marché canadien non tarifé (transfert) → CAD ;
+ * 4. devise du prix USD non tarifée → USD ;
+ * 5. suffixes Disnat (`-U` / `-C`).
+ */
+export function resolveListingCurrencyFromEvidence(
+  rows: ListingEvidenceRow[],
+): "USD" | "CAD" | null {
+  let pricedCad = false;
+  let pricedUsd = false;
+  let marketCad = false;
+  let deviseUsd = false;
+  let suffixUsd = false;
+  let suffixCad = false;
+
+  for (const row of rows) {
+    const raw = standardizeDisnatTickerMarketDots(row.ticker?.trim().toUpperCase() ?? "").trim();
+    if (!raw || raw === "-") continue;
+
+    const priced = row.price != null && Number.isFinite(row.price) && row.price > 0;
+    const kind = listingMarketKind(row.market);
+    if (kind === "CA") {
+      if (priced) pricedCad = true;
+      else marketCad = true;
+    }
+    if (priced && (kind === "US" || normalizeCurrency(row.priceDevise) === "USD")) {
+      pricedUsd = true;
+    }
+    if (!priced && normalizeCurrency(row.priceDevise) === "USD") deviseUsd = true;
+    if (raw.endsWith("-U")) suffixUsd = true;
+    if (raw.endsWith("-C")) suffixCad = true;
+  }
+
+  if (pricedCad) return "CAD";
+  if (pricedUsd) return "USD";
+  if (marketCad) return "CAD";
+  if (deviseUsd) return "USD";
+  if (suffixUsd) return "USD";
+  if (suffixCad) return "CAD";
   return null;
 }
 
@@ -181,7 +227,7 @@ function inferListingCurrencyHintFromRow(tx: ProjectableTransaction): "USD" | "C
  * Priorité USD si une seule ligne US est vue (typique : achat -U puis transfert sans suffixe).
  */
 function buildStemListingPreferences(transactions: ProjectableTransaction[]): Map<string, "USD" | "CAD"> {
-  const map = new Map<string, "USD" | "CAD">();
+  const evidence = new Map<string, ListingEvidenceRow[]>();
   for (const tx of transactions) {
     if (!tx.accountKey) continue;
     const tr = tx.ticker?.trim();
@@ -190,31 +236,29 @@ function buildStemListingPreferences(transactions: ProjectableTransaction[]): Ma
 
     const stem = extractDisnatStemForPositionAggregation(tr);
     const key = `${tx.accountKey}${KEY_SEPARATOR}${stem}`;
-    const hint = inferListingCurrencyHintFromRow(tx);
-    if (hint === "USD") {
-      map.set(key, "USD");
-    } else if (hint === "CAD" && map.get(key) !== "USD") {
-      map.set(key, "CAD");
-    }
+    const rows = evidence.get(key) ?? [];
+    rows.push({
+      ticker: tr,
+      currency: tx.currency,
+      priceDevise: tx.priceDevise,
+      market: tx.market,
+      price: tx.price,
+    });
+    evidence.set(key, rows);
   }
-  /* Priorité CAD pour une tige dès qu’un titre -C apparaît sur un compte en dollars canadiens
-   * (évite qu’un dividende en actions ou une ligne « prix en USD » fige le stem en USD et isole les ACHAT VFV-C). */
-  for (const tx of transactions) {
-    if (!tx.accountKey) continue;
-    const tr = tx.ticker?.trim();
-    if (!tr || tr === "-") continue;
-    const trStd = standardizeDisnatTickerMarketDots(tr.trim().toUpperCase());
-    if (!trStd.endsWith("-C")) continue;
-    if (normalizeCurrency(tx.currency) !== "CAD") continue;
-    const stem = extractDisnatStemForPositionAggregation(tr);
-    const key = `${tx.accountKey}${KEY_SEPARATOR}${stem}`;
-    map.set(key, "CAD");
+
+  const map = new Map<string, "USD" | "CAD">();
+  for (const [key, rows] of evidence) {
+    const resolved = resolveListingCurrencyFromEvidence(rows);
+    if (resolved) map.set(key, resolved);
   }
   return map;
 }
 
 /**
  * Résout la devise retenue pour la clé de position (et pour Yahoo : titre US → USD).
+ * La préférence issue des opérations tarifées prime sur le suffixe de la ligne :
+ * un fractionnement `AMZN-C` suit ainsi l’achat `AMZN` en USD.
  */
 function listingCurrencyForPosition(
   tx: ProjectableTransaction,
@@ -225,19 +269,13 @@ function listingCurrencyForPosition(
   if (!acctKey || !tr) return "CAD";
 
   const stem = extractDisnatStemForPositionAggregation(tr);
-  const mapKey = `${acctKey}${KEY_SEPARATOR}${stem}`;
-  const raw = standardizeDisnatTickerMarketDots(tr.toUpperCase());
-  /* TSX (-C) sur compte CAD : ne pas suivre un stem figé en USD par une autre opération. */
-  if (raw.endsWith("-C") && normalizeCurrency(tx.currency) === "CAD") {
-    return "CAD";
-  }
-
-  const pref = stemListing.get(mapKey);
+  const pref = stemListing.get(`${acctKey}${KEY_SEPARATOR}${stem}`);
   if (pref) return pref;
 
+  const raw = standardizeDisnatTickerMarketDots(tr.toUpperCase());
   if (raw.endsWith("-C")) return "CAD";
-  if (normalizeCurrency(tx.priceDevise) === "USD") return "USD";
   if (raw.endsWith("-U")) return "USD";
+  if (normalizeCurrency(tx.priceDevise) === "USD") return "USD";
 
   /* Dernier repli : compte en CAD → cotation TSX (-C) ; compte en USD rare. */
   return normalizeCurrency(tx.currency) === "USD" ? "USD" : "CAD";

@@ -8,8 +8,8 @@ const RATE_SOURCE = "bank_of_canada";
 const BOC_CHUNK_DAYS = 400;
 
 /** Inclure quelques jours avant le 2024-01-01 pour amorcer le report sur le 1er janvier. */
-const HISTORY_START = "2023-12-27";
-const TABLE_START = "2024-01-01";
+const HISTORY_START = "2021-12-27";
+const TABLE_START = "2022-01-01";
 
 type BocObservationsResponse = {
   observations?: Array<{
@@ -117,28 +117,61 @@ function buildDailySeriesFromApi(
 }
 
 /**
- * Complète l’historique depuis le 1er janvier 2024 et ramène la série jusqu’à aujourd’hui (UTC).
+ * Complète la **tête** de série ([TABLE_START, `firstIso`[) sans toucher au reste : une base
+ * amorcée plus tard (ex. 2024-01-01) laissait les positions US d’avant sans taux de change.
+ */
+async function backfillHead(firstIso: string): Promise<void> {
+  const endIso = addUtcDaysIso(firstIso, -1);
+  if (compareIso(TABLE_START, endIso) > 0) return;
+
+  const raw = await fetchBankOfCanadaUsdCad(HISTORY_START, endIso);
+  const series = buildDailySeriesFromApi(raw, TABLE_START, endIso);
+
+  const chunk = 400;
+  for (let i = 0; i < series.length; i += chunk) {
+    await prisma.usdCadDailyRate.createMany({
+      data: series.slice(i, i + chunk).map((row) => ({
+        rateDate: row.rateDate,
+        usdToCad: row.usdToCad,
+        source: RATE_SOURCE,
+      })),
+      skipDuplicates: true,
+    });
+  }
+}
+
+/**
+ * Complète l’historique depuis le 1er janvier 2022 (tête de série manquante incluse) et ramène
+ * la série jusqu’à aujourd’hui (UTC).
  * Source : Banque du Canada (FXUSDCAD), jours fériés / fins de semaine = dernier cours publié.
  */
 export async function refreshUsdCadRatesIfStale(): Promise<void> {
   const today = todayUtcDate();
 
   let maxDate: Date | null = null;
+  let minDate: Date | null = null;
   let needsFullBackfill = false;
 
   try {
     const agg = await Promise.race([
       prisma.usdCadDailyRate.aggregate({
         _max: { rateDate: true },
+        _min: { rateDate: true },
         _count: { _all: true },
       }),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error("USD/CAD query timeout")), 3000)
       ),
     ]);
-    maxDate = (agg as any)._max.rateDate;
-    needsFullBackfill = (agg as any)._count._all === 0;
-  } catch (err) {
+    const summary = agg as {
+      _max: { rateDate: Date | null };
+      _min: { rateDate: Date | null };
+      _count: { _all: number };
+    };
+    maxDate = summary._max.rateDate;
+    minDate = summary._min.rateDate;
+    needsFullBackfill = summary._count._all === 0;
+  } catch {
     // If aggregate query fails, skip refresh — rates are non-critical
     return;
   }
@@ -153,6 +186,17 @@ export async function refreshUsdCadRatesIfStale(): Promise<void> {
       await prisma.usdCadDailyRate.deleteMany({});
       needsFullBackfill = true;
       maxDate = null;
+      minDate = null;
+    }
+  }
+
+  /* Tête de série incomplète (ex. base amorcée au 2024-01-01) : compléter jusqu’à TABLE_START
+     pour que les positions US d’avant 2024 soient converties avec le bon taux. */
+  if (!needsFullBackfill && minDate) {
+    const minIso = formatIsoDateUTC(minDate);
+    if (compareIso(minIso, TABLE_START) > 0) {
+      await backfillHead(minIso);
+      minDate = parseIsoDateUTC(TABLE_START);
     }
   }
 

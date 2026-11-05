@@ -115,7 +115,12 @@ export function normalizeDisnatTickerForPortfolio(
     .toUpperCase()
     .replace(/\.TO$/i, "");
   if (c === "USD") {
-    const stem = raw.replace(/-U$/, "");
+    let stem = raw.replace(/-U$/, "");
+    /* Un titre US détenu dans un compte CAD ressort libellé `-C` (ex. fractionnement `AMZN-C`) :
+     * sans ce nettoyage la clé deviendrait `AMZN-C-U` et créerait une position fantôme. */
+    while (/(?:-C|-T)$/i.test(stem) && stem.length > 2) {
+      stem = stem.slice(0, -2);
+    }
     const normalized = canonicalDisnatStemForQuotes(stem);
     return normalized.endsWith("-U") ? normalized : `${normalized}-U`;
   }
