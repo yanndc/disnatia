@@ -91,12 +91,15 @@ export async function POST(request: Request) {
         txInserted?: number;
         txSkipped?: number;
       };
+      const isDuplicate = response.status === 409;
       results.push({
         account: account.label,
-        status: response.ok ? "ok" : response.status === 409 ? "duplicate" : "error",
+        status: response.ok ? "ok" : isDuplicate ? "duplicate" : "error",
         detail: response.ok
           ? `${body.txInserted ?? 0} ajoutée(s)${body.txSkipped ? `, ${body.txSkipped} doublon(s)` : ""}`
-          : (body.error ?? `Erreur ${response.status}`),
+          : isDuplicate
+            ? "déjà à jour"
+            : (body.error ?? `Erreur ${response.status}`),
       });
     } catch (cause) {
       results.push({
@@ -108,10 +111,17 @@ export async function POST(request: Request) {
   }
 
   const created = results.filter((row) => row.status === "ok").length;
+  const duplicates = results.filter((row) => row.status === "duplicate").length;
+  const failed = results.filter((row) => row.status === "error");
+
   return NextResponse.json(
     {
       ok: created > 0,
+      updated: created,
+      duplicates,
+      errors: failed.length,
       accounts: results,
+      errorAccounts: failed.map((row) => `• ${row.account} — ${row.detail}`),
       skipped: parsed.skipped,
       rowsTotal: parsed.rowsTotal,
     },

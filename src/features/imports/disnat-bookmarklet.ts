@@ -17,9 +17,10 @@ export function buildDisnatBookmarklet(appUrl: string, token: string): string {
       });
       const j=await r.json().catch(()=>({}));
       if(r.ok){
-        const n=(j.accounts||[]).length;
-        alert("DisnatIA : "+n+" compte(s), "+j.rowsTotal+" ligne(s) lues.\\n"+
-          (j.accounts||[]).map(a=>"• "+a.account+" — "+a.detail).join("\\n"));
+        const lignes=["DisnatIA — "+j.rowsTotal+" ligne(s) lues sur "+(j.accounts||[]).length+" compte(s).",
+          j.updated+" compte(s) mis à jour · "+j.duplicates+" déjà à jour"+(j.errors?(" · "+j.errors+" erreur(s)"):"")];
+        if(j.errorAccounts&&j.errorAccounts.length)lignes.push("",...j.errorAccounts);
+        alert(lignes.join("\\n"));
       }else{
         alert("DisnatIA — erreur : "+(j.error||r.status));
       }
