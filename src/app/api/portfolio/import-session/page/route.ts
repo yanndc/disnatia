@@ -18,6 +18,14 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/** Taux USD→CAD le plus récent (Banque du Canada) à la date donnée. */
+async function latestUsdCadRate(date: Date): Promise<number | null> {
+  const row = await prisma.usdCadDailyRate
+    .findFirst({ where: { rateDate: { lte: date } }, orderBy: { rateDate: "desc" } })
+    .catch(() => null);
+  return row && row.usdToCad > 0 ? row.usdToCad : null;
+}
+
 /** Origines autorisées à appeler cet endpoint depuis un favori (page Disnat ouverte). */
 const ALLOWED_ORIGINS = ["https://tmw.secure.vmd.ca", "https://www.disnat.com"];
 
@@ -82,7 +90,16 @@ export async function POST(request: Request) {
   // Page « Vue d'ensemble » : on enregistre l'encaisse officielle du client (ligne de totaux).
   // Le titulaire affiché au-dessus de la ligne (`YANN DE CHAMPLAIN`) est relié à son code client
   // par les libellés « NOM - CODE » de la liste « Compte ».
-  const scopes = parseDisnatSummaryScopes(html);
+  const asOfDate = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+
+  // Les cellules d'encaisse empilent « CAD » puis « USD » : on convertit la seconde ligne avec
+  // le taux de la page (cellule « Taux »), sinon celui du jour (Banque du Canada).
+  const rawScopes = parseDisnatSummaryScopes(html);
+  const rawSummary = rawScopes[0]?.totals ?? parseDisnatSummaryHtml(html);
+  const usdCadRate = rawSummary?.rate ?? (await latestUsdCadRate(asOfDate));
+  const converted = usdCadRate ? parseDisnatSummaryScopes(html, usdCadRate) : rawScopes;
+  const scopes = converted.length > 0 ? converted : rawScopes;
+
   if (scopes.length > 1) {
     return NextResponse.json(
       {
@@ -97,19 +114,18 @@ export async function POST(request: Request) {
   }
 
   const scope = scopes[0] ?? null;
-  const summary = scope?.totals ?? parseDisnatSummaryHtml(html);
+  const summary = scope?.totals ?? rawSummary;
   if (summary) {
     const directory = disnatClientDirectory(html);
     const scopeCode = scope?.clientName ? (directory.get(scope.clientName) ?? null) : null;
     const pageCodes = new Set(directory.values());
-    const asOfDate = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
 
     // Vue agrégée (« Vue d'ensemble » = tous les comptes) : le total additionne les clients.
     // La valeur des titres se répartit **par client** avec les numéros de compte du tableau
     // « Titres » (Σ CAD + Σ USD × taux = « Valeur des titres » affichée, au cent près) ;
     // l'encaisse, qui n'existe qu'en un seul total, est répartie au prorata de cette valeur.
     if (!scopeCode && pageCodes.size > 1) {
-      const securitiesByClient = parseDisnatHoldingsByClient(html, summary.rate);
+      const securitiesByClient = parseDisnatHoldingsByClient(html, usdCadRate);
       const shares = [...securitiesByClient.entries()]
         .map(([code, value]) => ({ code, value: round2(value) }))
         .filter((entry) => entry.value > 0)

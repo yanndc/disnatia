@@ -6,6 +6,9 @@ seulement une ligne `Total` en fin de tableau.
 - **Rattachement au client** : le titulaire affiché au-dessus des totaux (`YANN DE CHAMPLAIN`)
   est relié à son code par les libellés « NOM - CODE » de la liste « Compte »
   (`<optgroup label="YANN DE CHAMPLAIN - 5KFZE">`) — plus de code à saisir.
+- **Encaisse d'un client** : les cellules empilent « CAD » puis « USD ». La ligne USD est
+  désormais convertie (taux « Taux » de la page, sinon Banque du Canada du jour) ; avant, seule la
+  partie CAD était enregistrée — soit ~25 % de la valeur d'un client qui détient des titres US.
 - Vue **agrégée** (« Vue d'ensemble » = tous les comptes) : un seul clic enregistre **les deux
   clients**. La valeur des titres est répartie avec les numéros de compte du tableau « Titres »
   (Σ CAD + Σ USD × taux = « Valeur des titres » affichée, au cent près) ; l'encaisse, qui n'existe

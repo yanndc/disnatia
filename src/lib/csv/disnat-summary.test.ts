@@ -143,6 +143,15 @@ describe("parseDisnatSummaryHtml", () => {
     });
   });
 
+  test("convertit la seconde ligne USD des cellules empilées", () => {
+    assert.deepEqual(parseDisnatSummaryHtml(MES_COMPTES_SNIPPET, 1.4), {
+      rate: null,
+      cashCad: 1090.46,
+      securitiesCad: 169799.49,
+      totalCad: 170889.95,
+    });
+  });
+
   test("ignore une ligne « Total » sans identité comptable", () => {
     const html = `<tr><td>Total</td><td>1 000,00 CAD</td><td>2 000,00 CAD</td><td>4 000,00 CAD</td></tr>`;
     assert.equal(parseDisnatSummaryHtml(html), null);

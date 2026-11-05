@@ -80,28 +80,31 @@ function toTotals(triplet: Triplet, rate: number | null): DisnatSummaryTotals {
 }
 
 /**
- * Montant d'une cellule. Disnat empile parfois deux devises dans la même cellule
- * (`230,92 CAD` puis `613,96 USD`) : on retient alors la **première** (devise du compte, CAD ici).
+ * Montant d'une cellule. Disnat empile deux devises dans la même cellule
+ * (`230,92 CAD` puis `613,96 USD`) : on renvoie la valeur **en CAD**, en convertissant la
+ * seconde ligne avec le taux de la page (`usdCadRate`).
  */
-function cellMoney(text: string): number | null {
-  const whole = parseDisnatMoney(text);
-  if (whole !== null) return whole;
-  const [first] = extractMoneyValues(text);
-  return first ?? null;
+function cellMoney(text: string, usdCadRate: number | null): number | null {
+  const values = extractMoneyValues(text);
+  if (values.length >= 2 && usdCadRate && usdCadRate > 0) {
+    return values[0] + values[1] * usdCadRate;
+  }
+  if (values.length >= 2) return values[0];
+  return parseDisnatMoney(text) ?? values[0] ?? null;
 }
 
 /** Totaux lus dans les cellules `<td>/<th>` d'un extrait (format historique). */
-function totalsFromCells(chunk: string): DisnatSummaryTotals | null {
+function totalsFromCells(chunk: string, usdCadRate: number | null): DisnatSummaryTotals | null {
   const cells = [...chunk.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)]
     .map((match) => stripHtmlTags(match[1]))
     .filter((cell) => cell.length > 0);
 
   const numbers = cells
-    .map((cell) => ({ text: cell, value: cellMoney(cell) }))
+    .map((cell) => ({ text: cell, value: cellMoney(cell, usdCadRate) }))
     .filter((entry) => entry.value !== null) as { text: string; value: number }[];
   const triplet = findTotalsTriplet(numbers.map((entry) => entry.value));
   if (!triplet) return null;
-  const rateCells = numbers.slice(0, triplet.index).filter((entry) => !/CAD/i.test(entry.text));
+  const rateCells = numbers.slice(0, triplet.index).filter((entry) => !/CAD|USD/i.test(entry.text));
   return toTotals(triplet, rateCells.length > 0 ? rateCells[rateCells.length - 1].value : null);
 }
 
@@ -115,13 +118,13 @@ function totalsFromText(text: string, labelled: boolean): DisnatSummaryTotals | 
 /** Ligne de totaux avec sa position dans le document. */
 type LabelledTotalsRow = { totals: DisnatSummaryTotals; index: number };
 
-function labelledTotalsRows(html: string): LabelledTotalsRow[] {
+function labelledTotalsRows(html: string, usdCadRate: number | null): LabelledTotalsRow[] {
   const rows: LabelledTotalsRow[] = [];
   for (const rowMatch of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
     const rowHtml = rowMatch[0];
     const text = stripHtmlTags(rowHtml);
     if (!TOTAL_LABEL.test(text)) continue;
-    const totals = totalsFromCells(rowHtml) ?? totalsFromText(text, false);
+    const totals = totalsFromCells(rowHtml, usdCadRate) ?? totalsFromText(text, false);
     if (totals) rows.push({ totals, index: rowMatch.index ?? 0 });
   }
   return rows;
@@ -130,9 +133,13 @@ function labelledTotalsRows(html: string): LabelledTotalsRow[] {
 /**
  * Lignes de totaux **libellées** (« Total », « Vue d'ensemble »…) qui vérifient l'identité
  * comptable, dans l'ordre du document. Une page « Tous les comptes » en contient une par client.
+ * `usdCadRate` convertit la seconde ligne (USD) des cellules empilées.
  */
-export function parseDisnatSummaryRows(html: string): DisnatSummaryTotals[] {
-  return labelledTotalsRows(html).map((row) => row.totals);
+export function parseDisnatSummaryRows(
+  html: string,
+  usdCadRate: number | null = null,
+): DisnatSummaryTotals[] {
+  return labelledTotalsRows(html, usdCadRate).map((row) => row.totals);
 }
 
 export type DisnatSummaryScope = {
@@ -193,9 +200,12 @@ function scopeNameBefore(html: string, index: number, directory: Map<string, str
 }
 
 /** Lignes de totaux avec le titulaire affiché (nom → code via `disnatClientDirectory`). */
-export function parseDisnatSummaryScopes(html: string): DisnatSummaryScope[] {
+export function parseDisnatSummaryScopes(
+  html: string,
+  usdCadRate: number | null = null,
+): DisnatSummaryScope[] {
   const directory = disnatClientDirectory(html);
-  return labelledTotalsRows(html).map((row) => ({
+  return labelledTotalsRows(html, usdCadRate).map((row) => ({
     totals: row.totals,
     clientName: scopeNameBefore(html, row.index, directory),
   }));
@@ -214,14 +224,17 @@ export function parseDisnatSummaryScopes(html: string): DisnatSummaryScope[] {
  * La page ne contient pas le détail par transaction : on rattache ces totaux au **client**
  * (`clientId` de l'URL) pour alimenter l'encaisse aux bornes.
  */
-export function parseDisnatSummaryHtml(html: string): DisnatSummaryTotals | null {
+export function parseDisnatSummaryHtml(
+  html: string,
+  usdCadRate: number | null = null,
+): DisnatSummaryTotals | null {
   if (!html) return null;
 
   // 1) Format historique : la ligne « Total des actifs » sert d'ancre.
   const marker = html.search(/Total des actifs/i);
   if (marker >= 0) {
     const chunk = html.slice(marker, marker + 6000);
-    const fromCells = totalsFromCells(chunk);
+    const fromCells = totalsFromCells(chunk, usdCadRate);
     if (fromCells) return fromCells;
     // Cellules rendues en `<div>` (grille React) : on lit le texte de la ligne.
     const rowEnd = chunk.indexOf("</tr>");
@@ -233,14 +246,14 @@ export function parseDisnatSummaryHtml(html: string): DisnatSummaryTotals | null
   }
 
   // 2) Ligne libellée (« Vue d'ensemble », « Total »…) : première de la page.
-  const labelled = parseDisnatSummaryRows(html);
+  const labelled = parseDisnatSummaryRows(html, usdCadRate);
   if (labelled.length > 0) return labelled[0];
 
   // 3) Page d'encaisse sans libellé exploitable : première ligne à identité comptable
   //    (CAD lu en premier quand deux devises sont empilées).
   if (!/liquidit[ée]s/i.test(html) || !/valeur totale/i.test(html)) return null;
   for (const rowMatch of html.matchAll(/<tr[^>]*>[\s\S]*?<\/tr>/gi)) {
-    const totals = totalsFromCells(rowMatch[0]);
+    const totals = totalsFromCells(rowMatch[0], usdCadRate);
     if (totals) return totals;
   }
   return null;
