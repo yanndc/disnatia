@@ -4,8 +4,32 @@ import { AppVersionBadge } from "@/components/dashboard/app-version-badge";
 import { dashboardNavigation } from "@/components/dashboard/dashboard-navigation";
 import { dashboardNavIcons } from "@/components/dashboard/dashboard-nav-icons";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
+import { NavBadge } from "@/components/dashboard/nav-badge";
+import { loadAccountCoverageBadge } from "@/features/portfolio/account-coverage-summary";
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+/**
+ * Pastille « comptes à confirmer » sur le lien Administration : elle évite d'ouvrir la session
+ * guidée pour savoir si un compte manque une preuve de mise à jour.
+ */
+async function navigationWithBadges() {
+  const coverage = await loadAccountCoverageBadge().catch(() => null);
+  const toConfirm = coverage?.summary.toConfirm ?? 0;
+  if (toConfirm <= 0) return dashboardNavigation;
+
+  return dashboardNavigation.map((item) =>
+    item.href === "/imports"
+      ? {
+          ...item,
+          badgeCount: toConfirm,
+          badgeLabel: `${toConfirm} compte(s) à confirmer — Session guidée, étape 1 « Comptes »`,
+        }
+      : item,
+  );
+}
+
+export async function DashboardShell({ children }: { children: React.ReactNode }) {
+  const items = await navigationWithBadges();
+
   return (
     <div className="min-h-screen bg-slate-50">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-5 lg:flex">
@@ -14,7 +38,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-slate-500">Assistant portefeuille DisnatIA</p>
         </Link>
         <nav className="mt-8 flex-1 space-y-1 overflow-y-auto">
-          {dashboardNavigation.map((item) => {
+          {items.map((item) => {
             const Icon = dashboardNavIcons[item.icon];
             return (
             <Link
@@ -24,6 +48,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             >
               <Icon className="size-4" />
               {item.label}
+              <NavBadge count={item.badgeCount} label={item.badgeLabel} />
             </Link>
             );
           })}
@@ -38,7 +63,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <Link href="/overview" className="min-w-0">
               <DisnatiaLogo className="h-6 w-auto max-w-[9rem] text-slate-950" />
             </Link>
-            <MobileNav items={dashboardNavigation} />
+            <MobileNav items={items} />
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-5 py-6">{children}</main>

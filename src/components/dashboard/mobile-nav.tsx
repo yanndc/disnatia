@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 import { AppVersionBadge } from "./app-version-badge";
 import type { DashboardNavItem } from "./dashboard-navigation";
 import { dashboardNavIcons } from "./dashboard-nav-icons";
+import { NavBadge } from "./nav-badge";
 
 export function MobileNav({ items }: { items: DashboardNavItem[] }) {
   const [open, setOpen] = useState(false);
@@ -83,6 +84,7 @@ export function MobileNav({ items }: { items: DashboardNavItem[] }) {
                           >
                             <Icon className="size-4 shrink-0" />
                             {item.label}
+                            <NavBadge count={item.badgeCount} label={item.badgeLabel} />
                           </Link>
                         </li>
                       );

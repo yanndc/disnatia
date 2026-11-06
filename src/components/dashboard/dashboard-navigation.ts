@@ -13,6 +13,9 @@ export type DashboardNavItem = {
   href: string;
   label: string;
   icon: DashboardNavIconName;
+  /** Pastille d'alerte (ex. comptes à confirmer sur « Administration »). */
+  badgeCount?: number;
+  badgeLabel?: string;
 };
 
 export const dashboardNavigation: DashboardNavItem[] = [
