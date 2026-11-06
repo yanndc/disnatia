@@ -6,6 +6,7 @@ import {
   resolvePeriodBounds,
   TITRES_HISTORY_MAX_GAP_TRADING_DAYS,
 } from "./performance-indicator-logic";
+import { previousTradingDayIso } from "@/lib/market/equity-session";
 import {
   favoriCoversScope,
   favoriReferenceForClient,
@@ -83,6 +84,39 @@ export function reconciliationReportDates(payload: PerformanceIndicatorPayload):
     unique.add(date);
   }
   return [...unique].toSorted((a, b) => b.localeCompare(a));
+}
+
+/** Tolérance relative pour juger qu'un import colle à une clôture donnée. */
+export const IMPORT_VALUATION_MATCH_PCT = 0.3;
+/** Facteur d'amélioration exigé pour dater un import à la séance précédente. */
+export const IMPORT_VALUATION_SHIFT_FACTOR = 3;
+
+/**
+ * Date de **valorisation** réelle d'un import portefeuille.
+ *
+ * Un export produit avant la clôture porte les prix de la séance précédente : importé le
+ * 5 juin, il contient les cours du 4. Comparé à la reconstruction du 5, il crée un faux
+ * écart de −2,5 % (5 000 $ sur 200 000 $).
+ *
+ * On compare donc son total aux reconstructions du jour déclaré et de la séance d'avant :
+ * s'il colle à la veille (≤ 0,3 %) bien mieux qu'au jour (facteur 3), il est daté la veille.
+ */
+export function effectiveImportAsOf(params: {
+  declaredAsOf: string;
+  total: number;
+  reconAtDate: number | undefined;
+  reconAtPreviousSession: number | undefined;
+  previousSession: string;
+}): string {
+  const { declaredAsOf, total, reconAtDate, reconAtPreviousSession, previousSession } = params;
+  if (!reconAtDate || !reconAtPreviousSession) return declaredAsOf;
+  if (reconAtDate <= 0 || reconAtPreviousSession <= 0 || total <= 0) return declaredAsOf;
+
+  const gapSame = Math.abs(total - reconAtDate) / reconAtDate;
+  const gapPrev = Math.abs(total - reconAtPreviousSession) / reconAtPreviousSession;
+  const matchesPrev = gapPrev <= IMPORT_VALUATION_MATCH_PCT / 100;
+  const muchBetter = gapPrev * IMPORT_VALUATION_SHIFT_FACTOR < gapSame;
+  return matchesPrev && muchBetter ? previousSession : declaredAsOf;
 }
 
 
@@ -206,21 +240,62 @@ export function buildReconciliationRows({
 
     // Cherche le point le plus récent ≤ targetDate (et ≥ minAsOf) pour un compte, dans une
     // liste de points (imports Disnat OU reconstruction quotidienne titres × prix).
+    type PointRef = { native: number; asOf: string; source: "import" | "reconstruction" };
+
+    // Reconstruction par compte et par jour : sert à dater les imports à leur vraie valorisation.
+    const reconByAccountDate = new Map<string, Map<string, number>>();
+    for (const pt of payload.historyPoints ?? []) {
+      const byDate = reconByAccountDate.get(pt.accountKey) ?? new Map<string, number>();
+      byDate.set(pt.asOf, pt.marketValueNative ?? pt.totalValueNative);
+      reconByAccountDate.set(pt.accountKey, byDate);
+    }
+
     const bestPointAtOrBefore = (
       points: typeof payload.snapshots,
       accountKey: string,
       targetDate: string,
       minAsOf: string,
-    ): { native: number; asOf: string } | null => {
-      let best: { native: number; asOf: string } | null = null;
+      source: PointRef["source"],
+    ): PointRef | null => {
+      let best: PointRef | null = null;
+      const recon = reconByAccountDate.get(accountKey);
       for (const pt of points ?? []) {
         if (pt.accountKey !== accountKey) continue;
         if (pt.asOf > targetDate || pt.asOf < minAsOf) continue;
-        if (!best || pt.asOf > best.asOf) {
-          best = { native: pt.marketValueNative ?? pt.totalValueNative, asOf: pt.asOf };
+        const native = pt.marketValueNative ?? pt.totalValueNative;
+        // Un import produit avant la clôture porte les prix de la veille : on le date à sa
+        // valorisation réelle pour ne pas comparer deux journées différentes.
+        const asOf =
+          source === "import"
+            ? effectiveImportAsOf({
+                declaredAsOf: pt.asOf,
+                total: native,
+                reconAtDate: recon?.get(pt.asOf),
+                reconAtPreviousSession: recon?.get(previousTradingDayIso(pt.asOf, 1)),
+                previousSession: previousTradingDayIso(pt.asOf, 1),
+              })
+            : pt.asOf;
+        if (asOf > targetDate || asOf < minAsOf) continue;
+        if (!best || asOf > best.asOf) {
+          best = { native, asOf, source };
         }
       }
       return best;
+    };
+
+    /**
+     * Borne retenue : le point le plus **proche** de la date visée (les deux candidats sont
+     * ≤ cible), l'import l'emportant à date égale.
+     *
+     * Auparavant l'import était prioritaire même s'il datait de plusieurs séances : pour la
+     * séance du 21 août, la baseline devenait l'import du 17 au lieu de la clôture du 20, et
+     * le mouvement de trois séances était compté dans la journée (+5 416 $ d'écart affiché).
+     */
+    const closestPoint = (a: PointRef | null, b: PointRef | null): PointRef | null => {
+      if (!a) return b;
+      if (!b) return a;
+      if (a.asOf === b.asOf) return a.source === "import" ? a : b;
+      return a.asOf > b.asOf ? a : b;
     };
 
     let gainCad = 0;
@@ -247,46 +322,45 @@ export function buildReconciliationRows({
       let favoriApplied = false;
 
       for (const accountKey of clientKeys) {
-        // Priorité au vrai import Disnat (`snapshots`) s'il est assez frais — c'est la seule
-        // source réellement indépendante de l'app pour valider ses propres calculs. On ne
-        // retombe sur la reconstruction quotidienne (`historyPoints`) que s'il n'y a pas
-        // d'import Disnat assez récent, pour éviter de marquer un compte "périmé" alors que
-        // l'app suit très bien sa valeur au jour le jour entre deux imports.
+        // Deux sources de bornes : l'import Disnat (référence indépendante) et la
+        // reconstruction quotidienne (titres × clôtures). On garde la plus proche de la date
+        // visée, l'import l'emportant à date égale.
         const startFromImport = bestPointAtOrBefore(
           payload.snapshots,
           accountKey,
           bounds.baselineLookup,
           minStartAsOf,
+          "import",
         );
         const endFromImport = bestPointAtOrBefore(
           payload.snapshots,
           accountKey,
           bounds.end,
           minEndAsOf,
+          "import",
         );
-        const startFromHistory = startFromImport
-          ? null
-          : bestPointAtOrBefore(
-              payload.historyPoints,
-              accountKey,
-              bounds.baselineLookup,
-              minStartAsOf,
-            );
-        const endFromHistory = endFromImport
-          ? null
-          : bestPointAtOrBefore(payload.historyPoints, accountKey, bounds.end, minEndAsOf);
+        const startFromHistory = bestPointAtOrBefore(
+          payload.historyPoints,
+          accountKey,
+          bounds.baselineLookup,
+          minStartAsOf,
+          "reconstruction",
+        );
+        const endFromHistory = bestPointAtOrBefore(
+          payload.historyPoints,
+          accountKey,
+          bounds.end,
+          minEndAsOf,
+          "reconstruction",
+        );
 
-        const start = startFromImport ?? startFromHistory;
-        const endCandidate = endFromImport ?? endFromHistory;
+        const start = closestPoint(startFromImport, startFromHistory);
+        const endCandidate = closestPoint(endFromImport, endFromHistory);
         // Le favori prime sur un point de fin reconstruit/importé plus ancien.
         const favoriCoversEnd =
           favori !== null && (endCandidate === null || favori.asOf >= endCandidate.asOf);
-        const end = favoriCoversEnd ? { native: 0, asOf: favori.asOf } : endCandidate;
-        const usedReconstruction =
-          (!startFromImport && !!startFromHistory) ||
-          (!favoriCoversEnd && !endFromImport && !!endFromHistory);
 
-        if (!start || !end) {
+        if (!start || (!favoriCoversEnd && !endCandidate)) {
           // Ni import récent, ni reconstruction récente disponible pour ce compte.
           const hasAnyDataAtAll =
             (payload.snapshots ?? []).some((s) => s.accountKey === accountKey) ||
@@ -298,6 +372,14 @@ export function buildReconciliationRows({
           }
           continue;
         }
+
+        const end: PointRef =
+          favoriCoversEnd && favori
+            ? { native: 0, asOf: favori.asOf, source: "import" }
+            : endCandidate!;
+        const endIsReconstruction = !favoriCoversEnd && endCandidate?.source === "reconstruction";
+        const usedReconstruction = start.source === "reconstruction" || endIsReconstruction;
+
         if (usedReconstruction && !favoriCoversEnd) {
           reconstructedAccountKeys.push(accountKey);
         }

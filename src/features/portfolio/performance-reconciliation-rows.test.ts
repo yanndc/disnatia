@@ -2,6 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildReconciliationRows,
+  effectiveImportAsOf,
   reconciliationAsOf,
   reconciliationReportDates,
 } from "./performance-reconciliation-rows";
@@ -118,6 +119,55 @@ describe("reconciliationReportDates", () => {
   });
 });
 
+describe("effectiveImportAsOf", () => {
+  test("date l'import à la séance précédente quand il colle à cette clôture", () => {
+    // Import du 5 juin valorisé avec les cours du 4 (écart nul avec la veille, 2,5 % avec le jour)
+    const asOf = effectiveImportAsOf({
+      declaredAsOf: "2026-06-05",
+      total: 203_102,
+      reconAtDate: 198_106,
+      reconAtPreviousSession: 202_900,
+      previousSession: "2026-06-04",
+    });
+    assert.equal(asOf, "2026-06-04");
+  });
+
+  test("garde la date déclarée quand l'import colle à sa propre clôture", () => {
+    const asOf = effectiveImportAsOf({
+      declaredAsOf: "2026-08-21",
+      total: 29_776,
+      reconAtDate: 29_768,
+      reconAtPreviousSession: 29_544,
+      previousSession: "2026-08-20",
+    });
+    assert.equal(asOf, "2026-08-21");
+  });
+
+  test("ne déplace pas un import qui ne colle à aucune des deux dates", () => {
+    const asOf = effectiveImportAsOf({
+      declaredAsOf: "2026-06-05",
+      total: 150_000,
+      reconAtDate: 198_106,
+      reconAtPreviousSession: 202_900,
+      previousSession: "2026-06-04",
+    });
+    assert.equal(asOf, "2026-06-05");
+  });
+
+  test("retourne la date déclarée sans reconstruction disponible", () => {
+    assert.equal(
+      effectiveImportAsOf({
+        declaredAsOf: "2026-06-05",
+        total: 1_000,
+        reconAtDate: undefined,
+        reconAtPreviousSession: 990,
+        previousSession: "2026-06-04",
+      }),
+      "2026-06-05",
+    );
+  });
+});
+
 describe("buildReconciliationRows", () => {
   test("utilise la fin de période officielle du favori et ignore les comptes vides", () => {
     const [row] = buildReconciliationRows({
@@ -182,6 +232,29 @@ describe("buildReconciliationRows", () => {
     assert.equal(rows[1]!.periodEnd, "2026-08-20");
     // Le rapport d'août reste calculé sur ses propres points (pas la séance du jour).
     assert.equal(rows[1]!.refGainCad, 0);
+  });
+
+  test("préfère le point le plus proche de la borne (reconstruction plutôt qu'un import ancien)", () => {
+    const [row] = buildReconciliationRows({
+      payload: payload({
+        // Import deux séances avant la baseline ; reconstruction la veille : c'est elle qui compte.
+        snapshots: [
+          { accountKey: Z2, asOf: "2026-11-03", marketValueNative: 28_000, totalValueNative: 28_000, currency: "CAD" },
+          { accountKey: Z2, asOf: "2026-11-06", marketValueNative: 29_500, totalValueNative: 29_500, currency: "CAD" },
+        ],
+        historyPoints: [
+          { accountKey: Z2, asOf: "2026-11-05", totalValueNative: 29_000, currency: "CAD" },
+        ],
+      }),
+      filters: filters(),
+      portfolios: [],
+      reportDates: ["2026-11-06"],
+    });
+
+    assert.ok(row);
+    // 29 500 (import du jour) − 29 000 (reconstruction de la veille) = 500, et non 1 500
+    assert.equal(row.refGainCad, 500);
+    assert.equal(row.baselineActualDate, "2026-11-05");
   });
 
   test("limite le nombre de lignes demandé", () => {
