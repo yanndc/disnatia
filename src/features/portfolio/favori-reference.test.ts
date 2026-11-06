@@ -1,6 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  favoriAdjustedCashByAccount,
   favoriCoversScope,
   favoriReferenceForClient,
   favoriReportDates,
@@ -112,4 +113,64 @@ describe("favoriCoversScope", () => {
   test("faux quand le client n'a aucun compte connu", () => {
     assert.equal(favoriCoversScope(accounts, "9ZZZZ", ["9ZZZZ1|CAD"]), false);
   });
+
+describe("favoriAdjustedCashByAccount", () => {
+  const usdToCad = 1.4;
+
+  test("remplace l'encaisse par celle du favori quand elle est plus récente", () => {
+    const cash = favoriAdjustedCashByAccount(
+      [
+        { accountKey: "5KFZEZ2|CAD", currency: "CAD", cashValue: 100, csvAsOfMs: 1_000 },
+        { accountKey: "5KFZE19|CAD", currency: "CAD", cashValue: 0, csvAsOfMs: 1_000 },
+      ],
+      [{ clientCode: "5KFZE", asOfMs: 2_000, cashCad: 400 }],
+      usdToCad,
+    );
+    // Écart +300 réparti au prorata de l'encaisse du fichier (100 % sur le compte qui en a)
+    assert.equal(cash.get("5KFZEZ2|CAD"), 400);
+    assert.equal(cash.get("5KFZE19|CAD"), 0);
+  });
+
+  test("répartit à parts égales quand toutes les encaisses sont nulles", () => {
+    const cash = favoriAdjustedCashByAccount(
+      [
+        { accountKey: "5KFZEZ2|CAD", currency: "CAD", cashValue: 0, csvAsOfMs: 1_000 },
+        { accountKey: "5KFZEA9|CAD", currency: "CAD", cashValue: 0, csvAsOfMs: 1_000 },
+      ],
+      [{ clientCode: "5KFZE", asOfMs: 2_000, cashCad: 100 }],
+      usdToCad,
+    );
+    assert.equal(cash.get("5KFZEZ2|CAD"), 50);
+    assert.equal(cash.get("5KFZEA9|CAD"), 50);
+  });
+
+  test("garde l'encaisse du fichier quand le favori est plus ancien", () => {
+    const cash = favoriAdjustedCashByAccount(
+      [{ accountKey: "5KFZEZ2|CAD", currency: "CAD", cashValue: 100, csvAsOfMs: 5_000 }],
+      [{ clientCode: "5KFZE", asOfMs: 2_000, cashCad: 400 }],
+      usdToCad,
+    );
+    assert.equal(cash.get("5KFZEZ2|CAD"), 100);
+  });
+
+  test("convertit l'ajustement dans la devise du compte", () => {
+    const cash = favoriAdjustedCashByAccount(
+      [{ accountKey: "5KFZEB7|USD", currency: "USD", cashValue: 100, csvAsOfMs: 1_000 }],
+      [{ clientCode: "5KFZE", asOfMs: 2_000, cashCad: 280 }],
+      usdToCad,
+    );
+    // 100 USD = 140 CAD ; l'encaisse officielle est 280 CAD → +140 CAD = +100 USD
+    assert.equal(cash.get("5KFZEB7|USD"), 200);
+  });
+
+  test("ne touche pas un client sans capture favori", () => {
+    const cash = favoriAdjustedCashByAccount(
+      [{ accountKey: "5L3APY0|CAD", currency: "CAD", cashValue: 210, csvAsOfMs: 1_000 }],
+      [],
+      usdToCad,
+    );
+    assert.equal(cash.get("5L3APY0|CAD"), 210);
+  });
+});
+
 });

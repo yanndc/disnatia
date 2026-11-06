@@ -18,7 +18,8 @@ import type {
 } from "@/features/portfolio/performance-indicator-types";
 
 const REPORT_DATE = "2026-07-31";
-const AS_OF_NOW = `${REPORT_DATE}T15:00:00-04:00`;
+/** Jour ISO seul : l'horloge de période ajoute 15 h et reste juste en heure d'hiver comme d'été. */
+const AS_OF_NOW = REPORT_DATE;
 
 const PERIODS: { id: PerformancePeriodId; label: string }[] = [
   { id: "month", label: "1 mois" },

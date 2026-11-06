@@ -85,3 +85,86 @@ export function favoriCoversScope(
   if (clientAccounts.length === 0) return false;
   return clientAccounts.every((account) => scoped.has(account.accountKey));
 }
+
+export type CashAccountLine = {
+  accountKey: string;
+  currency: string;
+  /** Encaisse native issue du dernier export portefeuille. */
+  cashValue: number;
+  /** `asOf` du dernier export portefeuille du compte (ms). */
+  csvAsOfMs: number;
+};
+
+export type FavoriCashSnapshot = {
+  clientCode: string;
+  asOfMs: number;
+  cashCad: number;
+};
+
+/**
+ * Remplace l'encaisse du fichier par l'encaisse **officielle** du favori « Vue d'ensemble »
+ * quand elle est plus récente, client par client.
+ *
+ * Le favori ne donne qu'un total par client : l'écart est réparti au prorata de l'encaisse
+ * de chaque compte (à parts égales si tous les comptes sont vides), puis reconverti dans la
+ * devise du compte. Le total par devise reste donc cohérent avec Disnat.
+ */
+export function favoriAdjustedCashByAccount(
+  accounts: CashAccountLine[],
+  snapshots: FavoriCashSnapshot[],
+  usdToCad: number | null,
+): Map<string, number> {
+  const result = new Map<string, number>();
+  for (const account of accounts) result.set(account.accountKey, account.cashValue);
+
+  const toCad = (value: number, currency: string) => {
+    const cur = currency.trim().toUpperCase();
+    return (cur === "USD" || cur === "US") && usdToCad !== null ? value * usdToCad : value;
+  };
+  const fromCad = (valueCad: number, currency: string) => {
+    const cur = currency.trim().toUpperCase();
+    return (cur === "USD" || cur === "US") && usdToCad !== null ? valueCad / usdToCad : valueCad;
+  };
+
+  const latestFavoriByClient = new Map<string, FavoriCashSnapshot>();
+  for (const snapshot of snapshots) {
+    const code = snapshot.clientCode.trim().toUpperCase();
+    const current = latestFavoriByClient.get(code);
+    if (!current || snapshot.asOfMs > current.asOfMs) latestFavoriByClient.set(code, snapshot);
+  }
+
+  const byClient = new Map<string, CashAccountLine[]>();
+  for (const account of accounts) {
+    const code = clientCodeFromAccountKey(account.accountKey);
+    const list = byClient.get(code) ?? [];
+    list.push(account);
+    byClient.set(code, list);
+  }
+
+  for (const [clientCode, clientAccounts] of byClient) {
+    const favori = latestFavoriByClient.get(clientCode);
+    if (!favori) continue;
+    const csvAsOfMs = Math.max(...clientAccounts.map((account) => account.csvAsOfMs));
+    if (favori.asOfMs <= csvAsOfMs) continue;
+
+    const currentCashCad = clientAccounts.reduce(
+      (total, account) => total + toCad(account.cashValue, account.currency),
+      0,
+    );
+    const deltaCad = favori.cashCad - currentCashCad;
+    if (Math.abs(deltaCad) < 0.01) continue;
+
+    const share = (account: CashAccountLine) =>
+      currentCashCad > 0
+        ? toCad(account.cashValue, account.currency) / currentCashCad
+        : 1 / clientAccounts.length;
+
+    for (const account of clientAccounts) {
+      const deltaNative = fromCad(deltaCad * share(account), account.currency);
+      result.set(account.accountKey, account.cashValue + deltaNative);
+    }
+  }
+
+  return result;
+}
+

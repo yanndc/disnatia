@@ -13,6 +13,8 @@ import {
   type EnrichedPosition,
 } from "./live-enrichment";
 import { getUsdCadRateNear } from "@/lib/fx/latest-usd-cad-rate";
+import { clientCodeFromAccountKey } from "./account-coverage";
+import { favoriAdjustedCashByAccount } from "./favori-reference";
 import { makeAccountKey } from "./upsert-portfolio-state";
 import { formatAccountNumber } from "@/lib/utils";
 import {
@@ -183,7 +185,7 @@ export async function getAllPositions(): Promise<EnrichedPosition[]> {
 
 /** Résumé du tableau de bord, basé sur l'état synthétisé. */
 export async function getPortfolioSummary() {
-  const [holdings, accountStates, anyImportCount, txGlobal, externalAccounts, nonFinancialAssets, ownerResolver] = await Promise.all([
+  const [holdings, accountStates, anyImportCount, txGlobal, externalAccounts, nonFinancialAssets, ownerResolver, cashSnapshots] = await Promise.all([
     loadHoldingsForDashboard(),
     prisma.portfolioAccountState.findMany(),
     prisma.portfolioImport.count(),
@@ -195,6 +197,10 @@ export async function getPortfolioSummary() {
     listExternalAccountsWithLatest(),
     listNonFinancialAssetsWithLatest(),
     buildOwnerDimensionResolver(),
+    prisma.disnatClientCashSnapshot.findMany({
+      orderBy: [{ asOfDate: "desc" }],
+      select: { clientCode: true, asOfDate: true, cashCad: true },
+    }),
   ]);
 
   const externalWithValue = externalAccounts.filter((a) => a.latestSnapshot !== null);
@@ -270,10 +276,37 @@ export async function getPortfolioSummary() {
 
   const enrichedPositions = withDisplayWeightsCad(enrichedPositionsBase, usdToCad);
 
-  const cashValue =
-    usdToCad !== null
-      ? sum(accountStates.map((a) => toCadEquivalent(a.cashValue, a.currency, usdToCad)))
-      : sum(accountStates.map((a) => a.cashValue));
+  // Encaisse : la capture du favori « Vue d'ensemble » est officielle et souvent plus récente
+  // que le dernier export portefeuille. On l'utilise par client quand elle est plus fraîche,
+  // sinon on garde l'encaisse du fichier (seule source disponible).
+  const latestFavoriCashByClient = new Map<string, { asOfMs: number; cashCad: number }>();
+  for (const snapshot of cashSnapshots) {
+    const clientCode = snapshot.clientCode.trim().toUpperCase();
+    if (latestFavoriCashByClient.has(clientCode)) continue;
+    latestFavoriCashByClient.set(clientCode, {
+      asOfMs: snapshot.asOfDate.getTime(),
+      cashCad: snapshot.cashCad,
+    });
+  }
+
+  const statesByClient = new Map<string, typeof accountStates>();
+  for (const state of accountStates) {
+    const clientCode = clientCodeFromAccountKey(state.accountKey);
+    const list = statesByClient.get(clientCode) ?? [];
+    list.push(state);
+    statesByClient.set(clientCode, list);
+  }
+
+  const cashValue = sum(
+    [...statesByClient.entries()].map(([clientCode, clientStates]) => {
+      const favori = latestFavoriCashByClient.get(clientCode);
+      const csvAsOfMs = Math.max(...clientStates.map((state) => state.asOf.getTime()));
+      if (favori && favori.asOfMs > csvAsOfMs) return favori.cashCad;
+      return usdToCad !== null
+        ? sum(clientStates.map((state) => toCadEquivalent(state.cashValue, state.currency, usdToCad)))
+        : sum(clientStates.map((state) => state.cashValue));
+    }),
+  );
   const disnatReferenceTotalValue =
     usdToCad !== null
       ? sum(accountStates.map((a) => toCadEquivalent(a.totalValue, a.currency, usdToCad)))
@@ -753,7 +786,32 @@ export async function getAccountsWithStats() {
   );
 
   const hasHoldings = holdings.length > 0;
+
+  // Encaisse officielle du favori « Vue d'ensemble » (plus fraîche que l'export portefeuille).
+  const cashSnapshots = await prisma.disnatClientCashSnapshot
+    .findMany({
+      orderBy: [{ asOfDate: "desc" }],
+      select: { clientCode: true, asOfDate: true, cashCad: true },
+    })
+    .catch(() => []);
+  const fxRow = cashSnapshots.length > 0 ? await getUsdCadRateNear(null).catch(() => null) : null;
+  const favoriCashByAccount = favoriAdjustedCashByAccount(
+    accounts.map((account) => ({
+      accountKey: account.accountKey,
+      currency: account.currency,
+      cashValue: account.cashValue,
+      csvAsOfMs: account.asOf.getTime(),
+    })),
+    cashSnapshots.map((snapshot) => ({
+      clientCode: snapshot.clientCode,
+      asOfMs: snapshot.asOfDate.getTime(),
+      cashCad: snapshot.cashCad,
+    })),
+    fxRow?.usdToCad ?? null,
+  );
+
   return accounts.map((a) => {
+    const cashValue = favoriCashByAccount.get(a.accountKey) ?? a.cashValue;
     const reconstructedMarketValue = hasHoldings
       ? (reconstructedByAccountKey.get(a.accountKey) ?? 0)
       : null;
@@ -761,10 +819,11 @@ export async function getAccountsWithStats() {
       reconstructedMarketValue === null ? null : reconstructedMarketValue - a.marketValue;
     const displayTotalValue =
       reconstructedMarketValue !== null
-        ? a.cashValue + reconstructedMarketValue
-        : a.totalValue;
+        ? cashValue + reconstructedMarketValue
+        : a.totalValue + (cashValue - a.cashValue);
     return {
       ...a,
+      cashValue,
       txCount: txByKey.get(a.accountKey) ?? 0,
       lastTxDate: lastTxByKey.get(a.accountKey) ?? null,
       reconstructedMarketValue,
