@@ -14,7 +14,7 @@ import type { TxCategory } from "@/generated/prisma/enums";
 import { isoDateInToronto } from "@/lib/market/equity-session";
 import { parseIsoDateLocal } from "./daily-close-key";
 
-type ProjectableTransaction = {
+export type ProjectableTransaction = {
   id: string;
   accountKey: string | null;
   accountName: string | null;
@@ -104,8 +104,19 @@ function addDays(date: Date, days: number): Date {
   return copy;
 }
 
-function txDate(tx: ProjectableTransaction): Date | null {
-  return tx.settlementDate ?? tx.tradeDate;
+/**
+ * Date d'effet d'une transaction pour les **positions** : la date d'opération.
+ *
+ * Le titre est acquis dès l'exécution ; utiliser la date de règlement (T+1, T+3 le week-end)
+ * faisait apparaître les achats un jour ouvré plus tard. Exemple réel : les achats du 26 mai
+ * (T-C, GIL-C, XEQT-C pour 7 823 $) n'apparaissaient que le 27, gonflant la valeur « titres »
+ * de +7 823 $ ce jour-là, sans flux pour compenser — d'où un faux gain de séance de +6,3 %.
+ *
+ * Les flux de trésorerie suivent la même convention (`tradeDate ?? settlementDate`), sauf les
+ * transferts que Disnat date au règlement.
+ */
+export function txDate(tx: ProjectableTransaction): Date | null {
+  return tx.tradeDate ?? tx.settlementDate;
 }
 
 function signedQuantityForPosition(tx: ProjectableTransaction): number | null {

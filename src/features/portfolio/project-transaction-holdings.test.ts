@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
   resolveListingCurrencyFromEvidence,
+  txDate,
   type ListingEvidenceRow,
+  type ProjectableTransaction,
 } from "./project-transaction-holdings";
 
 /** Ligne Disnat minimale : devise du compte + devise du prix + marché + prix. */
@@ -55,4 +57,51 @@ describe("resolveListingCurrencyFromEvidence", () => {
     assert.equal(resolveListingCurrencyFromEvidence([]), null);
     assert.equal(resolveListingCurrencyFromEvidence([row("-", "CAN", "CAN", null)]), null);
   });
+
+describe("txDate (date d'effet d'une position)", () => {
+  const base = {
+    id: "tx1",
+    accountKey: "5KFZEZ2|CAD",
+    accountName: "CELI",
+    accountNumber: "5KFZEZ2",
+    transactionType: "ACHAT",
+    txCategory: "BUY" as const,
+    ticker: "T-C",
+    securityName: "TELUS",
+    currency: "CAD",
+    priceDevise: "CAD",
+    market: "CAN",
+    assetClass: null,
+    quantity: 200,
+    price: 17.32,
+    amount: -3464,
+    fees: null,
+    rawJson: {},
+  };
+
+  test("utilise la date d'opération, pas la date de règlement (T+1)", () => {
+    // Cas réel : achat exécuté le 26 mai, réglé le 27 → la position existe dès le 26.
+    const tx: ProjectableTransaction = {
+      ...base,
+      tradeDate: new Date("2026-05-26T00:00:00.000Z"),
+      settlementDate: new Date("2026-05-27T00:00:00.000Z"),
+    };
+    assert.equal(txDate(tx)?.toISOString().slice(0, 10), "2026-05-26");
+  });
+
+  test("retombe sur la date de règlement quand l'opération n'est pas datée", () => {
+    const tx: ProjectableTransaction = {
+      ...base,
+      tradeDate: null,
+      settlementDate: new Date("2026-05-27T00:00:00.000Z"),
+    };
+    assert.equal(txDate(tx)?.toISOString().slice(0, 10), "2026-05-27");
+  });
+
+  test("retourne null quand aucune date n'est disponible", () => {
+    const tx: ProjectableTransaction = { ...base, tradeDate: null, settlementDate: null };
+    assert.equal(txDate(tx), null);
+  });
+});
+
 });
