@@ -22,6 +22,7 @@ import {
 import type {
   PerformanceAccountCurrent,
   PerformanceAccountRef,
+  PerformanceClientCashSnapshot,
   PerformanceEnrichedHoldingRow,
   PerformanceHoldingRow,
   PerformanceIndicatorPayload,
@@ -199,6 +200,7 @@ export async function getPerformanceIndicatorPayload(options?: {
     accountOwnerMappings,
     externalOwnerMappings,
     portfolioMemberships,
+    clientCashSnapshotRows,
   ] =
     await Promise.all([
       prisma.portfolioAccountState.findMany({
@@ -320,6 +322,10 @@ export async function getPerformanceIndicatorPayload(options?: {
             },
           },
         },
+      }),
+      prisma.disnatClientCashSnapshot.findMany({
+        orderBy: [{ asOfDate: "asc" }, { createdAt: "asc" }],
+        select: { clientCode: true, asOfDate: true, cashCad: true, securitiesCad: true, totalCad: true },
       }),
     ]);
 
@@ -693,12 +699,23 @@ export async function getPerformanceIndicatorPayload(options?: {
 
   const refSession = referenceTradingSessionDayIso(now);
 
+  const clientCashSnapshots: PerformanceClientCashSnapshot[] = clientCashSnapshotRows.map(
+    (row) => ({
+      clientCode: row.clientCode.trim().toUpperCase(),
+      asOf: isoDateFromDbDate(row.asOfDate),
+      securitiesCad: row.securitiesCad,
+      cashCad: row.cashCad,
+      totalCad: row.totalCad,
+    }),
+  );
+
   const payload: PerformanceIndicatorPayload = {
     accounts,
     portfolioScopes,
     currentByAccount,
     snapshots,
     historyPoints,
+    clientCashSnapshots,
     dailyTotalsCad,
     sessionGainsByDate: sessionGainsByDateList,
     sessionGainsByAccount,

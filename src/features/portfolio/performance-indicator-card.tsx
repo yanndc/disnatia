@@ -20,6 +20,7 @@ import {
   computeAllPeriodResultsWithSnapshots,
   computePeriodResultWithSnapshots,
   defaultPerformanceFilters,
+  disnatTitresMaterialKeys,
   minAcceptableHistoryAsOf,
   TITRES_HISTORY_MAX_GAP_TRADING_DAYS,
   resolveActiveAccountKeys,
@@ -32,7 +33,12 @@ import {
   buildAiAuditPrompt,
   buildAiAuditPromptCompact,
 } from "./performance-reconciliation-ai-prompt";
-import { parseIsoDateLocal } from "./daily-close-key";
+import {
+  favoriCoversScope,
+  favoriReferenceForClient,
+  favoriReportDates,
+  groupAccountKeysByClient,
+} from "./favori-reference";
 import { uniquePortfolioOwners } from "@/lib/portfolio/sanitize-portfolio-owner";
 import type {
   PerformanceFilterState,
@@ -205,6 +211,16 @@ function asOfAtTorontoMidday(isoDate: string): string {
   return `${isoDate}T15:00:00-04:00`;
 }
 
+/**
+ * Midi local du jour ISO d'un rapport — sert à calculer les bornes de période **à cette
+ * date**. `parseIsoDateLocal` ne lit pas un horodatage avec fuseau (`2026-08-20T15:00:00-04:00`)
+ * et renvoyait une date invalide, ce qui figeait toutes les lignes sur la séance du jour.
+ */
+function reportDateNoon(isoDate: string): Date {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year!, (month ?? 1) - 1, day ?? 1, 12, 0, 0, 0);
+}
+
 export function PerformanceIndicatorCard({
   payload,
   showReconciliationDetails = false,
@@ -289,8 +305,13 @@ export function PerformanceIndicatorCard({
     for (const s of payload.snapshots ?? []) {
       if (s.asOf) unique.add(s.asOf);
     }
+    // Les captures du favori « Vue d'ensemble » sont des dates de rapport à part entière :
+    // sans elles, la table resterait bloquée sur le dernier export portefeuille.
+    for (const date of favoriReportDates(payload.clientCashSnapshots)) {
+      unique.add(date);
+    }
     return [...unique].toSorted((a, b) => b.localeCompare(a));
-  }, [payload.snapshots]);
+  }, [payload.snapshots, payload.clientCashSnapshots]);
 
   const activeRecoReportDate =
     recoReportDate && reportDates.includes(recoReportDate)
@@ -314,7 +335,10 @@ export function PerformanceIndicatorCard({
         filters.activePeriod,
       );
 
-      const now = parseIsoDateLocal(asOfNow);
+      // Bornes de la période **à la date du rapport** : `asOfNow` est un horodatage Toronto
+      // (`2026-08-20T15:00:00-04:00`) que `parseIsoDateLocal` ne sait pas lire (→ date
+      // invalide, donc « aujourd'hui »). On repart du jour ISO du rapport, à midi local.
+      const now = reportDateNoon(reportDate);
       const earliest = [...new Set(payload.snapshots?.map((s) => s.asOf) ?? [])].sort()[0] ?? null;
       const bounds = resolvePeriodBounds(filters.activePeriod, now, filters.selectedYear, earliest);
       const disnatKeys = resolveActiveAccountKeys(
@@ -327,7 +351,14 @@ export function PerformanceIndicatorCard({
         portfolios,
       ).filter((k) => !payload.accounts.find((a) => a.accountKey === k)?.isExternal);
 
-      if (!bounds.start || !bounds.baselineLookup || disnatKeys.length === 0) {
+      // Seuls les comptes qui détiennent (ou ont détenu) des titres sur la période peuvent
+      // être conciliés : un compte d'encaisse vide (0 $) ne doit pas faire baisser la couverture.
+      const materialKeys =
+        bounds.baselineLookup && bounds.end
+          ? disnatTitresMaterialKeys(disnatKeys, payload, bounds.baselineLookup, bounds.end)
+          : disnatKeys;
+
+      if (!bounds.start || !bounds.baselineLookup || materialKeys.length === 0) {
         rows.push({
           reportDate,
           appGainCad: app.gainCad,
@@ -337,7 +368,7 @@ export function PerformanceIndicatorCard({
           deltaCad: null,
           deltaPct: null,
           accountsUsed: 0,
-          accountsExpected: disnatKeys.length,
+          accountsExpected: materialKeys.length,
           incomplete: true,
           reasons: ["Bornes de période indisponibles ou aucun compte Disnat dans la portée."],
           periodStart: bounds.start,
@@ -394,78 +425,117 @@ export function PerformanceIndicatorCard({
       const missingAccountKeys: string[] = [];
       const staleAccountKeys: string[] = [];
       const reconstructedAccountKeys: string[] = [];
+      const favoriCoveredAccountKeys: string[] = [];
+      const favoriDatesUsed = new Set<string>();
       // Date réelle (la plus vieille / la plus ancienne parmi les comptes utilisés) des
       // points retenus — pour afficher ce qui a VRAIMENT été utilisé, pas seulement
       // la date cible demandée (`bounds.baselineLookup`/`bounds.end`).
       let oldestStartAsOfUsed: string | null = null;
       let oldestEndAsOfUsed: string | null = null;
 
-      for (const accountKey of disnatKeys) {
-        // Priorité au vrai import Disnat (`snapshots`) s'il est assez frais — c'est la seule
-        // source réellement indépendante de l'app pour valider ses propres calculs. On ne
-        // retombe sur la reconstruction quotidienne (`historyPoints`) que s'il n'y a pas
-        // d'import Disnat assez récent, pour éviter de marquer un compte "périmé" alors que
-        // l'app suit très bien sa valeur au jour le jour entre deux imports.
-        const startFromImport = bestPointAtOrBefore(
-          payload.snapshots,
-          accountKey,
-          bounds.baselineLookup,
-          minStartAsOf,
-        );
-        const endFromImport = bestPointAtOrBefore(
-          payload.snapshots,
-          accountKey,
-          bounds.end,
-          minEndAsOf,
-        );
-        const startFromHistory = startFromImport
-          ? null
-          : bestPointAtOrBefore(payload.historyPoints, accountKey, bounds.baselineLookup, minStartAsOf);
-        const endFromHistory = endFromImport
-          ? null
-          : bestPointAtOrBefore(payload.historyPoints, accountKey, bounds.end, minEndAsOf);
+      for (const { clientCode, accountKeys: clientKeys } of groupAccountKeysByClient(materialKeys)) {
+        // Fin de période officielle : la capture du favori « Vue d'ensemble » couvre tout le
+        // client à cette date (titres + encaisse lus chez Disnat), elle prime sur une
+        // reconstruction locale. Un export portefeuille plus récent garde la priorité.
+        const favori =
+          favoriCoversScope(payload.accounts, clientCode, disnatKeys)
+            ? favoriReferenceForClient(
+                payload.clientCashSnapshots,
+                clientCode,
+                bounds.end,
+                minEndAsOf,
+              )
+            : null;
 
-        const start = startFromImport ?? startFromHistory;
-        const end = endFromImport ?? endFromHistory;
-        const usedReconstruction = (!startFromImport && !!startFromHistory) || (!endFromImport && !!endFromHistory);
+        /** Le total officiel du favori couvre le client entier : il ne s'ajoute qu'une fois. */
+        let favoriApplied = false;
 
-        if (!start || !end) {
-          // Ni import récent, ni reconstruction récente disponible pour ce compte.
-          const hasAnyDataAtAll =
-            (payload.snapshots ?? []).some((s) => s.accountKey === accountKey) ||
-            (payload.historyPoints ?? []).some((s) => s.accountKey === accountKey);
-          if (hasAnyDataAtAll) {
-            staleAccountKeys.push(accountKey);
-          } else {
-            missingAccountKeys.push(accountKey);
+        for (const accountKey of clientKeys) {
+          // Priorité au vrai import Disnat (`snapshots`) s'il est assez frais — c'est la seule
+          // source réellement indépendante de l'app pour valider ses propres calculs. On ne
+          // retombe sur la reconstruction quotidienne (`historyPoints`) que s'il n'y a pas
+          // d'import Disnat assez récent, pour éviter de marquer un compte "périmé" alors que
+          // l'app suit très bien sa valeur au jour le jour entre deux imports.
+          const startFromImport = bestPointAtOrBefore(
+            payload.snapshots,
+            accountKey,
+            bounds.baselineLookup,
+            minStartAsOf,
+          );
+          const endFromImport = bestPointAtOrBefore(
+            payload.snapshots,
+            accountKey,
+            bounds.end,
+            minEndAsOf,
+          );
+          const startFromHistory = startFromImport
+            ? null
+            : bestPointAtOrBefore(payload.historyPoints, accountKey, bounds.baselineLookup, minStartAsOf);
+          const endFromHistory = endFromImport
+            ? null
+            : bestPointAtOrBefore(payload.historyPoints, accountKey, bounds.end, minEndAsOf);
+
+          const start = startFromImport ?? startFromHistory;
+          const endCandidate = endFromImport ?? endFromHistory;
+          // Le favori prime sur un point de fin reconstruit/importé plus ancien.
+          const favoriCoversEnd =
+            favori !== null && (endCandidate === null || favori.asOf >= endCandidate.asOf);
+          const end = favoriCoversEnd
+            ? { native: 0, asOf: favori.asOf }
+            : endCandidate;
+          const usedReconstruction =
+            (!startFromImport && !!startFromHistory) ||
+            (!favoriCoversEnd && !endFromImport && !!endFromHistory);
+
+          if (!start || !end) {
+            // Ni import récent, ni reconstruction récente disponible pour ce compte.
+            const hasAnyDataAtAll =
+              (payload.snapshots ?? []).some((s) => s.accountKey === accountKey) ||
+              (payload.historyPoints ?? []).some((s) => s.accountKey === accountKey);
+            if (hasAnyDataAtAll) {
+              staleAccountKeys.push(accountKey);
+            } else {
+              missingAccountKeys.push(accountKey);
+            }
+            continue;
           }
-          continue;
-        }
-        if (usedReconstruction) {
-          reconstructedAccountKeys.push(accountKey);
-        }
+          if (usedReconstruction && !favoriCoversEnd) {
+            reconstructedAccountKeys.push(accountKey);
+          }
+          if (favoriCoversEnd) {
+            favoriCoveredAccountKeys.push(accountKey);
+            favoriDatesUsed.add(favori.asOf);
+          }
 
-        const startAsOf = start.asOf;
-        const endAsOf = end.asOf;
-        const startCad = toCad(start.native, accountKey, startAsOf);
-        const endCad = toCad(end.native, accountKey, endAsOf);
-        const flowsCad = (payload.cashFlows ?? [])
-          .filter(
-            (f) =>
-              f.accountKey === accountKey &&
-              f.tradeDate >= bounds.start! &&
-              f.tradeDate <= bounds.end,
-          )
-          .reduce((sum, f) => sum + f.amountCad, 0);
+          const startAsOf = start.asOf;
+          const endAsOf = end.asOf;
+          const startCad = toCad(start.native, accountKey, startAsOf);
+          // Valeur de fin officielle : le favori ne couvre que les périmètres complets
+          // (`favoriCoversScope`) et son total porte sur **tout** le client → une seule fois.
+          const endCad = favoriCoversEnd
+            ? favoriApplied
+              ? 0
+              : favori.securitiesCad
+            : toCad(end.native, accountKey, endAsOf);
+          if (favoriCoversEnd) favoriApplied = true;
+          const flowsCad = (payload.cashFlows ?? [])
+            .filter(
+              (f) =>
+                f.accountKey === accountKey &&
+                f.tradeDate >= bounds.start! &&
+                f.tradeDate <= bounds.end,
+            )
+            .reduce((sum, f) => sum + f.amountCad, 0);
 
-        gainCad += endCad - startCad - flowsCad;
-        baselineCad += startCad + flowsCad;
-        used += 1;
-        if (oldestStartAsOfUsed == null || startAsOf < oldestStartAsOfUsed) {
-          oldestStartAsOfUsed = startAsOf;
-        }
-        if (oldestEndAsOfUsed == null || endAsOf < oldestEndAsOfUsed) {
-          oldestEndAsOfUsed = endAsOf;
+          gainCad += endCad - startCad - flowsCad;
+          baselineCad += startCad + flowsCad;
+          used += 1;
+          if (oldestStartAsOfUsed == null || startAsOf < oldestStartAsOfUsed) {
+            oldestStartAsOfUsed = startAsOf;
+          }
+          if (oldestEndAsOfUsed == null || endAsOf < oldestEndAsOfUsed) {
+            oldestEndAsOfUsed = endAsOf;
+          }
         }
       }
 
@@ -477,7 +547,7 @@ export function PerformanceIndicatorCard({
         app.gainPct != null && refGainPct != null ? app.gainPct - refGainPct : null;
 
       const reasons: string[] = [];
-      if (used < disnatKeys.length) {
+      if (used < materialKeys.length) {
         reasons.push("Couverture comptes incomplète");
       }
       if (staleAccountKeys.length > 0) {
@@ -488,6 +558,12 @@ export function PerformanceIndicatorCard({
       if (reconstructedAccountKeys.length > 0) {
         reasons.push(
           `Référence reconstruite (pas d'import Disnat récent) pour ${reconstructedAccountKeys.length} compte(s)`,
+        );
+      }
+      if (favoriCoveredAccountKeys.length > 0) {
+        const dates = [...favoriDatesUsed].sort().join(", ");
+        reasons.push(
+          `Fin de période officielle (favori Disnat du ${dates}) pour ${favoriCoveredAccountKeys.length} compte(s)`,
         );
       }
       if (app.incomplete) {
@@ -535,8 +611,8 @@ export function PerformanceIndicatorCard({
         deltaCad,
         deltaPct,
         accountsUsed: used,
-        accountsExpected: disnatKeys.length,
-        incomplete: used < disnatKeys.length || staleAccountKeys.length > 0,
+        accountsExpected: materialKeys.length,
+        incomplete: used < materialKeys.length || staleAccountKeys.length > 0,
         reasons,
         periodStart: bounds.start,
         periodEnd: bounds.end,

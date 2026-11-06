@@ -632,7 +632,7 @@ export function minAcceptableHistoryAsOf(targetDate: string): string {
 }
 
 /** Comptes Disnat avec titres en jeu (positions ou historique récent sur la période). */
-function disnatTitresMaterialKeys(
+export function disnatTitresMaterialKeys(
   disnatKeys: string[],
   payload: PerformanceIndicatorPayload,
   baselineLookup: string,

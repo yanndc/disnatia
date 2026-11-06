@@ -107,6 +107,20 @@ export type PerformanceSnapshotsBundle = {
   byScopeKey: Record<string, PerformancePeriodResult[]>;
 };
 
+/**
+ * Référence officielle du favori Disnat « Vue d'ensemble » : totaux **par client**
+ * (titres, encaisse, total) tels qu'affichés par Disnat, avec leur date de capture.
+ */
+export type PerformanceClientCashSnapshot = {
+  /** Code client Disnat (`5KFZE`, `5L3AP`). */
+  clientCode: string;
+  /** Date de la capture (`yyyy-mm-dd`). */
+  asOf: string;
+  securitiesCad: number;
+  cashCad: number;
+  totalCad: number;
+};
+
 export type PerformanceIndicatorPayload = {
   accounts: PerformanceAccountRef[];
   portfolioScopes?: PerformancePortfolioScope[];
@@ -114,6 +128,8 @@ export type PerformanceIndicatorPayload = {
   snapshots: PerformanceSnapshotPoint[];
   /** Valeurs titres projetées par compte et par jour (holdings × clôtures). */
   historyPoints: PerformanceSnapshotPoint[];
+  /** Captures officielles du favori « Vue d'ensemble », par client (plus fraîches que les imports). */
+  clientCashSnapshots?: PerformanceClientCashSnapshot[];
   /** Valeurs titres agrégées en CAD par jour (portfolio_daily_values). */
   dailyTotalsCad: PerformanceDailyTotalCad[];
   /** P&L titres par séance boursière (holdings journaliers × clôtures). */
