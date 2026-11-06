@@ -57,9 +57,10 @@ export async function DisnatDriftCard() {
           </span>
           <span className="text-slate-500">{TONE_LABEL[global.tone]}</span>
           <span className="text-slate-400">
-            recalculé {formatCurrency(global.liveCad, "CAD")} · fichier{" "}
+            recalculé {formatCurrency(global.liveCad, "CAD")} · référence{" "}
             {formatCurrency(global.disnatCad, "CAD")}
             {summary.referenceAsOf ? ` au ${summary.referenceAsOf}` : ""}
+            {summary.source === "favori" ? " (favori Vue d'ensemble)" : " (fichier portefeuille)"}
           </span>
         </div>
 
@@ -69,6 +70,9 @@ export async function DisnatDriftCard() {
               <span className="text-slate-700">
                 <span className="font-medium">{account.label}</span>
                 <span className="text-slate-400"> · {account.owner ?? "—"}</span>
+                {account.source === "favori" && account.referenceAsOf ? (
+                  <span className="text-slate-400"> · favori du {account.referenceAsOf}</span>
+                ) : null}
               </span>
               <span className={`tabular-nums ${account.tone === "ok" ? "text-slate-500" : "text-rose-600"}`}>
                 {account.deltaCad > 0 ? "+" : ""}
@@ -83,7 +87,8 @@ export async function DisnatDriftCard() {
           ))}
         </ul>
         <p className="mt-2 text-[11px] text-slate-400">
-          Vert ≤ 0,5 % · ambre ≤ 2 % · rouge au-delà. Un import portefeuille met la référence à jour.
+          Vert ≤ 0,5 % · ambre ≤ 2 % · rouge au-delà. Le favori « Vue d&apos;ensemble » ou un import
+          portefeuille met la référence à jour.
         </p>
       </CardContent>
     </Card>
