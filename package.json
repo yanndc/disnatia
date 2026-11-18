@@ -7,6 +7,8 @@
     "build": "node scripts/vercel-build.cjs",
     "start": "next start",
     "lint": "eslint",
+    "release:notes": "node ../ChatNorris/scripts/journal.mjs --project . --write --publish",
+    "release:prod": "vercel --prod --yes && npm run release:notes",
     "icons": "node scripts/generate-icons.cjs",
     "test": "npx tsx --test src/features/portfolio/**/*.test.ts src/features/reports/**/*.test.ts src/features/news/**/*.test.ts src/features/imports/**/*.test.ts src/lib/market/**/*.test.ts src/lib/csv/**/*.test.ts",
     "test:performance": "npx tsx --test src/features/portfolio/performance-*.test.ts src/features/portfolio/performance-return-disnat.test.ts src/features/portfolio/desjardins-day-pnl.test.ts",

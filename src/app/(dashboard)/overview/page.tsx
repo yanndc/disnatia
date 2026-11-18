@@ -106,9 +106,9 @@ export default async function OverviewPage() {
   const hasFxRate = summary.usdToCadRate !== null && summary.usdToCadRateDate;
   const dataHealthTone = driftIsHigh || !hasFxRate ? "warning" : "ok";
   const dataHealthLabel = driftIsHigh
-    ? "Ecart eleve"
+    ? "Écart élevé"
     : hasFxRate
-      ? "Donnees stables"
+      ? "Données stables"
       : "Conversion manquante";
 
   /**
@@ -125,35 +125,28 @@ export default async function OverviewPage() {
       : null;
 
   return (
-    <div className="space-y-8">
-      <MarketIndicesTicker />
-      <PortfolioNewsHighlights />
-      <DisnatDriftCard />
-
-      <section className="overflow-hidden rounded-4xl border border-slate-200 bg-white text-slate-950 shadow-sm">
-        <div className="relative isolate p-6 sm:p-8">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.08),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(5,150,105,0.06),transparent_30%)]" />
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-cyan-700">
-              {sessionResult ? <SessionGainPill result={sessionResult} /> : null}
-              <HeaderPill label="Référence" value={referenceLabel} />
-              <HeaderPill label="Dernier import" value={importLabel} />
-              <HeaderPill label="Cours" value={quotesLabel} />
-            </div>
-            <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-              Vue d&apos;ensemble du portefeuille
-            </h2>
-            <p className="max-w-3xl text-sm text-slate-600 sm:text-base">
-              Lecture en 4 blocs: marche, performance, allocation et controle des donnees.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <RefreshQuotesButton />
-              <StatusBadge tone={dataHealthTone} label={`Sante des donnees: ${dataHealthLabel}`} />
-            </div>
-          </div>
+    <div className="space-y-6">
+      <section className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-slate-500">Tableau de bord</p>
+          <h2 className="mt-0.5 flex flex-wrap items-center gap-2 text-2xl font-semibold text-slate-950">
+            Vue d&apos;ensemble
+            {sessionResult ? <SessionGainPill result={sessionResult} /> : null}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Marché, performance et allocation du portefeuille consolidé.
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Référence {referenceLabel} · dernier import {importLabel} · cours {quotesLabel}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone={dataHealthTone} label={`Santé des données : ${dataHealthLabel}`} />
+          <RefreshQuotesButton />
         </div>
       </section>
+
+      <MarketIndicesTicker />
 
       {performancePayload && performancePayload.accounts.length > 0 ? (
         <OverviewFilteredSections
@@ -167,6 +160,9 @@ export default async function OverviewPage() {
           </CardContent>
         </Card>
       )}
+
+      <DisnatDriftCard />
+      <PortfolioNewsHighlights />
     </div>
   );
 }
@@ -218,15 +214,6 @@ function StatusBadge({ tone, label }: { tone: "ok" | "warning"; label: string })
   );
 }
 
-
-function HeaderPill({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-3 py-1 ring-1 ring-cyan-100">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-600">{label}</span>
-      <span className="text-cyan-900">{value}</span>
-    </span>
-  );
-}
 
 function EmptyState({
   variant,
